@@ -11,25 +11,30 @@ uvicorn app.main:app --reload
 
 The API creates and seeds `backend/tracker.sqlite3` on startup.
 
-For Claude's frontend sync, set the frontend env var:
+For local frontend sync, set the frontend env var:
 
 ```bash
 VITE_API_BASE=http://127.0.0.1:8000
-VITE_GOOGLE_CLIENT_ID=your-google-oauth-web-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_ID=your-google-oauth-web-client-id.apps.googleusercontent.com
+AUTH_RATE_LIMIT=20
+AUTH_RATE_WINDOW_SECONDS=900
 ```
 
-`VITE_GOOGLE_CLIENT_ID` is read by the browser. `GOOGLE_CLIENT_ID` is read by
-FastAPI to verify that Google tokens were issued for this app.
+`GOOGLE_CLIENT_ID` is read by FastAPI to verify that Google tokens were issued
+for this app. The browser gets the public client ID at runtime from
+`/api/config`; `VITE_GOOGLE_CLIENT_ID` is only an optional frontend fallback.
 
-Optional Fish Audio voice notes:
+In Google Cloud Console, the OAuth client must be a **Web application**. Add
+the exact frontend origin shown in the browser address bar under **Authorized
+JavaScript origins**. Google does not allow wildcard ports. For example:
 
-```bash
-export FISH_API_KEY="your_key"
-export FISH_TTS_MODEL="s2-pro"
-# Optional, for a specific saved voice:
-export FISH_REFERENCE_ID="voice_model_id"
+```text
+http://127.0.0.1:5173
+http://localhost:5173
 ```
+
+If Vite is running on another port, such as `5176`, add that exact origin too.
+Restart both Vite and FastAPI after changing their `.env` files.
 
 Optional Groq narration (the TypeScript rules remain authoritative):
 
@@ -48,3 +53,20 @@ pytest
 ```
 
 For tests or separate environments, set `TRACKER_DB_PATH=/path/to/tracker.sqlite3`.
+
+## Excel plan import
+
+The phase workbook is imported in two steps so a plan cannot silently overwrite
+targets:
+
+1. `POST /api/plan/import/excel/preview` parses and returns the phase ranges,
+   rules, eight-week cycle, and any dated history it found.
+2. `POST /api/plan/import/excel` applies the same payload after confirmation.
+
+Both endpoints accept JSON with `filename`, `file_base64`, and a local
+`start_date` (`YYYY-MM-DD`). Empty workbook cells and unchecked boxes remain
+unknown. Applying the same workbook for the same start date is idempotent.
+
+`GET /api/plan/timeline?date=YYYY-MM-DD` returns the targets effective on that
+date, cycle position, weight trend, and phase-review status. Goal revisions are
+effective-dated, so a later workbook import does not rewrite historical goals.

@@ -35,6 +35,12 @@ class ImportRequest(BaseModel):
     rows: list[dict[str, Any]] | None = None
 
 
+class ExcelPlanImportRequest(BaseModel):
+    filename: str = "Phase_1_to_5_Fat_Loss_Tracker.xlsx"
+    file_base64: str
+    start_date: date
+
+
 class WorkoutSetIn(BaseModel):
     exercise: str
     set_number: int

@@ -18,6 +18,9 @@ cd frontend && npm run build
 
 The repo is split `frontend/` (this app) and `backend/` (FastAPI + SQLite).
 
+For online use, deploy one Docker service to Render with a persistent disk.
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
 ## The one idea
 
 **Rules decide, AI narrates.** Everything on screen — trend weight, compliance,
@@ -53,12 +56,11 @@ frontend/src/
 
 Dark only, glassmorphism with real refraction.
 
-- **Aurora** (`.aurora`) — metabolic night sky: ink void, training-horizon glow,
-  vitality / recovery / ember blooms, ribbon, faint orbital rings, dust and grain.
-  CSS-transform motion only; pauses when the tab is hidden and stops under
-  `prefers-reduced-motion`. It lives at `z-index:-1`, which is why `body` must
-  stay `background: transparent` — an opaque body background paints over
-  negative-z children and the aurora vanishes.
+- **Aurora** (`.aurora`) — Vital Field: restorative void, canopy light shafts,
+  dawn horizon, water caustics, vitality/oxygen/metabolic blooms, breath sheath,
+  biometric pulse wave, activity rings, endorphin dust + grain. CSS motion only;
+  pauses when the tab is hidden and stops under `prefers-reduced-motion`. Lives
+  at `z-index:-1`, so `body` must stay `background: transparent`.
 - **Glass** (`.glass`, `.glass-strong`) — tint, specular top highlight and 1px
   edge, per the liquid-glass recipe. **One backdrop-blur per stacking context**:
   panels blur, their children use `.glass-inset` (a flat translucent fill).
@@ -112,6 +114,5 @@ browser. Only dated rows are merged, numeric facts stay numeric, and blank
 checkboxes remain unknown.
 
 The TypeScript engine is the only authority for decisions shown in the app.
-FastAPI stores/syncs data, asks Groq to narrate the already-decided summary, and
-optionally turns the note into speech through Fish Audio. Both services fall
-back cleanly when their keys are absent.
+FastAPI stores/syncs data and asks Groq to narrate the already-decided summary.
+Groq falls back cleanly to deterministic copy when its key is absent.

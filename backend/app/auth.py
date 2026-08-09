@@ -27,7 +27,11 @@ def _decode_jwt_payload(token: str) -> dict[str, Any]:
 
 def verify_google_id_token(id_token: str) -> dict[str, Any]:
     expected_aud = os.environ.get("GOOGLE_CLIENT_ID")
-    if expected_aud and not os.environ.get("TRACKER_ALLOW_UNVERIFIED_GOOGLE"):
+    allow_unverified = os.environ.get("TRACKER_ALLOW_UNVERIFIED_GOOGLE") == "1"
+    if not expected_aud and not allow_unverified:
+        raise HTTPException(status_code=503, detail="GOOGLE_CLIENT_ID is not configured on the backend.")
+
+    if expected_aud and not allow_unverified:
         url = "https://oauth2.googleapis.com/tokeninfo?" + urllib.parse.urlencode({"id_token": id_token})
         try:
             with urllib.request.urlopen(url, timeout=8) as response:
@@ -37,7 +41,7 @@ def verify_google_id_token(id_token: str) -> dict[str, Any]:
     else:
         payload = _decode_jwt_payload(id_token)
 
-    if expected_aud and payload.get("aud") != expected_aud:
+    if expected_aud and not allow_unverified and payload.get("aud") != expected_aud:
         raise HTTPException(status_code=401, detail="Google token audience mismatch.")
     if payload.get("iss") not in (None, "accounts.google.com", "https://accounts.google.com"):
         raise HTTPException(status_code=401, detail="Google token issuer mismatch.")

@@ -1,6 +1,11 @@
 export const AUTH_API_BASE =
-  import.meta.env['VITE_API_BASE'] ?? (import.meta.env.DEV ? 'http://127.0.0.1:8000' : '')
-export const GOOGLE_CLIENT_ID = import.meta.env['VITE_GOOGLE_CLIENT_ID'] ?? ''
+  import.meta.env['VITE_API_BASE'] ??
+  (import.meta.env.DEV
+    ? 'http://127.0.0.1:8000'
+    : typeof window === 'undefined'
+      ? ''
+      : window.location.origin)
+const GOOGLE_CLIENT_ID_FALLBACK = import.meta.env['VITE_GOOGLE_CLIENT_ID'] ?? ''
 
 const STORAGE_KEY = 'tracker.auth.v1'
 
@@ -24,6 +29,7 @@ export interface AuthState {
 type Listener = () => void
 
 const listeners = new Set<Listener>()
+let configInFlight: Promise<string> | null = null
 
 export function getAuthState(): AuthState | null {
   const raw = localStorage.getItem(STORAGE_KEY)
@@ -46,6 +52,22 @@ export function authHeader(): Record<string, string> {
   return state ? { Authorization: `Bearer ${state.session.token}` } : {}
 }
 
+export function getGoogleClientId(): Promise<string> {
+  if (configInFlight) return configInFlight
+  configInFlight = fetchGoogleClientId().catch(() => GOOGLE_CLIENT_ID_FALLBACK)
+  return configInFlight
+}
+
+async function fetchGoogleClientId(): Promise<string> {
+  if (!AUTH_API_BASE && import.meta.env.DEV) return GOOGLE_CLIENT_ID_FALLBACK
+  const res = await fetch(`${AUTH_API_BASE}/api/config`)
+  if (!res.ok) return GOOGLE_CLIENT_ID_FALLBACK
+  const payload = (await res.json()) as { googleClientId?: unknown }
+  return typeof payload.googleClientId === 'string' && payload.googleClientId
+    ? payload.googleClientId
+    : GOOGLE_CLIENT_ID_FALLBACK
+}
+
 export function subscribeAuth(listener: Listener): () => void {
   listeners.add(listener)
   return () => {
@@ -63,6 +85,16 @@ function setAuthState(state: AuthState): void {
   window.dispatchEvent(new Event('tracker-auth-change'))
 }
 
+async function apiError(response: Response, fallback: string): Promise<Error> {
+  try {
+    const payload = (await response.json()) as { detail?: unknown }
+    if (typeof payload.detail === 'string' && payload.detail) return new Error(payload.detail)
+  } catch {
+    // Some proxy and server failures return HTML instead of JSON.
+  }
+  return new Error(`${fallback} (${response.status})`)
+}
+
 export function clearAuthState(): void {
   localStorage.removeItem(STORAGE_KEY)
   emit()
@@ -70,13 +102,12 @@ export function clearAuthState(): void {
 }
 
 export async function signInWithGoogleCredential(credential: string): Promise<AuthState> {
-  if (!AUTH_API_BASE) throw new Error('No backend is configured.')
   const res = await fetch(`${AUTH_API_BASE}/api/auth/google`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ credential }),
   })
-  if (!res.ok) throw new Error(`Google sign-in failed: ${res.status}`)
+  if (!res.ok) throw await apiError(res, 'Google sign-in failed')
   const state = (await res.json()) as AuthState
   setAuthState(state)
   return state

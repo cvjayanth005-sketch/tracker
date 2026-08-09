@@ -1,7 +1,7 @@
 import { buildCoachSummary, type PhaseReview, type Recommendation } from '@/domain/rules'
-import { getCoachAudio, getCoachNote } from '@/ai/coachNote'
+import { getCoachNote } from '@/ai/coachNote'
 import { useDashboard } from '@/hooks/useDashboard'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { Button, Card, Pill } from './ui'
 
 export function RecommendationCard({
@@ -15,8 +15,6 @@ export function RecommendationCard({
   const [note, setNote] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [provider, setProvider] = useState<'groq' | 'rules' | null>(null)
-  const [audioStatus, setAudioStatus] = useState<'idle' | 'loading' | 'playing'>('idle')
-  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   const tone =
     recommendation.severity === 'action'
@@ -37,32 +35,6 @@ export function RecommendationCard({
     else setNote(`Coach note unavailable: ${result.reason}`)
   }
 
-  const playNote = async () => {
-    if (!dash.phase || !review) return
-    setAudioStatus('loading')
-    try {
-      const summary = buildCoachSummary(dash.today, dash.phase, recommendation, review)
-      const url = await getCoachAudio(summary)
-      audioRef.current?.pause()
-      const audio = new Audio(url)
-      audioRef.current = audio
-      audio.addEventListener('ended', () => setAudioStatus('idle'), { once: true })
-      audio.addEventListener('error', () => setAudioStatus('idle'), { once: true })
-      await audio.play()
-      setAudioStatus('playing')
-    } catch (error) {
-      setAudioStatus('idle')
-      setNote(`Voice unavailable: ${error instanceof Error ? error.message : String(error)}`)
-    }
-  }
-
-  useEffect(
-    () => () => {
-      audioRef.current?.pause()
-    },
-    [],
-  )
-
   return (
     <Card>
       <div className="flex items-start justify-between gap-3">
@@ -73,11 +45,6 @@ export function RecommendationCard({
           </h2>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {note ? (
-            <Button variant="ghost" onClick={() => void playNote()} disabled={audioStatus === 'loading'}>
-              {audioStatus === 'loading' ? 'Loading…' : audioStatus === 'playing' ? 'Playing' : 'Listen'}
-            </Button>
-          ) : null}
           <Button variant="ghost" onClick={() => void loadNote()} disabled={loading}>
             {loading ? 'Thinking…' : 'Coach'}
           </Button>

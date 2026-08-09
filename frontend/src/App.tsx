@@ -1,19 +1,13 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Aurora } from '@/components/Aurora'
+import { GoogleSlideSignIn } from '@/components/GoogleSlideSignIn'
 import { Icon, type IconName } from '@/components/Icon'
 import { useLiquidGlass } from '@/hooks/useLiquidGlass'
 import { useOnline, useSyncMeta } from '@/hooks/useDashboard'
 import { useAutoSync } from '@/hooks/useDashboard'
 import { API_BASE, scheduleSync } from '@/sync/client'
-import {
-  GOOGLE_CLIENT_ID,
-  getAuthState,
-  signInWithGoogleCredential,
-  signOut,
-  subscribeAuth,
-  type AuthState,
-} from '@/auth/session'
+import { getAuthState, signOut, subscribeAuth, type AuthState } from '@/auth/session'
 
 const TABS: Array<{ to: string; label: string; icon: IconName }> = [
   { to: '/', label: 'Today', icon: 'today' },
@@ -22,20 +16,12 @@ const TABS: Array<{ to: string; label: string; icon: IconName }> = [
   { to: '/plan', label: 'Plan', icon: 'plan' },
 ]
 
-declare global {
-  interface Window {
-    google?: {
-      accounts: {
-        id: {
-          initialize: (options: {
-            client_id: string
-            callback: (response: { credential?: string }) => void
-          }) => void
-          renderButton: (el: HTMLElement, options: Record<string, unknown>) => void
-        }
-      }
-    }
-  }
+function useAuthState(): AuthState | null {
+  const [auth, setAuth] = useState<AuthState | null>(() => getAuthState())
+
+  useEffect(() => subscribeAuth(() => setAuth(getAuthState())), [])
+
+  return auth
 }
 
 /**
@@ -108,7 +94,7 @@ function RailNav() {
 
   return (
     <div
-      className="glass-strong relative flex flex-col items-center gap-4 overflow-visible rounded-full p-2.5 shadow-[0_28px_80px_-36px_rgba(74,222,128,0.55)]"
+      className="glass-strong relative flex flex-col items-center gap-4 overflow-visible rounded-full p-2.5 shadow-[0_28px_80px_-36px_rgba(57,255,20,0.6)]"
     >
       <AccountButton />
 
@@ -127,49 +113,9 @@ function RailNav() {
 }
 
 function AccountButton() {
-  const [auth, setAuth] = useState<AuthState | null>(() => getAuthState())
+  const auth = useAuthState()
   const [open, setOpen] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
-  const googleRef = useRef<HTMLDivElement | null>(null)
-
-  useEffect(() => subscribeAuth(() => setAuth(getAuthState())), [])
-
-  useEffect(() => {
-    if (auth || !open || !GOOGLE_CLIENT_ID || !googleRef.current) return
-    const scriptId = 'google-identity-services'
-    const render = () => {
-      if (!window.google || !googleRef.current) return
-      googleRef.current.innerHTML = ''
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: (response) => {
-          if (!response.credential) return
-          setStatus('Signing in...')
-          void signInWithGoogleCredential(response.credential)
-            .then(() => setStatus('Signed in. Syncing backup...'))
-            .catch((error) => setStatus(error instanceof Error ? error.message : String(error)))
-        },
-      })
-      window.google.accounts.id.renderButton(googleRef.current, {
-        theme: 'filled_black',
-        size: 'large',
-        shape: 'pill',
-        text: 'signin_with',
-      })
-    }
-
-    if (!document.getElementById(scriptId)) {
-      const script = document.createElement('script')
-      script.id = scriptId
-      script.src = 'https://accounts.google.com/gsi/client'
-      script.async = true
-      script.defer = true
-      script.onload = render
-      document.head.appendChild(script)
-    } else {
-      render()
-    }
-  }, [auth, open])
 
   return (
     <div className="relative">
@@ -224,13 +170,7 @@ function AccountButton() {
               <p className="mt-1 text-[12px] leading-relaxed text-ink-400">
                 Use Google to keep your tracker backed up across devices.
               </p>
-              {GOOGLE_CLIENT_ID ? (
-                <div ref={googleRef} className="mt-4 min-h-10" />
-              ) : (
-                <div className="mt-4 rounded-2xl bg-warn/10 p-3 text-[12px] text-warn ring-1 ring-inset ring-warn/20">
-                  Add `VITE_GOOGLE_CLIENT_ID` to enable Google login.
-                </div>
-              )}
+              <GoogleSlideSignIn onStatus={setStatus} />
               {status ? <div className="mt-3 text-[12px] text-ink-300">{status}</div> : null}
             </>
           )}
@@ -240,7 +180,89 @@ function AccountButton() {
   )
 }
 
-export default function App() {
+function WelcomePage() {
+  const [status, setStatus] = useState<string | null>(null)
+
+  return (
+    <div className="min-h-dvh">
+      <Aurora />
+
+      <main className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-5 py-6 safe-top sm:px-8 lg:px-10">
+        <header className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-2xl font-black text-ink-950 shadow-[0_18px_40px_-22px] shadow-accent">
+              k
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-ink-50">Fat Loss Ledger</div>
+              <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink-400">
+                Private training dashboard
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <section className="grid flex-1 items-center gap-8 py-10 lg:grid-cols-[minmax(0,1.1fr)_24rem] lg:gap-12">
+          <div className="max-w-3xl">
+            <div className="mb-5 inline-flex rounded-full border border-white/10 bg-white/6 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
+              Rules decide. AI narrates.
+            </div>
+            <h1 className="text-5xl font-semibold leading-[0.95] tracking-tight text-ink-50 sm:text-6xl lg:text-7xl">
+              Your cut, training, and recovery in one calm place.
+            </h1>
+            <p className="mt-5 max-w-2xl text-base leading-7 text-ink-200 sm:text-lg">
+              Log the day, watch the trend, and keep decisions grounded in the plan instead of
+              noise from one weigh-in.
+            </p>
+
+            <div className="mt-8 grid max-w-2xl gap-3 sm:grid-cols-3">
+              {[
+                ['Today', 'Calories, protein, training, recovery'],
+                ['Progress', 'Trend weight and adherence'],
+                ['Plan', 'Phase targets and reviews'],
+              ].map(([title, body]) => (
+                <div key={title} className="glass-inset rounded-2xl p-4">
+                  <div className="text-sm font-semibold text-ink-50">{title}</div>
+                  <div className="mt-1 text-[12px] leading-relaxed text-ink-400">{body}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="glass-strong rounded-3xl p-5 shadow-[0_30px_90px_-52px_rgba(0,240,255,0.75)]">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="text-lg font-semibold text-ink-50">Welcome back</div>
+                <p className="mt-1 text-[13px] leading-relaxed text-ink-400">
+                  Sign in to open the tracker and sync this device.
+                </p>
+              </div>
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/8 text-xl font-black text-accent ring-1 ring-inset ring-white/10">
+                k
+              </div>
+            </div>
+
+            <GoogleSlideSignIn onStatus={setStatus} />
+            {status ? <div className="mt-3 text-[12px] text-ink-300">{status}</div> : null}
+
+            <div className="mt-5 grid grid-cols-2 gap-2 text-[11px] text-ink-400">
+              <div className="rounded-2xl bg-white/5 p-3 ring-1 ring-inset ring-white/8">
+                <span className="block text-ink-200">Local-first</span>
+                Works on laptop and phone
+              </div>
+              <div className="rounded-2xl bg-white/5 p-3 ring-1 ring-inset ring-white/8">
+                <span className="block text-ink-200">Backed up</span>
+                Google account sync
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  )
+}
+
+function TrackerShell() {
   useAutoSync()
   // The tab bar is the one surface always on screen on mobile, so it is worth
   // the real refraction; content scrolling behind it is what makes it read as
@@ -317,4 +339,12 @@ export default function App() {
       </nav>
     </div>
   )
+}
+
+export default function App() {
+  const auth = useAuthState()
+
+  if (!auth) return <WelcomePage />
+
+  return <TrackerShell />
 }

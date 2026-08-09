@@ -16,7 +16,6 @@ __pycache__/
 *.py[cod]
 *.sqlite3
 .env
-backend/audio/
 
 # Editor directories and files
 .vscode/*

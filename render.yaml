@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: tracker
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    envVars:
+      - key: TRACKER_DB_PATH
+        value: /data/tracker.sqlite3
+      - key: TRACKER_STATIC_DIR
+        value: /app/static
+      - key: FRONTEND_ORIGINS
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: AUTH_RATE_LIMIT
+        value: 20
+      - key: AUTH_RATE_WINDOW_SECONDS
+        value: 900
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-20b
+    disk:
+      name: tracker-data
+      mountPath: /data
+      sizeGB: 1

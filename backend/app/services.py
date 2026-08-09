@@ -6,15 +6,13 @@ import io
 import json
 import os
 import sqlite3
-import urllib.error
-import urllib.request
 from datetime import date, timedelta
-from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 import httpx
 
 from .database import get_settings, row_to_dict
+from .excel_plan import resolve_phase_targets
 from .rules import (
     DayMetric,
     PhaseTarget,
@@ -82,7 +80,7 @@ def row_to_day_metric(row: sqlite3.Row) -> DayMetric:
     )
 
 
-def row_to_phase(row: sqlite3.Row) -> PhaseTarget:
+def row_to_phase(row: Mapping[str, Any]) -> PhaseTarget:
     return PhaseTarget(
         id=row["id"],
         name=row["name"],
@@ -153,7 +151,7 @@ def upsert_day(conn: sqlite3.Connection, local_date: date, payload: dict[str, An
     return get_or_create_day(conn, local_date)
 
 
-def planned_run_for_date(phase: sqlite3.Row, local_date: date) -> float:
+def planned_run_for_date(phase: Mapping[str, Any], local_date: date) -> float:
     return phase["sunday_run_km"] if local_date.weekday() == 6 else phase["weekday_run_km"]
 
 
@@ -162,7 +160,7 @@ def planned_workout_for_date(settings: dict[str, Any], local_date: date) -> str:
     return split.get(local_date.strftime("%A").lower(), "Rest")
 
 
-def daily_completion(day: dict[str, Any], phase: sqlite3.Row, local_date: date) -> dict[str, Any]:
+def daily_completion(day: dict[str, Any], phase: Mapping[str, Any], local_date: date) -> dict[str, Any]:
     items = [
         day.get("breakfast_completed"),
         day.get("lunch_completed"),
@@ -182,7 +180,7 @@ def daily_completion(day: dict[str, Any], phase: sqlite3.Row, local_date: date) 
 
 def build_today(conn: sqlite3.Connection, local_date: date) -> dict[str, Any]:
     day = get_or_create_day(conn, local_date)
-    phase = get_current_phase(conn)
+    phase = resolve_phase_targets(conn, get_current_phase(conn), local_date)
     settings = get_settings(conn)
     metrics = all_day_metrics(conn)
     weekly_change = weekly_average_change(metrics, local_date)
@@ -202,7 +200,7 @@ def build_today(conn: sqlite3.Connection, local_date: date) -> dict[str, Any]:
     return {
         "date": local_date.isoformat(),
         "day": day,
-        "phase": row_to_dict(phase),
+        "phase": phase,
         "targets": {
             "calories": calorie_target,
             "protein_min_g": phase["protein_min_g"],
@@ -221,7 +219,7 @@ def build_today(conn: sqlite3.Connection, local_date: date) -> dict[str, Any]:
     }
 
 
-def build_compliance(metrics: list[DayMetric], phase: sqlite3.Row, end_date: date) -> dict[str, Any]:
+def build_compliance(metrics: list[DayMetric], phase: Mapping[str, Any], end_date: date) -> dict[str, Any]:
     start = end_date - timedelta(days=6)
     recent = [item for item in metrics if start <= item.date <= end_date]
     calories_target = phase["calorie_target"] or 10**9
@@ -246,7 +244,7 @@ def count_low_loss_weeks(metrics: list[DayMetric], end_date: date) -> int:
 def build_progress(conn: sqlite3.Connection, end_date: date | None = None) -> dict[str, Any]:
     if end_date is None:
         end_date = date.today()
-    phase_row = get_current_phase(conn)
+    phase_row = resolve_phase_targets(conn, get_current_phase(conn), end_date)
     phase = row_to_phase(phase_row)
     metrics = all_day_metrics(conn)
     latest_weight = next((item.weight_kg for item in reversed(metrics) if item.weight_kg is not None), None)
@@ -255,7 +253,7 @@ def build_progress(conn: sqlite3.Connection, end_date: date | None = None) -> di
     compliance = build_compliance(metrics, phase_row, end_date)
     phase_review = phase_review_eligibility(metrics, phase, end_date, get_settings(conn).get("phase_dwell_days", 5))
     return {
-        "phase": row_to_dict(phase_row),
+        "phase": phase_row,
         "latest_weight_kg": latest_weight,
         "goal_weight_min_kg": profile["goal_weight_min_kg"],
         "goal_weight_max_kg": profile["goal_weight_max_kg"],
@@ -617,62 +615,3 @@ def put_state_document(conn: sqlite3.Connection, doc: dict[str, Any], user_id: i
         )
     conn.commit()
     return stored
-
-
-def audio_dir() -> Path:
-    path = Path(os.environ.get("TRACKER_AUDIO_DIR", Path(__file__).resolve().parents[1] / "audio"))
-    path.mkdir(parents=True, exist_ok=True)
-    return path
-
-
-def coach_audio(conn: sqlite3.Connection, note: str | None = None, force: bool = False) -> dict[str, Any]:
-    note_text = note or cached_coach_note(conn)["note"]
-    model = os.environ.get("FISH_TTS_MODEL", "s2-pro")
-    note_hash = hashlib.sha256(f"{model}:{note_text}".encode("utf-8")).hexdigest()
-    cached = conn.execute("SELECT * FROM coach_audio_cache WHERE note_hash = ?", (note_hash,)).fetchone()
-    if cached is not None and not force and Path(cached["audio_path"]).exists():
-        return {"audio_url": f"/api/audio/{note_hash}.mp3", "cached": True, "model": model}
-
-    api_key = os.environ.get("FISH_API_KEY")
-    if not api_key:
-        raise RuntimeError("FISH_API_KEY is not configured.")
-
-    body: dict[str, Any] = {
-        "text": note_text[:900],
-        "format": "mp3",
-    }
-    reference_id = os.environ.get("FISH_REFERENCE_ID")
-    if reference_id:
-        body["reference_id"] = reference_id
-    request = urllib.request.Request(
-        "https://api.fish.audio/v1/tts",
-        data=json.dumps(body).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "model": model,
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=45) as response:
-            audio = response.read()
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"Fish Audio request failed: {exc.code} {detail}") from exc
-
-    path = audio_dir() / f"{note_hash}.mp3"
-    path.write_bytes(audio)
-    conn.execute(
-        """
-        INSERT INTO coach_audio_cache (note_hash, note, model, audio_path)
-        VALUES (?, ?, ?, ?)
-        ON CONFLICT(note_hash) DO UPDATE SET
-            note = excluded.note,
-            model = excluded.model,
-            audio_path = excluded.audio_path
-        """,
-        (note_hash, note_text, model, str(path)),
-    )
-    conn.commit()
-    return {"audio_url": f"/api/audio/{note_hash}.mp3", "cached": False, "model": model}

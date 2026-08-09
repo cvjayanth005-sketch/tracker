@@ -103,25 +103,6 @@ export async function getCoachNote(
   }
 }
 
-export async function getCoachAudio(summary: CoachStateSummary): Promise<string> {
-  if (!API_BASE) throw new Error('No voice endpoint configured.')
-  const res = await fetch(`${API_BASE}/api/coach-note/audio`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      summary,
-      promptVersion: PROMPT_VERSION,
-      rulesVersion: RULES_VERSION,
-    }),
-  })
-  if (!res.ok) {
-    const payload = (await res.json().catch(() => null)) as { detail?: string } | null
-    throw new Error(payload?.detail ?? `Voice endpoint ${res.status}`)
-  }
-  const payload = (await res.json()) as { audio_url: string }
-  return payload.audio_url.startsWith('http') ? payload.audio_url : `${API_BASE}${payload.audio_url}`
-}
-
 /** Keep the cache small; old notes describe states that no longer exist. */
 async function pruneNotes(keep = 100): Promise<void> {
   const count = await db.aiNotes.count()

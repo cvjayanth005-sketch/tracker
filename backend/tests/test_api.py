@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 def make_client(tmp_path, monkeypatch) -> TestClient:
     monkeypatch.setenv("TRACKER_DB_PATH", str(tmp_path / "test.sqlite3"))
+    monkeypatch.setenv("TRACKER_ALLOW_UNVERIFIED_GOOGLE", "1")
     from app.database import init_db
     from app.main import app
 
@@ -28,6 +29,15 @@ def test_health_and_seeded_phase(tmp_path, monkeypatch) -> None:
 
     assert client.get("/api/health").json() == {"ok": True}
     assert client.get("/api/phase").json()["name"] == "Phase 1"
+
+
+def test_public_config_exposes_backend_google_client_id(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "backend-client-id.apps.googleusercontent.com")
+    client = make_client(tmp_path, monkeypatch)
+
+    assert client.get("/api/config").json() == {
+        "googleClientId": "backend-client-id.apps.googleusercontent.com"
+    }
 
 
 def test_daily_log_upsert_preserves_nullable_values(tmp_path, monkeypatch) -> None:
@@ -145,6 +155,18 @@ def test_google_accounts_get_separate_state_documents(tmp_path, monkeypatch) -> 
     assert client.get("/api/state", headers=other_headers).json()["tables"] == {}
 
 
+def test_google_sign_in_is_rate_limited_to_20_attempts(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    headers = {"x-forwarded-for": "203.0.113.20"}
+
+    for _ in range(20):
+        response = client.post("/api/auth/google", json={"credential": "not-a-jwt"}, headers=headers)
+        assert response.status_code == 401
+
+    response = client.post("/api/auth/google", json={"credential": "not-a-jwt"}, headers=headers)
+    assert response.status_code == 429
+
+
 def test_frontend_coach_note_shape_is_supported(tmp_path, monkeypatch) -> None:
     client = make_client(tmp_path, monkeypatch)
     payload = {
@@ -199,16 +221,3 @@ def test_frontend_coach_note_falls_back_when_groq_fails(tmp_path, monkeypatch) -
     assert response.json()["note"] == "Hold"
     assert response.json()["provider"] == "rules"
     assert response.json()["fallback"] is True
-
-
-def test_audio_endpoint_fails_cleanly_without_fish_key(tmp_path, monkeypatch) -> None:
-    client = make_client(tmp_path, monkeypatch)
-    monkeypatch.delenv("FISH_API_KEY", raising=False)
-
-    response = client.post(
-        "/api/coach-note/audio",
-        json={"summary": {"recommendation": {"detail": "Keep going."}}},
-    )
-
-    assert response.status_code == 503
-    assert "FISH_API_KEY" in response.json()["detail"]

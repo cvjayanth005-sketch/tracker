@@ -55,6 +55,8 @@ def init_db() -> None:
                 start_weight_kg REAL NOT NULL,
                 end_weight_kg REAL NOT NULL,
                 calorie_target INTEGER,
+                calorie_min INTEGER,
+                calorie_max INTEGER,
                 protein_min_g INTEGER NOT NULL,
                 protein_max_g INTEGER NOT NULL,
                 steps_target INTEGER NOT NULL,
@@ -153,6 +155,41 @@ def init_db() -> None:
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
+            CREATE TABLE IF NOT EXISTS plan_imports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                source_name TEXT NOT NULL,
+                source_sha256 TEXT NOT NULL,
+                sheet_name TEXT NOT NULL,
+                plan_start_date TEXT NOT NULL,
+                tracking_weeks INTEGER NOT NULL,
+                summary_json TEXT NOT NULL,
+                imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(source_sha256, plan_start_date)
+            );
+
+            CREATE TABLE IF NOT EXISTS goal_revisions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                phase_id INTEGER NOT NULL,
+                effective_date TEXT NOT NULL,
+                start_weight_kg REAL NOT NULL,
+                end_weight_kg REAL NOT NULL,
+                calorie_target INTEGER,
+                calorie_min INTEGER,
+                calorie_max INTEGER,
+                protein_min_g INTEGER NOT NULL,
+                protein_max_g INTEGER NOT NULL,
+                steps_target INTEGER NOT NULL,
+                weekday_run_km REAL NOT NULL,
+                sunday_run_km REAL NOT NULL,
+                workout_days_per_week INTEGER NOT NULL,
+                primary_goal TEXT NOT NULL,
+                source_import_id INTEGER,
+                reason TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (phase_id) REFERENCES phases(id),
+                FOREIGN KEY (source_import_id) REFERENCES plan_imports(id)
+            );
+
             CREATE TABLE IF NOT EXISTS app_users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 google_sub TEXT NOT NULL UNIQUE,
@@ -180,15 +217,9 @@ def init_db() -> None:
                 FOREIGN KEY (user_id) REFERENCES app_users(id) ON DELETE CASCADE
             );
 
-            CREATE TABLE IF NOT EXISTS coach_audio_cache (
-                note_hash TEXT PRIMARY KEY,
-                note TEXT NOT NULL,
-                model TEXT NOT NULL,
-                audio_path TEXT NOT NULL,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );
             """
         )
+        migrate_phase_targets(conn)
         migrate_app_state(conn)
         conn.execute(
             """
@@ -198,6 +229,21 @@ def init_db() -> None:
             """
         )
         seed_db(conn)
+
+
+def migrate_phase_targets(conn: sqlite3.Connection) -> None:
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(phases)").fetchall()}
+    if "calorie_min" not in columns:
+        conn.execute("ALTER TABLE phases ADD COLUMN calorie_min INTEGER")
+    if "calorie_max" not in columns:
+        conn.execute("ALTER TABLE phases ADD COLUMN calorie_max INTEGER")
+    conn.execute(
+        """
+        UPDATE phases SET
+            calorie_min = COALESCE(calorie_min, calorie_target),
+            calorie_max = COALESCE(calorie_max, calorie_target)
+        """
+    )
 
 
 def migrate_app_state(conn: sqlite3.Connection) -> None:
@@ -236,9 +282,10 @@ def seed_db(conn: sqlite3.Connection) -> None:
             """
             INSERT OR IGNORE INTO phases (
                 name, order_index, start_weight_kg, end_weight_kg, calorie_target,
-                protein_min_g, protein_max_g, steps_target, weekday_run_km,
-                sunday_run_km, workout_days_per_week, primary_goal
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                calorie_min, calorie_max, protein_min_g, protein_max_g,
+                steps_target, weekday_run_km, sunday_run_km,
+                workout_days_per_week, primary_goal
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 phase["name"],
@@ -246,6 +293,8 @@ def seed_db(conn: sqlite3.Connection) -> None:
                 phase["start_weight_kg"],
                 phase["end_weight_kg"],
                 phase["calorie_target"],
+                phase["calorie_min"],
+                phase["calorie_max"],
                 phase["protein_min_g"],
                 phase["protein_max_g"],
                 phase["steps_target"],

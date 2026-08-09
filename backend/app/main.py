@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from collections import deque
 from contextlib import asynccontextmanager
 from datetime import date
+import os
 from pathlib import Path
+import time
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from dotenv import load_dotenv
@@ -23,6 +26,7 @@ from .database import connect, get_settings, init_db, row_to_dict, upsert_settin
 from .schemas import (
     CoachNoteRequest,
     DayLogUpdate,
+    ExcelPlanImportRequest,
     GoogleLoginRequest,
     ImportRequest,
     PhaseUpdate,
@@ -31,14 +35,19 @@ from .schemas import (
     StateDocument,
     WorkoutUpsert,
 )
+from .excel_plan import (
+    apply_workbook_plan,
+    decode_workbook_payload,
+    get_goal_timeline,
+    parse_workbook_plan,
+    preview_workbook_plan,
+)
 from .services import (
     build_progress,
     build_today,
     cached_coach_note,
     cached_coach_note_for_summary,
-    coach_audio,
     create_run,
-    audio_dir,
     get_or_create_day,
     get_state_document,
     get_state_version,
@@ -52,16 +61,60 @@ from .services import (
 )
 
 
+AUTH_RATE_LIMIT = int(os.environ.get("AUTH_RATE_LIMIT", "20"))
+AUTH_RATE_WINDOW_SECONDS = int(os.environ.get("AUTH_RATE_WINDOW_SECONDS", "900"))
+_auth_attempts: dict[str, deque[float]] = {}
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
     yield
 
 
+def configured_cors_origins() -> list[str]:
+    raw = os.environ.get("FRONTEND_ORIGINS", "")
+    return [origin.strip().rstrip("/") for origin in raw.split(",") if origin.strip()]
+
+
+def static_dir() -> Path:
+    return Path(os.environ.get("TRACKER_STATIC_DIR", Path(__file__).resolve().parents[1] / "static"))
+
+
+def client_ip(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        return forwarded_for.split(",", 1)[0].strip()
+    if request.client:
+        return request.client.host
+    return "unknown"
+
+
+def check_auth_rate_limit(request: Request) -> None:
+    if AUTH_RATE_LIMIT <= 0:
+        return
+
+    now = time.monotonic()
+    cutoff = now - AUTH_RATE_WINDOW_SECONDS
+    key = client_ip(request)
+    attempts = _auth_attempts.setdefault(key, deque())
+    while attempts and attempts[0] < cutoff:
+        attempts.popleft()
+
+    if len(attempts) >= AUTH_RATE_LIMIT:
+        raise HTTPException(status_code=429, detail="Too many sign-in attempts. Try again later.")
+
+    attempts.append(now)
+
+
 app = FastAPI(title="Personal Fat Loss + Hybrid Training Tracker API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"^http://(localhost|127\.0\.0\.1):\d+$",
+    allow_origins=configured_cors_origins(),
+    allow_origin_regex=os.environ.get(
+        "FRONTEND_ORIGIN_REGEX",
+        r"^http://(localhost|127\.0\.0\.1):\d+$",
+    ),
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*", "Authorization"],
@@ -73,8 +126,14 @@ def health() -> dict:
     return {"ok": True}
 
 
+@app.get("/api/config")
+def public_config() -> dict:
+    return {"googleClientId": os.environ.get("GOOGLE_CLIENT_ID", "")}
+
+
 @app.post("/api/auth/google")
-def google_login(payload: GoogleLoginRequest) -> dict:
+def google_login(payload: GoogleLoginRequest, request: Request) -> dict:
+    check_auth_rate_limit(request)
     profile = verify_google_id_token(payload.credential)
     with connect() as conn:
         user = create_or_update_user(conn, profile)
@@ -145,6 +204,39 @@ def import_data(payload: ImportRequest) -> dict:
         if payload.csv_text:
             return import_csv(conn, payload.csv_text)
         raise HTTPException(status_code=400, detail="Provide rows or csv_text.")
+
+
+@app.post("/api/plan/import/excel/preview")
+def preview_excel_plan(payload: ExcelPlanImportRequest) -> dict:
+    try:
+        parsed = parse_workbook_plan(decode_workbook_payload(payload.file_base64))
+        return preview_workbook_plan(parsed, payload.filename, payload.start_date)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/plan/import/excel")
+def import_excel_plan(payload: ExcelPlanImportRequest) -> dict:
+    try:
+        parsed = parse_workbook_plan(decode_workbook_payload(payload.file_base64))
+        with connect() as conn:
+            return apply_workbook_plan(conn, parsed, payload.filename, payload.start_date)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/api/plan/timeline")
+def plan_timeline(date_: date | None = Query(default=None, alias="date")) -> dict:
+    on_date = date_ or date.today()
+    with connect() as conn:
+        timeline = get_goal_timeline(conn, on_date)
+        progress_data = build_progress(conn, on_date)
+        timeline["trend"] = {
+            "weight_7_day_avg": progress_data["weight_7_day_avg"],
+            "weekly_change_kg": progress_data["weekly_change_kg"],
+        }
+        timeline["phase_review"] = progress_data["phase_review"]
+        return timeline
 
 
 @app.get("/api/state/version")
@@ -243,29 +335,21 @@ def coach_note(payload: CoachNoteRequest) -> dict:
         return cached_coach_note(conn, payload.force)
 
 
-@app.post("/api/coach-note/audio")
-def post_coach_audio(payload: CoachNoteRequest) -> dict:
-    with connect() as conn:
-        try:
-            note = None
-            if payload.summary is not None:
-                note = cached_coach_note_for_summary(
-                    conn,
-                    payload.summary,
-                    payload.promptVersion,
-                    payload.rulesVersion,
-                    payload.force,
-                )["note"]
-            return coach_audio(conn, note=note, force=payload.force)
-        except RuntimeError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
+@app.get("/{full_path:path}", include_in_schema=False)
+def spa(full_path: str) -> FileResponse:
+    if full_path == "api" or full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="Not found.")
 
+    root = static_dir()
+    if not root.exists():
+        raise HTTPException(status_code=404, detail="Frontend build not found.")
 
-@app.get("/api/audio/{filename}")
-def audio_file(filename: str) -> FileResponse:
-    if not filename.endswith(".mp3") or "/" in filename:
-        raise HTTPException(status_code=404, detail="Audio not found.")
-    path = audio_dir() / filename
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="Audio not found.")
-    return FileResponse(path, media_type="audio/mpeg")
+    requested = (root / full_path).resolve()
+    if requested.is_file() and requested.is_relative_to(root.resolve()):
+        return FileResponse(requested)
+
+    index = root / "index.html"
+    if index.exists():
+        return FileResponse(index)
+
+    raise HTTPException(status_code=404, detail="Frontend build not found.")
