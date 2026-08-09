@@ -1,0 +1,51 @@
+import { fileURLToPath, URL } from 'node:url'
+import { defineConfig } from 'vitest/config'
+import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+import { VitePWA } from 'vite-plugin-pwa'
+
+export default defineConfig({
+  resolve: {
+    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+  },
+  server: {
+    port: process.env['PORT'] ? Number(process.env['PORT']) : 5173,
+  },
+  plugins: [
+    react(),
+    tailwindcss(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['icon-192.png', 'apple-touch-icon.png'],
+      manifest: {
+        name: 'Fat Loss Ledger',
+        short_name: 'Ledger',
+        description: 'Personal fat loss tracker with deterministic trend rules',
+        theme_color: '#0b0f14',
+        background_color: '#0b0f14',
+        display: 'standalone',
+        orientation: 'portrait',
+        start_url: '/',
+        icons: [
+          { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
+          {
+            src: 'icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
+        ],
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // The app must open offline; everything it needs is precached.
+        navigateFallback: 'index.html',
+      },
+    }),
+  ],
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.ts'],
+  },
+})

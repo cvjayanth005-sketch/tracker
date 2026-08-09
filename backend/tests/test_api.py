@@ -1,0 +1,214 @@
+from __future__ import annotations
+
+import base64
+import json
+
+from fastapi.testclient import TestClient
+
+
+def make_client(tmp_path, monkeypatch) -> TestClient:
+    monkeypatch.setenv("TRACKER_DB_PATH", str(tmp_path / "test.sqlite3"))
+    from app.database import init_db
+    from app.main import app
+
+    init_db()
+    return TestClient(app)
+
+
+def fake_google_credential(sub: str, email: str) -> str:
+    header = base64.urlsafe_b64encode(json.dumps({"alg": "none"}).encode()).decode().rstrip("=")
+    payload = base64.urlsafe_b64encode(
+        json.dumps({"sub": sub, "email": email, "name": email.split("@")[0], "exp": 4102444800}).encode()
+    ).decode().rstrip("=")
+    return f"{header}.{payload}."
+
+
+def test_health_and_seeded_phase(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+
+    assert client.get("/api/health").json() == {"ok": True}
+    assert client.get("/api/phase").json()["name"] == "Phase 1"
+
+
+def test_daily_log_upsert_preserves_nullable_values(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+
+    response = client.put("/api/day/2026-01-01", json={"weight_kg": 88.2, "protein_g": 164})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["weight_kg"] == 88.2
+    assert data["protein_g"] == 164
+    assert data["calories"] is None
+
+    response = client.put("/api/day/2026-01-01", json={"steps": 11000})
+    data = response.json()
+    assert data["weight_kg"] == 88.2
+    assert data["steps"] == 11000
+    assert data["calories"] is None
+
+
+def test_import_csv_and_progress(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    csv_text = "date,weight,calories,protein,steps\n2026-01-01,88,2050,165,11000\n2026-01-08,87,2000,160,11200\n"
+
+    result = client.post("/api/import", json={"csv_text": csv_text}).json()
+    assert result == {"imported": 2, "skipped": 0}
+
+    progress = client.get("/api/progress?date=2026-01-08").json()
+    assert progress["latest_weight_kg"] == 87
+    assert progress["compliance"]["protein"]["scheduled"] == 1
+
+
+def test_settings_update(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+
+    settings = client.put("/api/settings", json={"values": {"calorie_floor": 1800}}).json()
+
+    assert settings["calorie_floor"] == 1800
+
+
+def test_workout_progression_endpoint(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+
+    payload = {
+        "workout_name": "Upper A",
+        "completed": True,
+        "sets": [
+            {"exercise": "Bench press", "set_number": 1, "weight": 70, "reps": 12, "rir": 2},
+            {"exercise": "Bench press", "set_number": 2, "weight": 70, "reps": 12, "rir": 1},
+            {"exercise": "Bench press", "set_number": 3, "weight": 70, "reps": 12, "rir": 1},
+        ],
+    }
+    response = client.put("/api/workout/2026-01-01", json=payload)
+
+    assert response.status_code == 200
+    assert response.json()["progression"][0]["ready_to_increase_load"] is True
+
+
+def test_coach_note_is_cached(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+
+    first = client.post("/api/coach-note", json={}).json()
+    second = client.post("/api/coach-note", json={}).json()
+
+    assert first["state_hash"] == second["state_hash"]
+    assert first["note"]
+
+
+def test_frontend_state_sync_round_trip_and_conflict(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    doc = {
+        "version": 1,
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "baseVersion": 0,
+        "tables": {
+            "dailyLogs": [{"date": "2026-01-01", "weightKg": 88, "calories": None}],
+            "settings": [],
+        },
+    }
+
+    assert client.get("/api/state/version").json() == {"version": 0}
+    pushed = client.put("/api/state", json=doc)
+    assert pushed.status_code == 200
+    assert pushed.json()["version"] == 1
+    assert client.get("/api/state/version").json() == {"version": 1}
+    assert client.get("/api/state").json()["tables"]["dailyLogs"][0]["weightKg"] == 88
+
+    stale = client.put("/api/state", json={**doc, "version": 2, "baseVersion": 0})
+    assert stale.status_code == 409
+
+
+def test_google_accounts_get_separate_state_documents(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+
+    first = client.post(
+        "/api/auth/google",
+        json={"credential": fake_google_credential("google-a", "a@example.com")},
+    ).json()
+    second = client.post(
+        "/api/auth/google",
+        json={"credential": fake_google_credential("google-b", "b@example.com")},
+    ).json()
+
+    doc = {
+        "version": 1,
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "baseVersion": 0,
+        "tables": {"dailyLogs": [{"date": "2026-01-01", "weightKg": 88}]},
+    }
+    headers = {"Authorization": f"Bearer {first['session']['token']}"}
+    assert client.put("/api/state", json=doc, headers=headers).status_code == 200
+    assert client.get("/api/state/version", headers=headers).json() == {"version": 1}
+
+    other_headers = {"Authorization": f"Bearer {second['session']['token']}"}
+    assert client.get("/api/state/version", headers=other_headers).json() == {"version": 0}
+    assert client.get("/api/state", headers=other_headers).json()["tables"] == {}
+
+
+def test_frontend_coach_note_shape_is_supported(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    payload = {
+        "summary": {
+            "recommendation": {
+                "headline": "Hold",
+                "detail": "On target - keep current plan.",
+            }
+        },
+        "promptVersion": "1.0.0",
+        "rulesVersion": "1.0.0",
+    }
+
+    response = client.post("/api/coach-note", json=payload)
+
+    assert response.status_code == 200
+    assert response.json()["note"] == "On target - keep current plan."
+    assert response.json()["provider"] == "rules"
+
+
+def test_frontend_coach_note_uses_groq_without_changing_rules(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+    monkeypatch.setenv("GROQ_MODEL", "openai/gpt-oss-20b")
+    monkeypatch.setattr("app.services.request_groq_note", lambda summary, api_key, model: "Stay steady. Your trend is on plan.")
+
+    response = client.post(
+        "/api/coach-note",
+        json={"summary": {"recommendation": {"headline": "Hold"}}, "rulesVersion": "1.0.0"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["note"] == "Stay steady. Your trend is on plan."
+    assert response.json()["provider"] == "groq"
+    assert response.json()["model"] == "openai/gpt-oss-20b"
+
+
+def test_frontend_coach_note_falls_back_when_groq_fails(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+
+    def fail(*_args):
+        raise RuntimeError("temporary failure")
+
+    monkeypatch.setattr("app.services.request_groq_note", fail)
+    response = client.post(
+        "/api/coach-note",
+        json={"summary": {"recommendation": {"headline": "Hold"}}},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["note"] == "Hold"
+    assert response.json()["provider"] == "rules"
+    assert response.json()["fallback"] is True
+
+
+def test_audio_endpoint_fails_cleanly_without_fish_key(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    monkeypatch.delenv("FISH_API_KEY", raising=False)
+
+    response = client.post(
+        "/api/coach-note/audio",
+        json={"summary": {"recommendation": {"detail": "Keep going."}}},
+    )
+
+    assert response.status_code == 503
+    assert "FISH_API_KEY" in response.json()["detail"]
