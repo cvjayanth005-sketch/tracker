@@ -60,6 +60,8 @@ export function defaultSettings(): Settings {
     id: 'settings',
     timezone:
       Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata',
+    planStartDate: null,
+    onboardingCompleted: false,
     calorieFloor: 1700,
     targetLossPerWeekMin: 0.5,
     targetLossPerWeekMax: 0.8,

@@ -108,5 +108,5 @@ previews.
 
 - Render free instances can sleep. First load after sleep may be slow.
 - Keep the Render disk attached before relying on the hosted app for real data.
-- Browser IndexedDB is still the working local store; sync pushes/pulls the full
-  app document when `VITE_API_BASE` is configured.
+- Browser IndexedDB is still the working local store; signed-in sync pushes and
+  pulls the full app document from the configured backend.

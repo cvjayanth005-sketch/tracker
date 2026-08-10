@@ -2,6 +2,7 @@ import { db, markDirty } from './database'
 import { addDays, compareDates } from '@/domain/date'
 import type {
   BodyMeasurement,
+  DaySchedule,
   DailyLog,
   Exercise,
   LocalDate,
@@ -120,6 +121,10 @@ export async function allMeasurements(): Promise<BodyMeasurement[]> {
   return rows.sort((a, b) => compareDates(a.date, b.date))
 }
 
+export async function getMeasurement(date: LocalDate): Promise<BodyMeasurement | undefined> {
+  return db.measurements.get(date)
+}
+
 // ---------------------------------------------------------------------------
 // Settings and phases
 // ---------------------------------------------------------------------------
@@ -132,6 +137,102 @@ export async function updateSettings(patch: Partial<Settings>): Promise<void> {
   const existing = await db.settings.get('settings')
   if (!existing) return
   await db.settings.put({ ...existing, ...patch, id: 'settings', updatedAt: now() })
+  await markDirty()
+}
+
+export interface OnboardingPlanDraft {
+  profile: {
+    name: string | null
+    birthYear: number | null
+    heightCm: number | null
+    startWeightKg: number
+    goalWeightKg: number
+  }
+  planStartDate: LocalDate
+  targets: {
+    calories: number
+    proteinG: number
+    steps: number
+    sleepHours: number
+    gymDaysPerWeek: number
+    weeklyRunKmTarget: number | null
+  }
+  phases: Array<{
+    name: string
+    startWeightKg: number
+    targetWeightKg: number
+    calories: number
+    proteinG: number
+    steps: number
+    weeklyRunKmTarget: number | null
+    notes: string | null
+  }>
+}
+
+function weeklySchedule(gymDaysPerWeek: number, weeklyRunKmTarget: number | null): DaySchedule[] {
+  const gymDays = gymDaysPerWeek >= 4 ? [1, 2, 4, 5] : gymDaysPerWeek === 3 ? [1, 3, 5] : [1, 4]
+  const runDays = [0, 3, 6]
+  const runKm = weeklyRunKmTarget && weeklyRunKmTarget > 0 ? Math.max(1, Math.round((weeklyRunKmTarget / runDays.length) * 10) / 10) : null
+  return ([0, 1, 2, 3, 4, 5, 6] as const).map((dow) => {
+    const gym = gymDays.includes(dow)
+    const run = runDays.includes(dow)
+    return {
+      dow,
+      gym,
+      sessionType: gym ? (dow === 2 || dow === 5 ? 'lower' : 'upper') : run ? 'run' : 'rest',
+      runKm: run ? runKm : null,
+      runType: run ? (dow === 0 ? 'long' : 'easy') : null,
+    }
+  })
+}
+
+export async function applyOnboardingPlan(draft: OnboardingPlanDraft): Promise<void> {
+  const stamp = now()
+  const schedule = weeklySchedule(
+    draft.targets.gymDaysPerWeek,
+    draft.targets.weeklyRunKmTarget,
+  )
+  const phases: Phase[] = draft.phases.map((phase, index) => ({
+    id: `phase-${index + 1}`,
+    order: index + 1,
+    name: phase.name || `Phase ${index + 1}`,
+    startWeightKg: phase.startWeightKg,
+    targetWeightKg: phase.targetWeightKg,
+    targetWaistCm: null,
+    calories: phase.calories,
+    proteinG: phase.proteinG,
+    steps: phase.steps,
+    sleepHours: draft.targets.sleepHours,
+    mealsPerDay: 4,
+    weeklyRunKmTarget: phase.weeklyRunKmTarget,
+    schedule,
+    startedOn: index === 0 ? draft.planStartDate : null,
+    endedOn: null,
+    calorieCutsApplied: 0,
+    notes: phase.notes,
+  }))
+  await db.transaction('rw', db.profile, db.settings, db.phases, async () => {
+    await db.profile.put({
+      id: 'me',
+      name: draft.profile.name,
+      heightCm: draft.profile.heightCm,
+      birthYear: draft.profile.birthYear,
+      startWeightKg: draft.profile.startWeightKg,
+      goalWeightKg: draft.profile.goalWeightKg,
+      updatedAt: stamp,
+    })
+    const existing = await db.settings.get('settings')
+    if (!existing) throw new Error('Settings are not initialized.')
+    await db.settings.put({
+      ...existing,
+      planStartDate: draft.planStartDate,
+      onboardingCompleted: true,
+      calorieFloor: Math.min(existing.calorieFloor, Math.max(1200, draft.targets.calories - 350)),
+      updatedAt: stamp,
+    })
+    await db.phases.clear()
+    await db.phases.bulkPut(phases)
+  })
   await markDirty()
 }
 
@@ -431,6 +532,10 @@ export async function runsBetween(from: LocalDate, to: LocalDate): Promise<Run[]
   return rows.sort((a, b) =>
     compareDates(a.date, b.date) || a.createdAt.localeCompare(b.createdAt),
   )
+}
+
+export async function runsForDate(date: LocalDate): Promise<Run[]> {
+  return runsBetween(date, date)
 }
 
 export async function recentRuns(limit = 80): Promise<Run[]> {

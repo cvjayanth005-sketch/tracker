@@ -78,6 +78,10 @@ export interface Phase {
 export interface Settings {
   id: 'settings'
   timezone: string
+  /** First day of the user's plan. Required before the dashboard opens. */
+  planStartDate: LocalDate | null
+  /** New accounts stay in AI onboarding until a reviewed plan is accepted. */
+  onboardingCompleted: boolean
   /** Hard lower bound on any recommended calorie target. */
   calorieFloor: number
   /** Target weekly loss band, kg/week, both positive numbers. */

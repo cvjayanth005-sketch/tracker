@@ -1,17 +1,20 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { Aurora } from '@/components/Aurora'
 import { GoogleSlideSignIn } from '@/components/GoogleSlideSignIn'
 import { Icon, type IconName } from '@/components/Icon'
+import { getSettings } from '@/db/repo'
 import { useLiquidGlass } from '@/hooks/useLiquidGlass'
 import { useOnline, useSyncMeta } from '@/hooks/useDashboard'
 import { useAutoSync } from '@/hooks/useDashboard'
-import { API_BASE, scheduleSync } from '@/sync/client'
+import { Onboarding } from '@/screens/Onboarding'
+import { API_BASE, scheduleSync, sync } from '@/sync/client'
 import { getAuthState, signOut, subscribeAuth, type AuthState } from '@/auth/session'
 
 const TABS: Array<{ to: string; label: string; icon: IconName }> = [
   { to: '/', label: 'Today', icon: 'today' },
-  { to: '/workout', label: 'Workout', icon: 'workout' },
+  { to: '/calendar', label: 'Calendar', icon: 'calendar' },
   { to: '/progress', label: 'Progress', icon: 'progress' },
   { to: '/plan', label: 'Plan', icon: 'plan' },
 ]
@@ -247,12 +250,12 @@ function WelcomePage() {
 
             <div className="mt-5 grid grid-cols-2 gap-2 text-[11px] text-ink-400">
               <div className="rounded-2xl bg-white/5 p-3 ring-1 ring-inset ring-white/8">
-                <span className="block text-ink-200">Local-first</span>
-                Works on laptop and phone
+                <span className="block text-ink-200">Account-backed</span>
+                Private to your Google sign-in
               </div>
               <div className="rounded-2xl bg-white/5 p-3 ring-1 ring-inset ring-white/8">
-                <span className="block text-ink-200">Backed up</span>
-                Google account sync
+                <span className="block text-ink-200">Offline-capable</span>
+                Works after your plan loads
               </div>
             </div>
           </div>
@@ -343,8 +346,58 @@ function TrackerShell() {
 
 export default function App() {
   const auth = useAuthState()
+  const settings = useLiveQuery(() => getSettings(), [])
+  const [bootstrappedUserId, setBootstrappedUserId] = useState<number | null>(null)
+  const [bootError, setBootError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!auth) {
+      setBootstrappedUserId(null)
+      return
+    }
+    let cancelled = false
+    setBootError(null)
+    void sync()
+      .then((outcome) => {
+        if (cancelled) return
+        if (outcome.status === 'error') setBootError(outcome.message)
+        setBootstrappedUserId(auth.user.id)
+      })
+      .catch((error) => {
+        if (cancelled) return
+        setBootError(error instanceof Error ? error.message : String(error))
+        setBootstrappedUserId(auth.user.id)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [auth])
 
   if (!auth) return <WelcomePage />
+  if (bootstrappedUserId !== auth.user.id || !settings) {
+    return (
+      <div className="min-h-dvh">
+        <Aurora />
+        <main className="mx-auto flex min-h-dvh max-w-md items-center px-5 text-center">
+          <div className="glass-strong rounded-3xl p-5">
+            <div className="text-lg font-semibold text-ink-50">Loading your tracker</div>
+            <p className="mt-2 text-sm leading-6 text-ink-300">
+              Pulling your account data before opening the dashboard.
+            </p>
+            {bootError ? <div className="mt-3 text-[12px] text-warn">{bootError}</div> : null}
+          </div>
+        </main>
+      </div>
+    )
+  }
+  if (!settings.onboardingCompleted || !settings.planStartDate) {
+    return (
+      <div className="min-h-dvh">
+        <Aurora />
+        <Onboarding />
+      </div>
+    )
+  }
 
   return <TrackerShell />
 }

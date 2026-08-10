@@ -1,3 +1,5 @@
+import { clearLocalTrackerData, ensureSeeded } from '@/db/database'
+
 export const AUTH_API_BASE =
   import.meta.env['VITE_API_BASE'] ??
   (import.meta.env.DEV
@@ -102,6 +104,7 @@ export function clearAuthState(): void {
 }
 
 export async function signInWithGoogleCredential(credential: string): Promise<AuthState> {
+  const previous = getAuthState()
   const res = await fetch(`${AUTH_API_BASE}/api/auth/google`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -109,6 +112,10 @@ export async function signInWithGoogleCredential(credential: string): Promise<Au
   })
   if (!res.ok) throw await apiError(res, 'Google sign-in failed')
   const state = (await res.json()) as AuthState
+  if (previous && previous.user.id !== state.user.id) {
+    await clearLocalTrackerData()
+    await ensureSeeded()
+  }
   setAuthState(state)
   return state
 }
@@ -121,4 +128,6 @@ export async function signOut(): Promise<void> {
     }).catch(() => undefined)
   }
   clearAuthState()
+  await clearLocalTrackerData()
+  await ensureSeeded()
 }

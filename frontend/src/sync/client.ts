@@ -10,8 +10,8 @@ import { authHeader } from '@/auth/session'
  * newer than ours, the push is refused and the UI says so rather than silently
  * clobbering. That is the entire protocol.
  *
- * Development connects to the local FastAPI server by default. Production
- * remains local-only unless `VITE_API_BASE` is configured at build time.
+ * Development connects to the local FastAPI server by default. Production uses
+ * the same origin unless `VITE_API_BASE` points at a separate backend.
  */
 
 export const API_BASE =

@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import csv
+import base64
 import hashlib
 import io
 import json
 import os
 import sqlite3
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, Mapping
 
 import httpx
+from pypdf import PdfReader
 
 from .database import get_settings, row_to_dict
 from .excel_plan import resolve_phase_targets
@@ -521,6 +523,206 @@ def request_groq_note(summary: dict[str, Any], api_key: str, model: str) -> str:
     if not isinstance(note, str) or not note.strip():
         raise ValueError("Groq returned an empty coaching note.")
     return note.strip()[:900]
+
+
+def extract_pdf_text(file_base64: str) -> str:
+    try:
+        raw = base64.b64decode(file_base64, validate=True)
+    except Exception as exc:
+        raise ValueError("Uploaded PDF was not valid base64.") from exc
+    try:
+        reader = PdfReader(io.BytesIO(raw))
+        text = "\n".join(page.extract_text() or "" for page in reader.pages)
+    except Exception as exc:
+        raise ValueError("Could not read text from that PDF.") from exc
+    text = text.strip()
+    if not text:
+        raise ValueError("That PDF has no readable text layer. Scanned PDFs are not supported yet.")
+    return text[:20_000]
+
+
+def onboarding_source_text(payload: dict[str, Any]) -> str:
+    chunks: list[str] = []
+    pasted = payload.get("pasted_text")
+    if isinstance(pasted, str) and pasted.strip():
+        chunks.append(pasted.strip()[:20_000])
+    file_base64 = payload.get("file_base64")
+    file_name = str(payload.get("file_name") or "").lower()
+    if isinstance(file_base64, str) and file_base64.strip():
+        if not file_name.endswith(".pdf"):
+            raise ValueError("Only readable PDF upload is supported for onboarding v1.")
+        chunks.append(extract_pdf_text(file_base64))
+    return "\n\n".join(chunks)
+
+
+def _num(value: Any, default: float, lo: float, hi: float) -> float:
+    try:
+        parsed = float(str(value).replace("kg", "").replace("cm", "").strip())
+    except (TypeError, ValueError):
+        parsed = default
+    return max(lo, min(hi, parsed))
+
+
+def _int(value: Any, default: int, lo: int, hi: int) -> int:
+    return int(round(_num(value, default, lo, hi)))
+
+
+def fallback_onboarding_draft(answers: dict[str, Any], source_text: str = "") -> dict[str, Any]:
+    current_weight = _num(answers.get("currentWeightKg") or answers.get("current_weight_kg"), 88, 40, 250)
+    goal_weight = _num(answers.get("goalWeightKg") or answers.get("goal_weight_kg"), max(45, current_weight - 12), 40, current_weight)
+    height_cm = _num(answers.get("heightCm") or answers.get("height_cm"), 175, 120, 230)
+    age = _int(answers.get("age"), 28, 13, 90)
+    gym_days = _int(answers.get("gymDaysPerWeek") or answers.get("gym_days_per_week"), 3, 0, 6)
+    sex = str(answers.get("sex") or "").lower()
+    pace = str(answers.get("desiredPace") or answers.get("desired_pace") or "moderate").lower()
+    activity = str(answers.get("activityLevel") or answers.get("activity_level") or "moderate").lower()
+    birth_year = datetime.now().year - age
+
+    bmr = 10 * current_weight + 6.25 * height_cm - 5 * age + (-161 if sex.startswith("f") else 5)
+    factor = 1.35 if "sedentary" in activity else 1.55 if "active" in activity else 1.45
+    deficit = 350 if pace == "steady" else 650 if pace == "aggressive" else 500
+    calories = int(round(max(1500, min(3200, bmr * factor - deficit)) / 50) * 50)
+    if sex.startswith("f"):
+        calories = max(1300, calories)
+    protein = int(round(max(1.8 * goal_weight, 1.6 * current_weight) / 5) * 5)
+    steps = 8000 if "sedentary" in activity else 11000 if "active" in activity else 9500
+    weekly_run = 0 if gym_days >= 5 else 8 if gym_days <= 2 else 6
+    total_loss = max(0, current_weight - goal_weight)
+    phase_count = 1 if total_loss < 4 else min(5, max(2, int(round(total_loss / 4))))
+    step = total_loss / phase_count if phase_count else 0
+    phases = []
+    start = current_weight
+    for index in range(phase_count):
+        target = goal_weight if index == phase_count - 1 else round(current_weight - step * (index + 1), 1)
+        phase_calories = max(1300 if sex.startswith("f") else 1500, calories - index * 75)
+        phases.append(
+            {
+                "name": f"Phase {index + 1}",
+                "startWeightKg": round(start, 1),
+                "targetWeightKg": round(target, 1),
+                "calories": int(phase_calories),
+                "proteinG": protein,
+                "steps": steps,
+                "weeklyRunKmTarget": weekly_run,
+                "notes": "AI fallback draft from onboarding answers.",
+            }
+        )
+        start = target
+    cautions: list[str] = []
+    red_flags = " ".join(str(answers.get(key, "")) for key in ("injuries", "medicalLimitations", "medical_limitations")).lower()
+    if any(term in red_flags for term in ("diabetes", "heart", "pregnan", "eating disorder", "injury", "pain")):
+        cautions.append("Medical or injury limits were mentioned. Keep the plan conservative and check with a qualified professional before aggressive dieting or training.")
+    if pace == "aggressive":
+        cautions.append("Aggressive fat loss can affect recovery and performance. The rules engine should slow changes if logging shows poor recovery.")
+    return {
+        "provider": "rules",
+        "profileSummary": f"{answers.get('name') or 'User'} wants to move from {current_weight:.1f} kg toward {goal_weight:.1f} kg with {gym_days} gym days per week.",
+        "planStartDate": date.today().isoformat(),
+        "profile": {
+            "name": answers.get("name") or None,
+            "birthYear": birth_year,
+            "heightCm": round(height_cm, 1),
+            "startWeightKg": round(current_weight, 1),
+            "goalWeightKg": round(goal_weight, 1),
+        },
+        "targets": {
+            "calories": calories,
+            "proteinG": protein,
+            "steps": steps,
+            "sleepHours": 7.5,
+            "gymDaysPerWeek": gym_days,
+            "weeklyRunKmTarget": weekly_run,
+            "fatLossPace": pace if pace in {"steady", "moderate", "aggressive"} else "moderate",
+            "cardioSuggestion": "Add easy cardio on non-lifting days and keep intensity conversational.",
+        },
+        "phases": phases,
+        "cautions": cautions,
+        "missingInfo": [],
+        "sourceUsed": bool(source_text),
+    }
+
+
+def request_groq_onboarding_draft(answers: dict[str, Any], source_text: str, api_key: str, model: str) -> dict[str, Any]:
+    response = httpx.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json={
+            "model": model,
+            "temperature": 0.25,
+            "max_completion_tokens": 1800,
+            "response_format": {"type": "json_object"},
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "You draft initial fat-loss and hybrid-training plans. Return strict JSON only. "
+                        "Never diagnose, never prescribe medical treatment, and avoid aggressive targets when medical, injury, pregnancy, or eating-disorder concerns appear. "
+                        "Use these keys: profileSummary, planStartDate, profile{name,birthYear,heightCm,startWeightKg,goalWeightKg}, "
+                        "targets{calories,proteinG,steps,sleepHours,gymDaysPerWeek,weeklyRunKmTarget,fatLossPace,cardioSuggestion}, "
+                        "phases array of {name,startWeightKg,targetWeightKg,calories,proteinG,steps,weeklyRunKmTarget,notes}, cautions array, missingInfo array. "
+                        "Use kg, cm, kcal, grams. Draft only; the user must approve before applying."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": json.dumps({"answers": answers, "optionalPlanText": source_text[:20_000]}, sort_keys=True),
+                },
+            ],
+        },
+        timeout=20.0,
+    )
+    response.raise_for_status()
+    raw = response.json()["choices"][0]["message"]["content"]
+    parsed = json.loads(raw)
+    if not isinstance(parsed, dict):
+        raise ValueError("Groq returned an invalid onboarding draft.")
+    return parsed
+
+
+def normalize_onboarding_draft(raw: dict[str, Any], answers: dict[str, Any], source_text: str = "", provider: str = "rules") -> dict[str, Any]:
+    fallback = fallback_onboarding_draft(answers, source_text)
+    profile = raw.get("profile") if isinstance(raw.get("profile"), dict) else {}
+    targets = raw.get("targets") if isinstance(raw.get("targets"), dict) else {}
+    phases_raw = raw.get("phases") if isinstance(raw.get("phases"), list) else []
+    merged = {
+        **fallback,
+        **{key: raw[key] for key in ("profileSummary", "planStartDate") if isinstance(raw.get(key), str) and raw.get(key)},
+        "provider": provider,
+        "profile": {
+            **fallback["profile"],
+            **{key: profile[key] for key in fallback["profile"] if profile.get(key) is not None},
+        },
+        "targets": {
+            **fallback["targets"],
+            **{key: targets[key] for key in fallback["targets"] if targets.get(key) is not None},
+        },
+        "cautions": raw.get("cautions") if isinstance(raw.get("cautions"), list) else fallback["cautions"],
+        "missingInfo": raw.get("missingInfo") if isinstance(raw.get("missingInfo"), list) else [],
+        "sourceUsed": bool(source_text),
+    }
+    phases = []
+    for index, phase in enumerate(phases_raw[:5]):
+        if not isinstance(phase, dict):
+            continue
+        base = fallback["phases"][min(index, len(fallback["phases"]) - 1)]
+        phases.append({**base, **{key: phase[key] for key in base if phase.get(key) is not None}})
+    merged["phases"] = phases or fallback["phases"]
+    return merged
+
+
+def onboarding_draft(payload: dict[str, Any]) -> dict[str, Any]:
+    answers = payload.get("answers") if isinstance(payload.get("answers"), dict) else {}
+    source_text = onboarding_source_text(payload)
+    groq_key = os.environ.get("GROQ_API_KEY")
+    groq_model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
+    if groq_key:
+        try:
+            raw = request_groq_onboarding_draft(answers, source_text, groq_key, groq_model)
+            return {**normalize_onboarding_draft(raw, answers, source_text, "groq"), "model": groq_model}
+        except (httpx.HTTPError, RuntimeError, ValueError, KeyError, IndexError, json.JSONDecodeError):
+            fallback = fallback_onboarding_draft(answers, source_text)
+            return {**fallback, "fallback": True, "model": None}
+    return fallback_onboarding_draft(answers, source_text)
 
 
 def make_rule_based_note(state: dict[str, Any]) -> str:

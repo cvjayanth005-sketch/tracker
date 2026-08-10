@@ -4,3 +4,4 @@ pytest
 httpx
 python-dotenv
 openpyxl>=3.1,<4
+pypdf>=5,<7

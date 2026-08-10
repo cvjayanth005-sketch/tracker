@@ -5,6 +5,8 @@ import App from './App'
 import { ensureSeeded } from '@/db/database'
 import { requestPersistentStorage } from '@/sync/client'
 import Today from '@/screens/Today'
+import Calendar from '@/screens/Calendar'
+import DayDetail from '@/screens/DayDetail'
 import WorkoutScreen from '@/screens/WorkoutScreen'
 import Progress from '@/screens/Progress'
 import Plan from '@/screens/Plan'
@@ -16,6 +18,8 @@ const router = createBrowserRouter([
     element: <App />,
     children: [
       { index: true, element: <Today /> },
+      { path: 'calendar', element: <Calendar /> },
+      { path: 'calendar/:date', element: <DayDetail /> },
       { path: 'workout', element: <WorkoutScreen /> },
       { path: 'progress', element: <Progress /> },
       { path: 'plan', element: <Plan /> },

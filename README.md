@@ -104,10 +104,11 @@ Start the backend in a second terminal:
 cd backend && uvicorn app.main:app --reload
 ```
 
-Development connects to `http://127.0.0.1:8000` automatically. Production stays
-local-only unless `VITE_API_BASE` is configured at build time. The client syncs
-the complete IndexedDB document with optimistic conflict detection; JSON backup
-downloads have their own independent watermark and never claim a server sync.
+Development connects to `http://127.0.0.1:8000` automatically. Production uses
+the same origin unless `VITE_API_BASE` points at a separate backend. The client
+syncs the complete IndexedDB document with optimistic conflict detection; JSON
+backup downloads have their own independent watermark and never claim a server
+sync.
 
 Plan → Import history reads the original `.xlsx` tracker directly in the
 browser. Only dated rows are merged, numeric facts stay numeric, and blank

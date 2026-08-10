@@ -107,6 +107,11 @@ def test_coach_note_is_cached(tmp_path, monkeypatch) -> None:
 
 def test_frontend_state_sync_round_trip_and_conflict(tmp_path, monkeypatch) -> None:
     client = make_client(tmp_path, monkeypatch)
+    login = client.post(
+        "/api/auth/google",
+        json={"credential": fake_google_credential("sync-user", "sync@example.com")},
+    ).json()
+    headers = {"Authorization": f"Bearer {login['session']['token']}"}
     doc = {
         "version": 1,
         "updatedAt": "2026-01-01T00:00:00.000Z",
@@ -117,15 +122,29 @@ def test_frontend_state_sync_round_trip_and_conflict(tmp_path, monkeypatch) -> N
         },
     }
 
-    assert client.get("/api/state/version").json() == {"version": 0}
-    pushed = client.put("/api/state", json=doc)
+    assert client.get("/api/state/version", headers=headers).json() == {"version": 0}
+    pushed = client.put("/api/state", json=doc, headers=headers)
     assert pushed.status_code == 200
     assert pushed.json()["version"] == 1
-    assert client.get("/api/state/version").json() == {"version": 1}
-    assert client.get("/api/state").json()["tables"]["dailyLogs"][0]["weightKg"] == 88
+    assert client.get("/api/state/version", headers=headers).json() == {"version": 1}
+    assert client.get("/api/state", headers=headers).json()["tables"]["dailyLogs"][0]["weightKg"] == 88
 
-    stale = client.put("/api/state", json={**doc, "version": 2, "baseVersion": 0})
+    stale = client.put("/api/state", json={**doc, "version": 2, "baseVersion": 0}, headers=headers)
     assert stale.status_code == 409
+
+
+def test_state_sync_requires_sign_in(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    doc = {
+        "version": 1,
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "baseVersion": 0,
+        "tables": {},
+    }
+
+    assert client.get("/api/state/version").status_code == 401
+    assert client.get("/api/state").status_code == 401
+    assert client.put("/api/state", json=doc).status_code == 401
 
 
 def test_google_accounts_get_separate_state_documents(tmp_path, monkeypatch) -> None:
@@ -165,6 +184,45 @@ def test_google_sign_in_is_rate_limited_to_20_attempts(tmp_path, monkeypatch) ->
 
     response = client.post("/api/auth/google", json={"credential": "not-a-jwt"}, headers=headers)
     assert response.status_code == 429
+
+
+def test_onboarding_draft_requires_auth_and_falls_back_without_groq(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    payload = {
+        "answers": {
+            "name": "Jay",
+            "age": "28",
+            "sex": "Male",
+            "heightCm": "178",
+            "currentWeightKg": "88",
+            "goalWeightKg": "72",
+            "activityLevel": "Moderate",
+            "gymDaysPerWeek": "4",
+            "desiredPace": "Moderate",
+        },
+        "pasted_text": "I prefer lifting and walking.",
+    }
+
+    assert client.post("/api/onboarding/draft", json=payload).status_code == 401
+
+    login = client.post(
+        "/api/auth/google",
+        json={"credential": fake_google_credential("onboard-user", "onboard@example.com")},
+    ).json()
+    response = client.post(
+        "/api/onboarding/draft",
+        json=payload,
+        headers={"Authorization": f"Bearer {login['session']['token']}"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["provider"] == "rules"
+    assert data["profile"]["name"] == "Jay"
+    assert data["targets"]["calories"] > 0
+    assert data["phases"]
+    assert data["sourceUsed"] is True
 
 
 def test_frontend_coach_note_shape_is_supported(tmp_path, monkeypatch) -> None:

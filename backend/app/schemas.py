@@ -84,6 +84,13 @@ class CoachNoteRequest(BaseModel):
     rulesVersion: str | None = None
 
 
+class OnboardingDraftRequest(BaseModel):
+    answers: dict[str, Any]
+    pasted_text: str | None = None
+    file_name: str | None = None
+    file_base64: str | None = None
+
+
 class GoogleLoginRequest(BaseModel):
     credential: str
 

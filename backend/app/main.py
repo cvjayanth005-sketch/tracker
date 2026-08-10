@@ -29,6 +29,7 @@ from .schemas import (
     ExcelPlanImportRequest,
     GoogleLoginRequest,
     ImportRequest,
+    OnboardingDraftRequest,
     PhaseUpdate,
     RunCreate,
     SettingsUpdate,
@@ -54,6 +55,7 @@ from .services import (
     get_workout,
     import_csv,
     import_rows,
+    onboarding_draft,
     parse_date,
     put_state_document,
     upsert_day,
@@ -242,22 +244,22 @@ def plan_timeline(date_: date | None = Query(default=None, alias="date")) -> dic
 @app.get("/api/state/version")
 def state_version(token: str | None = Depends(bearer_token)) -> dict:
     with connect() as conn:
-        user = session_user(conn, token)
-        return get_state_version(conn, int(user["id"]) if user else None)
+        user = require_user(conn, token)
+        return get_state_version(conn, int(user["id"]))
 
 
 @app.get("/api/state")
 def state(token: str | None = Depends(bearer_token)) -> dict:
     with connect() as conn:
-        user = session_user(conn, token)
-        return get_state_document(conn, int(user["id"]) if user else None)
+        user = require_user(conn, token)
+        return get_state_document(conn, int(user["id"]))
 
 
 @app.put("/api/state")
 def put_state(payload: StateDocument, token: str | None = Depends(bearer_token)) -> dict:
     with connect() as conn:
-        user = session_user(conn, token)
-        result = put_state_document(conn, payload.model_dump(), int(user["id"]) if user else None)
+        user = require_user(conn, token)
+        result = put_state_document(conn, payload.model_dump(), int(user["id"]))
         if result.get("conflict"):
             raise HTTPException(status_code=409, detail=result)
         return result
@@ -333,6 +335,16 @@ def coach_note(payload: CoachNoteRequest) -> dict:
                 payload.force,
             )
         return cached_coach_note(conn, payload.force)
+
+
+@app.post("/api/onboarding/draft")
+def draft_onboarding(payload: OnboardingDraftRequest, token: str | None = Depends(bearer_token)) -> dict:
+    with connect() as conn:
+        require_user(conn, token)
+    try:
+        return onboarding_draft(payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/{full_path:path}", include_in_schema=False)

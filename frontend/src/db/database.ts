@@ -98,10 +98,39 @@ export class TrackerDb extends Dexie {
           )
         })
       })
+    this.version(4)
+      .stores({ settings: 'id' })
+      .upgrade(async (tx) => {
+        const settings = tx.table<Settings, 'id'>('settings')
+        await settings.toCollection().modify((row) => {
+          row.planStartDate ??= null
+          row.onboardingCompleted ??= false
+        })
+      })
   }
 }
 
 export const db = new TrackerDb()
+
+const SEEDED_TABLES = [
+  db.profile,
+  db.settings,
+  db.phases,
+  db.dailyLogs,
+  db.measurements,
+  db.exercises,
+  db.workouts,
+  db.workoutSets,
+  db.runs,
+  db.aiNotes,
+  db.syncMeta,
+] as const
+
+export async function clearLocalTrackerData(): Promise<void> {
+  await db.transaction('rw', SEEDED_TABLES, async () => {
+    for (const table of SEEDED_TABLES) await table.clear()
+  })
+}
 
 /** Idempotent: safe to call on every app start. */
 export async function ensureSeeded(): Promise<void> {
