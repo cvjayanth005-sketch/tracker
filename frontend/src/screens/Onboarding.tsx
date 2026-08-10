@@ -196,7 +196,7 @@ export function Onboarding() {
     return (
       <div className="min-h-dvh">
         <main className="mx-auto grid min-h-dvh w-full max-w-6xl gap-5 px-5 py-6 safe-top lg:grid-cols-[minmax(0,1fr)_24rem] lg:px-8">
-          <section className="glass-strong rounded-3xl p-5">
+          <section className="surface rounded-3xl p-5">
             <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
               Review the plan
             </div>
@@ -277,7 +277,7 @@ export function Onboarding() {
             </div>
           </section>
 
-          <aside className="glass-strong rounded-3xl p-5">
+          <aside className="surface rounded-3xl p-5">
             <div className="text-sm font-semibold text-ink-50">Milestones</div>
             <div className="mt-3 space-y-2">
               {editable.phases.map((phase, index) => (
@@ -319,7 +319,7 @@ export function Onboarding() {
     <div className="min-h-dvh">
       <main className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col px-5 py-6 safe-top lg:px-8">
         <section className="grid flex-1 items-center gap-6 lg:grid-cols-[minmax(0,1fr)_21rem]">
-          <div className="glass-strong rounded-3xl p-5 sm:p-6">
+          <div className="surface rounded-3xl p-5 sm:p-6">
             <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
               AI onboarding
             </div>
@@ -388,7 +388,7 @@ export function Onboarding() {
             {status ? <div className="mt-3 text-[12px] text-ink-300">{status}</div> : null}
           </div>
 
-          <aside className="glass-strong rounded-3xl p-5">
+          <aside className="surface rounded-3xl p-5">
             <div className="text-sm font-semibold text-ink-50">Optional context</div>
             <p className="mt-1 text-[12px] leading-relaxed text-ink-400">
               Paste a plan or upload a readable PDF. The questions still matter because they keep the plan personal.

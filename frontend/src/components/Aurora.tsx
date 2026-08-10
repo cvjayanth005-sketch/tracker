@@ -13,20 +13,72 @@ import { useEffect, useState } from 'react'
  *   - Activity rings (training DNA)
  *   - Endorphin dust + soft grain
  *
- * Motion is CSS-only on GPU layers. JS only pauses when the tab is hidden.
+ * Motion is CSS-only on GPU layers. JS keeps that motion on a budget: hidden
+ * tabs and idle desktop sessions pause, while phones / Save-Data /
+ * reduced-motion get a static backdrop.
  */
 export function Aurora() {
-  const [hidden, setHidden] = useState(false)
+  const [paused, setPaused] = useState(false)
+  const [staticMode, setStaticMode] = useState(false)
 
   useEffect(() => {
-    const sync = () => setHidden(document.visibilityState === 'hidden')
-    sync()
-    document.addEventListener('visibilitychange', sync)
-    return () => document.removeEventListener('visibilitychange', sync)
+    let idleTimer: number | undefined
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const coarse = window.matchMedia('(pointer: coarse)')
+    const saveData = Boolean(
+      (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData,
+    )
+
+    const syncStaticMode = () => {
+      setStaticMode(reduced.matches || coarse.matches || saveData)
+    }
+
+    const markActive = () => {
+      if (document.visibilityState === 'hidden') return
+      setPaused(false)
+      if (idleTimer !== undefined) window.clearTimeout(idleTimer)
+      idleTimer = window.setTimeout(() => setPaused(true), 45_000)
+    }
+
+    const syncVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        setPaused(true)
+      } else {
+        markActive()
+      }
+    }
+
+    const activityEvents = ['pointermove', 'pointerdown', 'keydown', 'scroll', 'touchstart']
+    syncStaticMode()
+    syncVisibility()
+    activityEvents.forEach((event) => window.addEventListener(event, markActive, { passive: true }))
+    document.addEventListener('visibilitychange', syncVisibility)
+    reduced.addEventListener('change', syncStaticMode)
+    coarse.addEventListener('change', syncStaticMode)
+    return () => {
+      if (idleTimer !== undefined) window.clearTimeout(idleTimer)
+      activityEvents.forEach((event) => window.removeEventListener(event, markActive))
+      document.removeEventListener('visibilitychange', syncVisibility)
+      reduced.removeEventListener('change', syncStaticMode)
+      coarse.removeEventListener('change', syncStaticMode)
+    }
   }, [])
 
+  if (staticMode) {
+    return (
+      <div className="aurora aurora-static aurora-paused" aria-hidden="true">
+        <div className="aurora-void" />
+        <div className="aurora-horizon" />
+        <div className="aurora-bloom aurora-bloom--vital" />
+        <div className="aurora-bloom aurora-bloom--oxygen" />
+        <div className="aurora-vignette" />
+        <div className="aurora-grain" />
+      </div>
+    )
+  }
+
   return (
-    <div className={`aurora ${hidden ? 'aurora-paused' : ''}`} aria-hidden="true">
+    <div className={`aurora ${paused ? 'aurora-paused' : ''}`} aria-hidden="true">
       <div className="aurora-void" />
       <div className="aurora-canopy" />
       <div className="aurora-horizon" />

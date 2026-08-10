@@ -33,7 +33,11 @@ export function useLiquidGlass<T extends HTMLElement>(
     // Honour reduced-motion by skipping the optics entirely; the CSS glass
     // dressing underneath still reads correctly on its own.
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduced) return
+    const coarse = window.matchMedia('(pointer: coarse)').matches
+    const saveData =
+      typeof navigator !== 'undefined' &&
+      Boolean((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData)
+    if (reduced || coarse || saveData) return
 
     const handle = liquidGlass(el, optionsRef.current)
     return () => handle.destroy()

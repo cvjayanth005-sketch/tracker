@@ -2,13 +2,12 @@ import type { ReactNode } from 'react'
 import { useLiquidGlass } from '@/hooks/useLiquidGlass'
 
 /**
- * Glass surface.
+ * Card surface.
  *
- * `refract` opts into real edge refraction (Chromium only, frosted fallback
- * elsewhere). It costs a canvas map plus a per-frame GPU filter, so reserve it
- * for a few structural panels — the coach card, hero stats, the tab bar — and
- * leave list items and form rows on the plain CSS dressing, which looks nearly
- * identical for a fraction of the cost.
+ * Default cards are plain `surface` panels: no backdrop blur, no refraction.
+ * `refract` opts into the expensive liquid-glass path and should stay reserved
+ * for at most one desktop hero/chart surface. Never use it for forms, lists,
+ * repeated cards, or scroll-heavy panels.
  */
 export function Card({
   children,
@@ -22,7 +21,7 @@ export function Card({
   refract?: boolean
 }) {
   const ref = useLiquidGlass<HTMLDivElement>({ scale: -90, chroma: 5, blur: 4 }, refract)
-  const base = 'glass rounded-3xl p-4 sm:p-5'
+  const base = `${refract ? 'glass' : 'surface'} rounded-3xl p-4 sm:p-5`
 
   if (onClick) {
     return (
