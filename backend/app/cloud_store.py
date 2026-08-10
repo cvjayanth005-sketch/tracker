@@ -19,7 +19,11 @@ SESSION_DAYS = 30
 
 
 def database_url() -> str | None:
-    return os.environ.get("SUPABASE_DATABASE_URL") or os.environ.get("DATABASE_URL")
+    url = os.environ.get("SUPABASE_DATABASE_URL") or os.environ.get("DATABASE_URL")
+    if url and "=" in url and not url.strip().startswith(("postgres://", "postgresql://")):
+        _key, _separator, value = url.partition("=")
+        url = value
+    return url
 
 
 def enabled() -> bool:
