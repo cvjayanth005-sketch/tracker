@@ -158,6 +158,10 @@ export function Onboarding() {
         headers: { 'content-type': 'application/json', ...authHeader() },
         body: JSON.stringify(payload),
       })
+      if (res.status === 401) {
+        void signOut()
+        throw new Error('Session expired. Sign in again.')
+      }
       if (!res.ok) {
         const error = (await res.json().catch(() => ({}))) as { detail?: string }
         throw new Error(error.detail || `Plan draft failed (${res.status})`)

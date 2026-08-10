@@ -11,13 +11,6 @@ declare global {
             callback: (response: { credential?: string }) => void
           }) => void
           renderButton: (el: HTMLElement, options: Record<string, unknown>) => void
-          prompt: (momentListener?: (notification: {
-            isNotDisplayed: () => boolean
-            isSkippedMoment: () => boolean
-            isDismissedMoment: () => boolean
-            getNotDisplayedReason: () => string
-            getSkippedReason: () => string
-          }) => void) => void
         }
       }
     }
@@ -136,49 +129,29 @@ export function GoogleSlideSignIn({
       onStatusRef.current?.('Google sign-in is not ready yet.')
       return
     }
-    if (!window.google?.accounts.id.prompt) {
-      onStatusRef.current?.('Google sign-in is not ready yet. Try again.')
-      setPhaseBoth('idle')
+    setPhaseBoth('prompting')
+    onStatusRef.current?.('Opening Google...')
+    const host = googleHostRef.current
+    const button =
+      host?.querySelector<HTMLElement>('div[role="button"]') ??
+      host?.querySelector<HTMLElement>('div[tabindex]') ??
+      (host?.firstElementChild as HTMLElement | null)
+
+    if (button) {
+      button.click()
+      window.setTimeout(() => {
+        if (phaseRef.current === 'prompting') setPhaseBoth('idle')
+      }, 1200)
       return
     }
 
-    setPhaseBoth('prompting')
-    onStatusRef.current?.('Opening Google...')
-    window.google.accounts.id.prompt((notification) => {
-      if (notification.isDismissedMoment()) {
-        setPhaseBoth('idle')
-        onStatusRef.current?.('Sign-in dismissed.')
-        return
-      }
-
-      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-        // One Tap unavailable — fall back to the trusted GIS button.
-        const host = googleHostRef.current
-        const button =
-          host?.querySelector<HTMLElement>('div[role="button"]') ??
-          host?.querySelector<HTMLElement>('div[tabindex]') ??
-          (host?.firstElementChild as HTMLElement | null)
-
-        if (host) {
-          host.className = 'mt-3 flex justify-center'
-          host.removeAttribute('aria-hidden')
-          host.style.cssText = ''
-        }
-
-        if (button) {
-          button.click()
-          onStatusRef.current?.('Continue with Google below.')
-          return
-        }
-
-        const reason =
-          (notification.isNotDisplayed() && notification.getNotDisplayedReason()) ||
-          (notification.isSkippedMoment() && notification.getSkippedReason()) ||
-          'unavailable'
-        onStatusRef.current?.(`Google sign-in unavailable (${reason}).`)
-        setPhaseBoth('idle')
-      }
-    })
+    if (host) {
+      host.className = 'mt-3 flex justify-center'
+      host.removeAttribute('aria-hidden')
+      host.style.cssText = ''
+    }
+    onStatusRef.current?.('Continue with Google below.')
+    setPhaseBoth('idle')
   }
 
   const busy = phase === 'prompting' || phase === 'signing'
