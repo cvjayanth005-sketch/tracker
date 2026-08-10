@@ -9,6 +9,8 @@ from fastapi.testclient import TestClient
 def make_client(tmp_path, monkeypatch) -> TestClient:
     monkeypatch.setenv("TRACKER_DB_PATH", str(tmp_path / "test.sqlite3"))
     monkeypatch.setenv("TRACKER_ALLOW_UNVERIFIED_GOOGLE", "1")
+    monkeypatch.delenv("SUPABASE_DATABASE_URL", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
     from app.database import init_db
     from app.main import app
 
@@ -172,6 +174,84 @@ def test_google_accounts_get_separate_state_documents(tmp_path, monkeypatch) -> 
     other_headers = {"Authorization": f"Bearer {second['session']['token']}"}
     assert client.get("/api/state/version", headers=other_headers).json() == {"version": 0}
     assert client.get("/api/state", headers=other_headers).json()["tables"] == {}
+
+
+def test_state_sync_uses_supabase_store_when_configured(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    monkeypatch.setenv("SUPABASE_DATABASE_URL", "postgresql://example")
+
+    import app.main as main
+
+    store = {"version": 0, "updatedAt": "", "tables": {}}
+
+    def create_or_update_user(profile):
+        assert profile["sub"] == "cloud-user"
+        return {
+            "id": 321,
+            "google_sub": profile["sub"],
+            "email": profile["email"],
+            "name": profile["name"],
+            "picture": profile.get("picture"),
+        }
+
+    def create_session(user_id):
+        assert user_id == 321
+        return {"token": "cloud-token", "expiresAt": "2099-01-01T00:00:00+00:00"}
+
+    def session_user(token):
+        if token != "cloud-token":
+            return None
+        return {"id": 321, "email": "cloud@example.com", "name": "Cloud", "picture": None}
+
+    def get_state_version(user_id):
+        assert user_id == 321
+        return {"version": store["version"]}
+
+    def get_state_document(user_id):
+        assert user_id == 321
+        return dict(store)
+
+    def put_state_document(doc, user_id):
+        assert user_id == 321
+        if doc.get("baseVersion") != store["version"]:
+            return {"conflict": True, "serverVersion": store["version"]}
+        store.update(
+            {
+                "version": doc["version"],
+                "updatedAt": doc["updatedAt"],
+                "tables": doc["tables"],
+            }
+        )
+        return dict(store)
+
+    monkeypatch.setattr(main.cloud_store, "create_or_update_user", create_or_update_user)
+    monkeypatch.setattr(main.cloud_store, "create_session", create_session)
+    monkeypatch.setattr(main.cloud_store, "session_user", session_user)
+    monkeypatch.setattr(main.cloud_store, "get_state_version", get_state_version)
+    monkeypatch.setattr(main.cloud_store, "get_state_document", get_state_document)
+    monkeypatch.setattr(main.cloud_store, "put_state_document", put_state_document)
+
+    login = client.post(
+        "/api/auth/google",
+        json={"credential": fake_google_credential("cloud-user", "cloud@example.com")},
+    )
+    assert login.status_code == 200
+    headers = {"Authorization": f"Bearer {login.json()['session']['token']}"}
+
+    assert client.get("/api/state/version").status_code == 401
+    assert client.get("/api/state/version", headers=headers).json() == {"version": 0}
+
+    doc = {
+        "version": 1,
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "baseVersion": 0,
+        "tables": {"dailyLogs": [{"date": "2026-01-01", "weightKg": 88}]},
+    }
+    assert client.put("/api/state", json=doc, headers=headers).status_code == 200
+    assert client.get("/api/state", headers=headers).json()["tables"]["dailyLogs"][0]["weightKg"] == 88
+
+    stale = {**doc, "version": 2, "baseVersion": 0}
+    assert client.put("/api/state", json=stale, headers=headers).status_code == 409
 
 
 def test_google_sign_in_is_rate_limited_to_20_attempts(tmp_path, monkeypatch) -> None:

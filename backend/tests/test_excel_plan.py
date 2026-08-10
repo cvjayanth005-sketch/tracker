@@ -10,6 +10,8 @@ from openpyxl import Workbook
 def make_client(tmp_path, monkeypatch) -> TestClient:
     monkeypatch.setenv("TRACKER_DB_PATH", str(tmp_path / "test.sqlite3"))
     monkeypatch.setenv("TRACKER_ALLOW_UNVERIFIED_GOOGLE", "1")
+    monkeypatch.delenv("SUPABASE_DATABASE_URL", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
     from app.database import init_db
     from app.main import app
 

@@ -1,6 +1,8 @@
 # Tracker Backend
 
-Small FastAPI + SQLite backend for the personal fat-loss and hybrid-training tracker.
+Small FastAPI backend for the personal fat-loss and hybrid-training tracker.
+Local development can use SQLite; production account state can use Supabase
+Postgres by setting `SUPABASE_DATABASE_URL`.
 
 ## Run
 
@@ -9,7 +11,10 @@ cd backend
 uvicorn app.main:app --reload
 ```
 
-The API creates and seeds `backend/tracker.sqlite3` on startup.
+Without `SUPABASE_DATABASE_URL`, the API creates and seeds
+`backend/tracker.sqlite3` on startup. With `SUPABASE_DATABASE_URL`, Google
+users, sessions, synced tracker documents, and AI note cache use Supabase
+Postgres while the older local SQLite endpoints remain available.
 
 For local frontend sync, set the frontend env var:
 
@@ -18,6 +23,7 @@ VITE_API_BASE=http://127.0.0.1:8000
 GOOGLE_CLIENT_ID=your-google-oauth-web-client-id.apps.googleusercontent.com
 AUTH_RATE_LIMIT=20
 AUTH_RATE_WINDOW_SECONDS=900
+SUPABASE_DATABASE_URL=postgresql://...
 ```
 
 `GOOGLE_CLIENT_ID` is read by FastAPI to verify that Google tokens were issued

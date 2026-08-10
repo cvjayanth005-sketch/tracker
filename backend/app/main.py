@@ -22,6 +22,7 @@ from .auth import (
     session_user,
     verify_google_id_token,
 )
+from . import cloud_store
 from .database import connect, get_settings, init_db, row_to_dict, upsert_settings
 from .schemas import (
     CoachNoteRequest,
@@ -137,6 +138,18 @@ def public_config() -> dict:
 def google_login(payload: GoogleLoginRequest, request: Request) -> dict:
     check_auth_rate_limit(request)
     profile = verify_google_id_token(payload.credential)
+    if cloud_store.enabled():
+        user = cloud_store.create_or_update_user(profile)
+        session = cloud_store.create_session(int(user["id"]))
+        return {
+            "session": session,
+            "user": {
+                "id": user["id"],
+                "email": user["email"],
+                "name": user["name"],
+                "picture": user["picture"],
+            },
+        }
     with connect() as conn:
         user = create_or_update_user(conn, profile)
         session = create_session(conn, int(user["id"]))
@@ -153,6 +166,18 @@ def google_login(payload: GoogleLoginRequest, request: Request) -> dict:
 
 @app.get("/api/auth/me")
 def auth_me(token: str | None = Depends(bearer_token)) -> dict:
+    if cloud_store.enabled():
+        user = cloud_store.session_user(token)
+        if user is None:
+            raise HTTPException(status_code=401, detail="Sign in required.")
+        return {
+            "user": {
+                "id": user["id"],
+                "email": user["email"],
+                "name": user["name"],
+                "picture": user["picture"],
+            }
+        }
     with connect() as conn:
         user = require_user(conn, token)
         return {
@@ -167,6 +192,9 @@ def auth_me(token: str | None = Depends(bearer_token)) -> dict:
 
 @app.post("/api/auth/logout")
 def auth_logout(token: str | None = Depends(bearer_token)) -> dict:
+    if cloud_store.enabled():
+        cloud_store.delete_session(token)
+        return {"ok": True}
     with connect() as conn:
         if token:
             conn.execute("DELETE FROM auth_sessions WHERE token = ?", (token,))
@@ -243,6 +271,11 @@ def plan_timeline(date_: date | None = Query(default=None, alias="date")) -> dic
 
 @app.get("/api/state/version")
 def state_version(token: str | None = Depends(bearer_token)) -> dict:
+    if cloud_store.enabled():
+        user = cloud_store.session_user(token)
+        if user is None:
+            raise HTTPException(status_code=401, detail="Sign in required.")
+        return cloud_store.get_state_version(int(user["id"]))
     with connect() as conn:
         user = require_user(conn, token)
         return get_state_version(conn, int(user["id"]))
@@ -250,6 +283,11 @@ def state_version(token: str | None = Depends(bearer_token)) -> dict:
 
 @app.get("/api/state")
 def state(token: str | None = Depends(bearer_token)) -> dict:
+    if cloud_store.enabled():
+        user = cloud_store.session_user(token)
+        if user is None:
+            raise HTTPException(status_code=401, detail="Sign in required.")
+        return cloud_store.get_state_document(int(user["id"]))
     with connect() as conn:
         user = require_user(conn, token)
         return get_state_document(conn, int(user["id"]))
@@ -257,6 +295,14 @@ def state(token: str | None = Depends(bearer_token)) -> dict:
 
 @app.put("/api/state")
 def put_state(payload: StateDocument, token: str | None = Depends(bearer_token)) -> dict:
+    if cloud_store.enabled():
+        user = cloud_store.session_user(token)
+        if user is None:
+            raise HTTPException(status_code=401, detail="Sign in required.")
+        result = cloud_store.put_state_document(payload.model_dump(), int(user["id"]))
+        if result.get("conflict"):
+            raise HTTPException(status_code=409, detail=result)
+        return result
     with connect() as conn:
         user = require_user(conn, token)
         result = put_state_document(conn, payload.model_dump(), int(user["id"]))
@@ -339,8 +385,12 @@ def coach_note(payload: CoachNoteRequest) -> dict:
 
 @app.post("/api/onboarding/draft")
 def draft_onboarding(payload: OnboardingDraftRequest, token: str | None = Depends(bearer_token)) -> dict:
-    with connect() as conn:
-        require_user(conn, token)
+    if cloud_store.enabled():
+        if cloud_store.session_user(token) is None:
+            raise HTTPException(status_code=401, detail="Sign in required.")
+    else:
+        with connect() as conn:
+            require_user(conn, token)
     try:
         return onboarding_draft(payload.model_dump())
     except ValueError as exc:

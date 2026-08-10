@@ -1,15 +1,16 @@
 # Deployment
 
-The nicest online setup is one Docker web service on Render:
+The nicest online setup is one Docker web service on Render with Supabase
+Postgres for account cloud state:
 
 - Frontend: Vite build copied into the image
 - Backend: FastAPI serving `/api/*` and the built PWA
-- Database: SQLite on a Render persistent disk at `/data/tracker.sqlite3`
+- Database: Supabase Postgres for Google users, sessions, synced tracker docs,
+  and AI note cache
 
 This keeps the app on one origin, so production does not need Vercel-to-Render
-CORS wiring. Supabase is possible later, but it would mean replacing the
-FastAPI/SQLite storage path with Postgres and likely revisiting auth/session
-handling.
+CORS wiring. SQLite remains available as a local/legacy fallback when
+`SUPABASE_DATABASE_URL` is not set.
 
 ## 1. Render Docker Service
 
@@ -19,19 +20,22 @@ web service that builds `Dockerfile` from the repo root.
 - `tracker`
 - Dockerfile: `./Dockerfile`
 - context: `.`
-- persistent disk mounted at `/data`
-- `TRACKER_DB_PATH=/data/tracker.sqlite3`
 - `TRACKER_STATIC_DIR=/app/static`
 
 Set these Render environment variables:
 
 ```bash
+SUPABASE_DATABASE_URL=postgresql://...
 GOOGLE_CLIENT_ID=your-google-oauth-web-client-id.apps.googleusercontent.com
 AUTH_RATE_LIMIT=20
 AUTH_RATE_WINDOW_SECONDS=900
 GROQ_API_KEY=optional
 GROQ_MODEL=openai/gpt-oss-20b
 ```
+
+Use the Supabase project `tracker` connection string for
+`SUPABASE_DATABASE_URL`. Keep it on Render only; the frontend never receives
+Supabase credentials.
 
 After deploy, check:
 
@@ -107,6 +111,7 @@ previews.
 ## Notes
 
 - Render free instances can sleep. First load after sleep may be slow.
-- Keep the Render disk attached before relying on the hosted app for real data.
+- Supabase is now the durable account store. The Render disk is only needed for
+  local/legacy SQLite paths.
 - Browser IndexedDB is still the working local store; signed-in sync pushes and
   pulls the full app document from the configured backend.

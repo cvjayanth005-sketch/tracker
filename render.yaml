@@ -8,6 +8,8 @@ services:
     envVars:
       - key: TRACKER_DB_PATH
         value: /data/tracker.sqlite3
+      - key: SUPABASE_DATABASE_URL
+        sync: false
       - key: TRACKER_STATIC_DIR
         value: /app/static
       - key: FRONTEND_ORIGINS
