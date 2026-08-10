@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { authHeader, AUTH_API_BASE } from '@/auth/session'
 import { asLocalDate } from '@/domain/date'
 import { applyOnboardingPlan, type OnboardingPlanDraft } from '@/db/repo'
-import { scheduleSync } from '@/sync/client'
+import { sync } from '@/sync/client'
 
 type FieldType = 'text' | 'number' | 'choice'
 
@@ -179,7 +179,10 @@ export function Onboarding() {
     setStatus('Saving your plan...')
     try {
       await applyOnboardingPlan(editable)
-      scheduleSync(0)
+      const outcome = await sync()
+      if (outcome.status !== 'pushed' && outcome.status !== 'clean') {
+        throw new Error('Plan saved on this device, but cloud sync needs a retry.')
+      }
       setStatus('Plan saved. Opening dashboard...')
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error))

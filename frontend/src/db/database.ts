@@ -21,6 +21,8 @@ import type {
 
 export interface SyncMeta {
   id: 'sync'
+  /** Google account that owns the current local document. */
+  accountUserId: number | null
   /** Monotonic document version, bumped on every local write batch. */
   localVersion: number
   /** Version last confirmed accepted by the server. */
@@ -107,6 +109,14 @@ export class TrackerDb extends Dexie {
           row.onboardingCompleted ??= false
         })
       })
+    this.version(5)
+      .stores({ syncMeta: 'id' })
+      .upgrade(async (tx) => {
+        const table = tx.table<SyncMeta, 'id'>('syncMeta')
+        await table.toCollection().modify((meta) => {
+          meta.accountUserId ??= null
+        })
+      })
   }
 }
 
@@ -157,6 +167,7 @@ export async function ensureSeeded(): Promise<void> {
       if ((await db.syncMeta.count()) === 0) {
         await db.syncMeta.put({
           id: 'sync',
+          accountUserId: null,
           localVersion: 0,
           syncedVersion: 0,
           backedUpVersion: 0,
@@ -174,4 +185,20 @@ export async function markDirty(): Promise<void> {
   const meta = await db.syncMeta.get('sync')
   if (!meta) return
   await db.syncMeta.put({ ...meta, localVersion: meta.localVersion + 1 })
+}
+
+export async function setLocalAccountOwner(userId: number | null): Promise<void> {
+  const meta = await db.syncMeta.get('sync')
+  if (!meta) return
+  await db.syncMeta.put({ ...meta, accountUserId: userId, lastError: null })
+}
+
+export async function ensureLocalAccountOwner(userId: number): Promise<'kept' | 'reset'> {
+  await ensureSeeded()
+  const meta = await db.syncMeta.get('sync')
+  if (meta?.accountUserId === userId) return 'kept'
+  await clearLocalTrackerData()
+  await ensureSeeded()
+  await setLocalAccountOwner(userId)
+  return 'reset'
 }

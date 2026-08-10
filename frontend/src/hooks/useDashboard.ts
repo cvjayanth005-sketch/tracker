@@ -212,11 +212,15 @@ export function useOnline(): boolean {
 /** Push local changes after a short quiet period and retry when connectivity returns. */
 export function useAutoSync(): void {
   const meta = useSyncMeta()
+  const localVersion = meta?.localVersion
+  const syncedVersion = meta?.syncedVersion
 
   useEffect(() => {
     if (!API_BASE) return
-    scheduleSync(meta?.localVersion === meta?.syncedVersion ? 0 : 1500)
-  }, [meta?.localVersion, meta?.syncedVersion])
+    if (localVersion === undefined || syncedVersion === undefined) return
+    if (localVersion === syncedVersion) return
+    scheduleSync(1500)
+  }, [localVersion, syncedVersion])
 
   useEffect(() => {
     if (!API_BASE) return

@@ -9,7 +9,14 @@ import { useLiquidGlass } from '@/hooks/useLiquidGlass'
 import { useOnline, useSyncMeta } from '@/hooks/useDashboard'
 import { useAutoSync } from '@/hooks/useDashboard'
 import { Onboarding } from '@/screens/Onboarding'
-import { API_BASE, scheduleSync, sync } from '@/sync/client'
+import {
+  API_BASE,
+  bootstrapAccountState,
+  pullServerState,
+  replaceServerState,
+  scheduleSync,
+  type SyncOutcome,
+} from '@/sync/client'
 import { getAuthState, signOut, subscribeAuth, type AuthState } from '@/auth/session'
 
 const TABS: Array<{ to: string; label: string; icon: IconName }> = [
@@ -265,6 +272,75 @@ function WelcomePage() {
   )
 }
 
+function syncOutcomeMessage(outcome: SyncOutcome): string | null {
+  if (outcome.status === 'error') return outcome.message
+  if (outcome.status === 'offline') return 'You are offline. Connect once to load this account.'
+  if (outcome.status === 'conflict') {
+    return `Both copies changed: server ${outcome.serverVersion}, this device ${outcome.localVersion}.`
+  }
+  return null
+}
+
+function AccountSyncGate({
+  title,
+  body,
+  detail,
+  onRetry,
+  onUseServer,
+  onReplaceServer,
+}: {
+  title: string
+  body: string
+  detail?: string | null
+  onRetry: () => void
+  onUseServer?: () => void
+  onReplaceServer?: () => void
+}) {
+  return (
+    <div className="min-h-dvh">
+      <Aurora />
+      <main className="mx-auto flex min-h-dvh max-w-md items-center px-5 text-center">
+        <div className="glass-strong rounded-3xl p-5">
+          <div className="text-lg font-semibold text-ink-50">{title}</div>
+          <p className="mt-2 text-sm leading-6 text-ink-300">{body}</p>
+          {detail ? (
+            <div className="mt-3 rounded-2xl bg-warn/10 px-3 py-2 text-[12px] leading-relaxed text-warn ring-1 ring-inset ring-warn/20">
+              {detail}
+            </div>
+          ) : null}
+          <div className="mt-4 grid gap-2">
+            {onUseServer ? (
+              <button
+                type="button"
+                onClick={onUseServer}
+                className="rounded-2xl bg-accent px-3 py-2.5 text-sm font-semibold text-ink-950"
+              >
+                Use server copy
+              </button>
+            ) : null}
+            {onReplaceServer ? (
+              <button
+                type="button"
+                onClick={onReplaceServer}
+                className="rounded-2xl bg-white/8 px-3 py-2.5 text-sm font-semibold text-ink-50 ring-1 ring-inset ring-white/10"
+              >
+                Replace server with this device
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={onRetry}
+              className="rounded-2xl bg-white/6 px-3 py-2.5 text-sm font-semibold text-ink-200 ring-1 ring-inset ring-white/10"
+            >
+              Retry sync
+            </button>
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}
+
 function TrackerShell() {
   useAutoSync()
   // The tab bar is the one surface always on screen on mobile, so it is worth
@@ -347,33 +423,83 @@ function TrackerShell() {
 export default function App() {
   const auth = useAuthState()
   const settings = useLiveQuery(() => getSettings(), [])
+  const meta = useSyncMeta()
   const [bootstrappedUserId, setBootstrappedUserId] = useState<number | null>(null)
   const [bootError, setBootError] = useState<string | null>(null)
+  const [bootConflict, setBootConflict] = useState<Extract<SyncOutcome, { status: 'conflict' }> | null>(null)
+  const [recoveryBusy, setRecoveryBusy] = useState(false)
 
   useEffect(() => {
     if (!auth) {
       setBootstrappedUserId(null)
+      setBootConflict(null)
       return
     }
     let cancelled = false
     setBootError(null)
-    void sync()
+    setBootConflict(null)
+    void bootstrapAccountState(auth.user.id)
       .then((outcome) => {
         if (cancelled) return
-        if (outcome.status === 'error') setBootError(outcome.message)
+        const message = syncOutcomeMessage(outcome)
+        if (outcome.status === 'conflict') {
+          setBootConflict(outcome)
+          setBootError(message)
+          return
+        }
+        if (message) {
+          setBootError(message)
+          return
+        }
         setBootstrappedUserId(auth.user.id)
       })
       .catch((error) => {
         if (cancelled) return
         setBootError(error instanceof Error ? error.message : String(error))
-        setBootstrappedUserId(auth.user.id)
       })
     return () => {
       cancelled = true
     }
   }, [auth])
 
+  const finishRecovery = async (action: 'pull' | 'replace' | 'retry') => {
+    if (!auth) return
+    setRecoveryBusy(true)
+    setBootError(null)
+    const outcome =
+      action === 'pull'
+        ? await pullServerState()
+        : action === 'replace'
+          ? await replaceServerState()
+          : await bootstrapAccountState(auth.user.id)
+    setRecoveryBusy(false)
+    const message = syncOutcomeMessage(outcome)
+    if (outcome.status === 'conflict') {
+      setBootConflict(outcome)
+      setBootError(message)
+      return
+    }
+    if (message) {
+      setBootError(message)
+      return
+    }
+    setBootConflict(null)
+    setBootstrappedUserId(auth.user.id)
+  }
+
   if (!auth) return <WelcomePage />
+  if (bootConflict) {
+    return (
+      <AccountSyncGate
+        title={recoveryBusy ? 'Resolving account sync' : 'Choose your account copy'}
+        body="This device and the cloud both changed. The server copy is safest, but you can intentionally overwrite it with this device."
+        detail={bootError}
+        onRetry={() => void finishRecovery('retry')}
+        onUseServer={() => void finishRecovery('pull')}
+        onReplaceServer={() => void finishRecovery('replace')}
+      />
+    )
+  }
   if (bootstrappedUserId !== auth.user.id || !settings) {
     return (
       <div className="min-h-dvh">
@@ -396,6 +522,16 @@ export default function App() {
         <Aurora />
         <Onboarding />
       </div>
+    )
+  }
+  if (meta && meta.lastSyncedAt === null && meta.localVersion > meta.syncedVersion) {
+    return (
+      <AccountSyncGate
+        title={recoveryBusy ? 'Saving your account' : 'Finish cloud save'}
+        body="Your plan is saved on this device, but the cloud copy has not accepted it yet. Finish this before opening the dashboard."
+        detail={bootError ?? meta.lastError}
+        onRetry={() => void finishRecovery('retry')}
+      />
     )
   }
 

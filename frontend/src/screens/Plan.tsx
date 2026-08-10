@@ -18,6 +18,7 @@ import {
   sync,
   type StateDocument,
 } from '@/sync/client'
+import { getAuthState, signOut } from '@/auth/session'
 import { previewExcel } from '@/import/excel'
 import { useDashboard, useSyncMeta } from '@/hooks/useDashboard'
 import { NumberField } from '@/components/fields'
@@ -30,6 +31,8 @@ export default function Plan() {
   const measurements = useLiveQuery(() => allMeasurements(), [], [])
   const [status, setStatus] = useState<string | null>(null)
   const [working, setWorking] = useState(false)
+  const auth = getAuthState()
+  const pendingChanges = meta ? Math.max(0, meta.localVersion - meta.syncedVersion) : 0
 
   if (!phase || !settings) {
     return <EmptyState title="Setting up" body="Preparing your local database." />
@@ -419,13 +422,37 @@ export default function Plan() {
         </div>
 
         <div>
-      <SectionTitle>Data</SectionTitle>
+      <SectionTitle
+        action={
+          <Pill tone={pendingChanges === 0 ? 'good' : 'info'}>
+            {pendingChanges === 0 ? 'Synced' : `${pendingChanges} pending`}
+          </Pill>
+        }
+      >
+        Account & Data
+      </SectionTitle>
       <Card>
-        <p className="text-[12px] leading-relaxed text-ink-400">
-          IndexedDB stays the working copy. {API_BASE
-            ? 'The FastAPI server keeps a second copy, and JSON downloads remain your portable backup.'
-            : 'No server is configured, so download a backup regularly.'}
-        </p>
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent text-lg font-bold text-ink-950">
+            {auth?.user.picture ? (
+              <img src={auth.user.picture} alt="" className="h-full w-full object-cover" />
+            ) : (
+              (auth?.user.name ?? auth?.user.email ?? 'A').charAt(0).toUpperCase()
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-semibold text-ink-50">
+              {auth?.user.name ?? 'Signed in'}
+            </div>
+            <div className="truncate text-[12px] text-ink-400">
+              {auth?.user.email ?? 'Google account'}
+            </div>
+            <p className="mt-2 text-[12px] leading-relaxed text-ink-400">
+              This device works from IndexedDB, and the cloud copy belongs to this Google account.
+              JSON downloads remain your portable backup.
+            </p>
+          </div>
+        </div>
         <div className="mt-3 flex flex-wrap gap-2">
           {API_BASE ? (
             <Button variant="primary" onClick={() => void syncNow()} disabled={working}>
@@ -467,16 +494,43 @@ export default function Plan() {
           >
             Request persistent storage
           </Button>
+          <Button
+            variant="danger"
+            onClick={() => {
+              const ok = window.confirm(
+                'Sign out and clear this device copy? Your synced cloud data stays with your Google account.',
+              )
+              if (ok) void signOut()
+            }}
+          >
+            Sign out
+          </Button>
         </div>
         <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+          <dt className="text-ink-400">Account owner</dt>
+          <dd className="tabular truncate text-right text-ink-200">
+            {meta?.accountUserId ?? auth?.user.id ?? '—'}
+          </dd>
           <dt className="text-ink-400">Local version</dt>
           <dd className="tabular text-right text-ink-200">{meta?.localVersion ?? 0}</dd>
           <dt className="text-ink-400">Server version</dt>
           <dd className="tabular text-right text-ink-200">{meta?.syncedVersion ?? 0}</dd>
+          <dt className="text-ink-400">Pending changes</dt>
+          <dd className="tabular text-right text-ink-200">{pendingChanges}</dd>
+          <dt className="text-ink-400">Last synced</dt>
+          <dd className="tabular text-right text-ink-200">
+            {meta?.lastSyncedAt ? new Date(meta.lastSyncedAt).toLocaleString() : 'Never'}
+          </dd>
           <dt className="text-ink-400">Downloaded backup</dt>
           <dd className="tabular text-right text-ink-200">{meta?.backedUpVersion ?? 0}</dd>
           <dt className="text-ink-400">Daily logs stored</dt>
           <dd className="tabular text-right text-ink-200">{dash.logs.length}</dd>
+          {meta?.lastError ? (
+            <>
+              <dt className="text-ink-400">Last sync issue</dt>
+              <dd className="text-right text-warn">{meta.lastError}</dd>
+            </>
+          ) : null}
         </dl>
       </Card>
 

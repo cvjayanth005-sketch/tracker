@@ -1,4 +1,4 @@
-import { clearLocalTrackerData, ensureSeeded } from '@/db/database'
+import { clearLocalTrackerData, ensureLocalAccountOwner, ensureSeeded } from '@/db/database'
 
 export const AUTH_API_BASE =
   import.meta.env['VITE_API_BASE'] ??
@@ -112,10 +112,7 @@ export async function signInWithGoogleCredential(credential: string): Promise<Au
   })
   if (!res.ok) throw await apiError(res, 'Google sign-in failed')
   const state = (await res.json()) as AuthState
-  if (previous && previous.user.id !== state.user.id) {
-    await clearLocalTrackerData()
-    await ensureSeeded()
-  }
+  if (!previous || previous.user.id !== state.user.id) await ensureLocalAccountOwner(state.user.id)
   setAuthState(state)
   return state
 }

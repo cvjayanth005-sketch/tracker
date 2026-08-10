@@ -96,31 +96,6 @@ function SleepTrend({ values }: { values: Array<number | null> }) {
   )
 }
 
-function WaveLines() {
-  const lines: Array<[string, number]> = [
-    ['#4ade80', 0],
-    ['#f8c24e', 18],
-    ['#60a5fa', 36],
-    ['rgba(255,255,255,.34)', 54],
-  ]
-
-  return (
-    <svg viewBox="0 0 420 110" className="h-24 w-full overflow-visible" aria-hidden="true">
-      {lines.map(([color, offset]) => (
-        <path
-          key={String(offset)}
-          d={`M 0 ${62 + offset * 0.08} C 70 ${18 + offset}, 120 ${102 - offset * 0.4}, 190 56 S 320 ${18 + offset * 0.25}, 420 ${70 - offset * 0.2}`}
-          fill="none"
-          stroke={color}
-          strokeWidth="3"
-          strokeLinecap="round"
-          opacity="0.82"
-        />
-      ))}
-    </svg>
-  )
-}
-
 function FiveWeekCalendar({
   today,
   phase,
@@ -335,6 +310,16 @@ export default function Today() {
   const hitRate = Math.round(dash.compliance?.overallHitRatePct ?? completionPct)
   const coverage = Math.round(dash.compliance?.overallCoveragePct ?? 0)
   const stabilityScore = Math.round((hitRate * 0.68 + coverage * 0.32) || completionPct)
+  const planTargets = [
+    { label: 'Calories', value: phase.calories.toLocaleString(), unit: 'kcal' },
+    { label: 'Protein', value: phase.proteinG.toLocaleString(), unit: 'g' },
+    { label: 'Steps', value: phase.steps.toLocaleString(), unit: null },
+    {
+      label: 'Weight trend',
+      value: change?.current.averageKg == null ? '—' : change.current.averageKg.toFixed(1),
+      unit: 'kg',
+    },
+  ]
 
   const recentDates = Array.from({ length: 12 }, (_, i) => addDays(today, i - 11))
   const activityBars = recentDates.map((date) => {
@@ -388,33 +373,53 @@ export default function Today() {
       <div className="mt-4 grid gap-4 lg:mt-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(21rem,.74fr)] lg:items-start lg:gap-5">
         {/* ---------------- Dashboard column ---------------- */}
         <div className="space-y-4">
-          <Card refract className="relative min-h-[19rem] overflow-hidden p-0">
-            <div className="absolute inset-0 bg-[radial-gradient(70%_95%_at_60%_0%,rgba(255,255,255,.16),transparent_58%),linear-gradient(115deg,rgba(5,7,11,.44),rgba(5,7,11,.9)_62%),url('/coach-athlete.png')]" />
-            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(74,222,128,.2),transparent_36%),linear-gradient(0deg,rgba(0,0,0,.58),transparent_64%)]" />
-            <div className="relative z-10 flex min-h-[19rem] flex-col justify-between p-5 sm:p-6">
-              <div className="max-w-md">
-                <div className="text-[13px] font-semibold text-ink-100">Hey, need help?</div>
-                <h2 className="mt-1 text-3xl font-semibold leading-none text-ink-50 sm:text-4xl">
-                  Just ask me anything
-                </h2>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-                <div className="glass-inset max-w-xl rounded-3xl p-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-300">
-                    Coach read
-                  </div>
-                  <p className="mt-2 text-sm leading-relaxed text-ink-100">
-                    {dash.recommendation?.detail ??
-                      'Log the basics, keep the plan visible, and let the trend decide the next move.'}
-                  </p>
+          <Card className="overflow-hidden">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="max-w-2xl">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
+                  Generated plan targets
                 </div>
-                <div className="glass-inset rounded-3xl px-5 py-4 text-center">
-                  <div className="tabular text-5xl font-semibold leading-none text-ink-50">
-                    {stabilityScore}
+                <h2 className="mt-2 text-2xl font-semibold text-ink-50 sm:text-3xl">
+                  Today is about hitting the basics.
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-ink-300">
+                  {dash.recommendation?.detail ??
+                    'Log calories, protein, steps, training, and recovery. The plan changes only when the trend earns it.'}
+                </p>
+              </div>
+              <div className="grid min-w-0 gap-2 sm:grid-cols-2 lg:w-[28rem]">
+                {planTargets.map((target) => (
+                  <div key={target.label} className="glass-inset rounded-2xl p-3">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-400">
+                      {target.label}
+                    </div>
+                    <div className="tabular mt-1 text-2xl font-semibold leading-none text-ink-50">
+                      {target.value}
+                      {target.unit ? (
+                        <span className="ml-1 text-xs font-normal text-ink-400">{target.unit}</span>
+                      ) : null}
+                    </div>
                   </div>
-                  <div className="mt-1 text-[11px] uppercase tracking-[0.16em] text-ink-300">
-                    score
-                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              <div className="glass-tile rounded-2xl px-3 py-2.5">
+                <div className="text-[10px] uppercase tracking-[0.12em] text-ink-500">Gym</div>
+                <div className="mt-1 truncate text-sm font-semibold text-ink-100">
+                  {todaySchedule?.gym ? `${todaySchedule.sessionType} session` : 'Not scheduled'}
+                </div>
+              </div>
+              <div className="glass-tile rounded-2xl px-3 py-2.5">
+                <div className="text-[10px] uppercase tracking-[0.12em] text-ink-500">Run</div>
+                <div className="mt-1 truncate text-sm font-semibold text-ink-100">
+                  {todaySchedule?.runKm ? `${todaySchedule.runKm} km ${todaySchedule.runType}` : 'Not scheduled'}
+                </div>
+              </div>
+              <div className="glass-tile rounded-2xl px-3 py-2.5">
+                <div className="text-[10px] uppercase tracking-[0.12em] text-ink-500">Score</div>
+                <div className="mt-1 text-sm font-semibold text-ink-100">
+                  {stabilityScore} · {coverage}% logged
                 </div>
               </div>
             </div>
@@ -453,7 +458,7 @@ export default function Today() {
           </div>
 
           {/* Desktop has the room for the trend line; the phone does not. */}
-          <Card refract className="hidden lg:block">
+          <Card className="hidden lg:block">
             <div className="mb-1 flex items-baseline justify-between">
               <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">
                 Last 30 days
@@ -470,7 +475,7 @@ export default function Today() {
           ) : null}
 
           <div className="grid items-start gap-4 xl:grid-cols-[1fr_1.05fr]">
-            <Card refract>
+            <Card>
               <div className="flex items-start justify-between">
                 <div>
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">
@@ -584,52 +589,7 @@ export default function Today() {
             </Card>
 
             <div className="space-y-4">
-              <Card refract className="h-fit overflow-hidden">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">
-                      Wellness score
-                    </div>
-                    <div className="mt-3">
-                      <span className="tabular text-5xl font-semibold leading-none text-accent">
-                        {stabilityScore}
-                      </span>
-                      <div className="mt-1 text-base font-semibold text-ink-100">
-                        {stabilityScore >= 80 ? 'Good Condition' : 'Keep Building'}
-                      </div>
-                      <div className="mt-1 text-[12px] text-ink-400">
-                        {coverage}% logging coverage
-                      </div>
-                    </div>
-                  </div>
-                  <Pill tone={completionPct === 100 ? 'good' : 'info'}>
-                    {doneCount}/{applicable.length}
-                  </Pill>
-                </div>
-                <div className="mt-4">
-                  <WaveLines />
-                </div>
-                <div className="mt-2 grid grid-cols-3 gap-3 text-[11px] text-ink-400">
-                  <span>
-                    Sleep avg
-                    <span className="tabular block text-lg text-ink-50">
-                      {statVal(dash.weekAverages?.sleep, 1) ?? '—'} h
-                    </span>
-                  </span>
-                  <span className="text-center">
-                    Coverage
-                    <span className="mx-auto mt-1 flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 text-ink-200">
-                      {coverage}
-                    </span>
-                  </span>
-                  <span className="text-right">
-                    Recovery
-                    <span className="tabular block text-lg text-ink-50">{hitRate}%</span>
-                  </span>
-                </div>
-              </Card>
-
-              <Card refract className="overflow-hidden">
+              <Card className="overflow-hidden">
                 <div className="flex items-baseline justify-between px-1">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">
                     Last 5 weeks
@@ -649,7 +609,7 @@ export default function Today() {
         <div className="space-y-4 lg:sticky lg:top-6">
           <div className="hidden lg:block">{heroWeight}</div>
 
-          <Card refract className="overflow-hidden">
+          <Card className="overflow-hidden">
             <div className="mb-3 flex items-baseline justify-between px-1">
               <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">
                 Log
@@ -725,7 +685,7 @@ export default function Today() {
             </div>
           </Card>
 
-          <Card refract className="overflow-hidden">
+          <Card className="overflow-hidden">
             <details className="group">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-1">
                 <span>

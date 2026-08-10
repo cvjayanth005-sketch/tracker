@@ -1,4 +1,4 @@
-import { db } from '@/db/database'
+import { db, ensureLocalAccountOwner } from '@/db/database'
 import { authHeader } from '@/auth/session'
 
 /**
@@ -78,6 +78,7 @@ export async function importState(
     }
     await db.syncMeta.put({
       id: 'sync',
+      accountUserId: previous?.accountUserId ?? null,
       localVersion:
         source === 'server'
           ? doc.version
@@ -104,6 +105,97 @@ export function sync(): Promise<SyncOutcome> {
   return syncInFlight
 }
 
+async function fetchServerVersion(): Promise<number> {
+  const head = await fetch(`${API_BASE}/api/state/version`, { headers: authHeader() })
+  if (!head.ok) throw new Error(`version check failed: ${head.status}`)
+  const { version } = (await head.json()) as { version: number }
+  return version
+}
+
+export async function pullServerState(): Promise<SyncOutcome> {
+  if (!API_BASE) return { status: 'local_only' }
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return { status: 'offline' }
+  try {
+    const res = await fetch(`${API_BASE}/api/state`, { headers: authHeader() })
+    if (!res.ok) throw new Error(`pull failed: ${res.status}`)
+    const doc = (await res.json()) as StateDocument
+    if (doc.version === 0) return { status: 'clean' }
+    await importState(doc, { source: 'server' })
+    return { status: 'pulled', version: doc.version }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    await db.syncMeta.update('sync', { lastError: message })
+    return { status: 'error', message }
+  }
+}
+
+export async function replaceServerState(): Promise<SyncOutcome> {
+  if (!API_BASE) return { status: 'local_only' }
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return { status: 'offline' }
+  try {
+    const serverVersion = await fetchServerVersion()
+    const meta = await db.syncMeta.get('sync')
+    if (!meta) return { status: 'error', message: 'sync metadata missing' }
+    const nextVersion = Math.max(meta.localVersion, serverVersion) + 1
+    await db.syncMeta.update('sync', { localVersion: nextVersion })
+    const doc = await exportState()
+    const res = await fetch(`${API_BASE}/api/state`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', ...authHeader() },
+      body: JSON.stringify({ ...doc, baseVersion: serverVersion }),
+    })
+    if (res.status === 409) {
+      await db.syncMeta.update('sync', {
+        lastError: `Sync conflict: server changed while this device was uploading`,
+      })
+      return { status: 'conflict', serverVersion, localVersion: doc.version }
+    }
+    if (!res.ok) throw new Error(`push failed: ${res.status}`)
+    await db.syncMeta.update('sync', {
+      syncedVersion: doc.version,
+      lastSyncedAt: new Date().toISOString(),
+      lastError: null,
+    })
+    return { status: 'pushed', version: doc.version }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    await db.syncMeta.update('sync', { lastError: message })
+    return { status: 'error', message }
+  }
+}
+
+export async function bootstrapAccountState(userId: number): Promise<SyncOutcome> {
+  await ensureLocalAccountOwner(userId)
+  if (!API_BASE) {
+    return { status: 'local_only' }
+  }
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return { status: 'offline' }
+
+  try {
+    const meta = await db.syncMeta.get('sync')
+    if (!meta) return { status: 'error', message: 'sync metadata missing' }
+    const serverVersion = await fetchServerVersion()
+
+    if (serverVersion === 0) {
+      return meta.localVersion > meta.syncedVersion ? sync() : { status: 'clean' }
+    }
+
+    if (serverVersion > meta.syncedVersion && meta.localVersion > meta.syncedVersion) {
+      await db.syncMeta.update('sync', {
+        lastError: `Sync conflict: server ${serverVersion}, device ${meta.localVersion}`,
+      })
+      return { status: 'conflict', serverVersion, localVersion: meta.localVersion }
+    }
+
+    if (serverVersion !== meta.syncedVersion) return pullServerState()
+    return meta.localVersion > meta.syncedVersion ? sync() : { status: 'clean' }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    await db.syncMeta.update('sync', { lastError: message })
+    return { status: 'error', message }
+  }
+}
+
 async function runSync(): Promise<SyncOutcome> {
   if (!API_BASE) return { status: 'local_only' }
   if (typeof navigator !== 'undefined' && !navigator.onLine) return { status: 'offline' }
@@ -112,17 +204,11 @@ async function runSync(): Promise<SyncOutcome> {
   if (!meta) return { status: 'error', message: 'sync metadata missing' }
 
   try {
-    const head = await fetch(`${API_BASE}/api/state/version`, { headers: authHeader() })
-    if (!head.ok) throw new Error(`version check failed: ${head.status}`)
-    const { version: serverVersion } = (await head.json()) as { version: number }
+    const serverVersion = await fetchServerVersion()
 
     // Server ahead of the last version we pushed: another device wrote.
     if (serverVersion > meta.syncedVersion && meta.localVersion === meta.syncedVersion) {
-      const res = await fetch(`${API_BASE}/api/state`, { headers: authHeader() })
-      if (!res.ok) throw new Error(`pull failed: ${res.status}`)
-      const doc = (await res.json()) as StateDocument
-      await importState(doc, { source: 'server' })
-      return { status: 'pulled', version: doc.version }
+      return pullServerState()
     }
 
     if (serverVersion > meta.syncedVersion && meta.localVersion > meta.syncedVersion) {
