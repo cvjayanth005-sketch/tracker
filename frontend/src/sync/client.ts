@@ -34,6 +34,7 @@ export type SyncOutcome =
   | { status: 'clean' }
   | { status: 'pushed'; version: number }
   | { status: 'pulled'; version: number }
+  | { status: 'unauthorized' }
   | { status: 'conflict'; serverVersion: number; localVersion: number }
   | { status: 'error'; message: string }
 
@@ -97,6 +98,17 @@ export async function importState(
 
 let syncInFlight: Promise<SyncOutcome> | null = null
 
+class UnauthorizedError extends Error {
+  constructor() {
+    super('unauthorized')
+  }
+}
+
+function outcomeForError(error: unknown): SyncOutcome {
+  if (error instanceof UnauthorizedError) return { status: 'unauthorized' }
+  return { status: 'error', message: error instanceof Error ? error.message : String(error) }
+}
+
 export function sync(): Promise<SyncOutcome> {
   if (syncInFlight) return syncInFlight
   syncInFlight = runSync().finally(() => {
@@ -107,6 +119,7 @@ export function sync(): Promise<SyncOutcome> {
 
 async function fetchServerVersion(): Promise<number> {
   const head = await fetch(`${API_BASE}/api/state/version`, { headers: authHeader() })
+  if (head.status === 401) throw new UnauthorizedError()
   if (!head.ok) throw new Error(`version check failed: ${head.status}`)
   const { version } = (await head.json()) as { version: number }
   return version
@@ -117,15 +130,18 @@ export async function pullServerState(): Promise<SyncOutcome> {
   if (typeof navigator !== 'undefined' && !navigator.onLine) return { status: 'offline' }
   try {
     const res = await fetch(`${API_BASE}/api/state`, { headers: authHeader() })
+    if (res.status === 401) throw new UnauthorizedError()
     if (!res.ok) throw new Error(`pull failed: ${res.status}`)
     const doc = (await res.json()) as StateDocument
     if (doc.version === 0) return { status: 'clean' }
     await importState(doc, { source: 'server' })
     return { status: 'pulled', version: doc.version }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
+    const outcome = outcomeForError(error)
+    const message =
+      outcome.status === 'error' ? outcome.message : 'Session expired. Sign in again.'
     await db.syncMeta.update('sync', { lastError: message })
-    return { status: 'error', message }
+    return outcome
   }
 }
 
@@ -144,6 +160,7 @@ export async function replaceServerState(): Promise<SyncOutcome> {
       headers: { 'content-type': 'application/json', ...authHeader() },
       body: JSON.stringify({ ...doc, baseVersion: serverVersion }),
     })
+    if (res.status === 401) throw new UnauthorizedError()
     if (res.status === 409) {
       await db.syncMeta.update('sync', {
         lastError: `Sync conflict: server changed while this device was uploading`,
@@ -158,9 +175,11 @@ export async function replaceServerState(): Promise<SyncOutcome> {
     })
     return { status: 'pushed', version: doc.version }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
+    const outcome = outcomeForError(error)
+    const message =
+      outcome.status === 'error' ? outcome.message : 'Session expired. Sign in again.'
     await db.syncMeta.update('sync', { lastError: message })
-    return { status: 'error', message }
+    return outcome
   }
 }
 
@@ -190,9 +209,11 @@ export async function bootstrapAccountState(userId: number): Promise<SyncOutcome
     if (serverVersion !== meta.syncedVersion) return pullServerState()
     return meta.localVersion > meta.syncedVersion ? sync() : { status: 'clean' }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
+    const outcome = outcomeForError(error)
+    const message =
+      outcome.status === 'error' ? outcome.message : 'Session expired. Sign in again.'
     await db.syncMeta.update('sync', { lastError: message })
-    return { status: 'error', message }
+    return outcome
   }
 }
 
@@ -227,6 +248,7 @@ async function runSync(): Promise<SyncOutcome> {
       headers: { 'content-type': 'application/json', ...authHeader() },
       body: JSON.stringify({ ...doc, baseVersion: meta.syncedVersion }),
     })
+    if (res.status === 401) throw new UnauthorizedError()
     if (res.status === 409) {
       await db.syncMeta.update('sync', {
         lastError: `Sync conflict: server changed while this device was uploading`,
@@ -244,9 +266,11 @@ async function runSync(): Promise<SyncOutcome> {
     })
     return { status: 'pushed', version: doc.version }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
+    const outcome = outcomeForError(error)
+    const message =
+      outcome.status === 'error' ? outcome.message : 'Session expired. Sign in again.'
     await db.syncMeta.update('sync', { lastError: message })
-    return { status: 'error', message }
+    return outcome
   }
 }
 

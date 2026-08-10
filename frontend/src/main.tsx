@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { registerSW } from 'virtual:pwa-register'
 import App from './App'
 import { ensureSeeded } from '@/db/database'
 import { requestPersistentStorage } from '@/sync/client'
@@ -11,6 +12,13 @@ import WorkoutScreen from '@/screens/WorkoutScreen'
 import Progress from '@/screens/Progress'
 import Plan from '@/screens/Plan'
 import './index.css'
+
+const updateServiceWorker = registerSW({
+  immediate: true,
+  onNeedRefresh() {
+    void updateServiceWorker(true)
+  },
+})
 
 const router = createBrowserRouter([
   {

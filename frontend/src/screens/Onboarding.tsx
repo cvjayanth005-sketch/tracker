@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { authHeader, AUTH_API_BASE } from '@/auth/session'
+import { authHeader, AUTH_API_BASE, signOut } from '@/auth/session'
 import { asLocalDate } from '@/domain/date'
 import { applyOnboardingPlan, type OnboardingPlanDraft } from '@/db/repo'
 import { sync } from '@/sync/client'
@@ -180,6 +180,10 @@ export function Onboarding() {
     try {
       await applyOnboardingPlan(editable)
       const outcome = await sync()
+      if (outcome.status === 'unauthorized') {
+        void signOut()
+        throw new Error('Session expired. Sign in again.')
+      }
       if (outcome.status !== 'pushed' && outcome.status !== 'clean') {
         throw new Error('Plan saved on this device, but cloud sync needs a retry.')
       }

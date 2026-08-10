@@ -274,6 +274,7 @@ function WelcomePage() {
 
 function syncOutcomeMessage(outcome: SyncOutcome): string | null {
   if (outcome.status === 'error') return outcome.message
+  if (outcome.status === 'unauthorized') return 'Session expired. Sign in again.'
   if (outcome.status === 'offline') return 'You are offline. Connect once to load this account.'
   if (outcome.status === 'conflict') {
     return `Both copies changed: server ${outcome.serverVersion}, this device ${outcome.localVersion}.`
@@ -447,6 +448,10 @@ export default function App() {
           setBootError(message)
           return
         }
+        if (outcome.status === 'unauthorized') {
+          void signOut()
+          return
+        }
         if (message) {
           setBootError(message)
           return
@@ -477,6 +482,10 @@ export default function App() {
     if (outcome.status === 'conflict') {
       setBootConflict(outcome)
       setBootError(message)
+      return
+    }
+    if (outcome.status === 'unauthorized') {
+      void signOut()
       return
     }
     if (message) {

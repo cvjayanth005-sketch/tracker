@@ -88,6 +88,10 @@ export default function Plan() {
     if (result.status === 'pushed') setStatus(`Synced version ${result.version} to the server.`)
     else if (result.status === 'pulled') setStatus(`Pulled version ${result.version} from the server.`)
     else if (result.status === 'clean') setStatus('Server and this device are already in sync.')
+    else if (result.status === 'unauthorized') {
+      setStatus('Session expired. Sign in again.')
+      void signOut()
+    }
     else if (result.status === 'conflict') {
       setStatus('Both copies changed. Download a backup before choosing which copy to keep.')
     } else if (result.status === 'offline') setStatus('Offline — your changes remain on this device.')
