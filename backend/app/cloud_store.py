@@ -33,8 +33,27 @@ def connect() -> Iterator[psycopg.Connection[dict[str, Any]]]:
         raise RuntimeError("SUPABASE_DATABASE_URL or DATABASE_URL is not configured.")
     if psycopg is None or dict_row is None:
         raise RuntimeError("psycopg is required when Supabase/Postgres storage is enabled.")
-    with psycopg.connect(url, row_factory=dict_row) as conn:
+    with psycopg.connect(url, row_factory=dict_row, connect_timeout=10, prepare_threshold=None) as conn:
         yield conn
+
+
+def status() -> dict[str, Any]:
+    if not enabled():
+        return {"enabled": False, "ok": False}
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                select
+                  (select count(*) from app_users)::int as users,
+                  (select count(*) from auth_sessions)::int as sessions,
+                  (select count(*) from app_state)::int as state_documents
+                """
+            )
+            row = cur.fetchone()
+            if row is None:
+                raise RuntimeError("Cloud status query did not return a row.")
+            return {"enabled": True, "ok": True, **dict(row)}
 
 
 def create_or_update_user(profile: dict[str, Any]) -> dict[str, Any]:

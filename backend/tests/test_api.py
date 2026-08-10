@@ -254,6 +254,24 @@ def test_state_sync_uses_supabase_store_when_configured(tmp_path, monkeypatch) -
     assert client.put("/api/state", json=stale, headers=headers).status_code == 409
 
 
+def test_supabase_state_errors_return_service_unavailable(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    monkeypatch.setenv("SUPABASE_DATABASE_URL", "postgresql://example")
+
+    import app.main as main
+
+    def fail_session_user(_token):
+        raise RuntimeError("connection failed")
+
+    monkeypatch.setattr(main.cloud_store, "session_user", fail_session_user)
+
+    response = client.get("/api/state/version", headers={"Authorization": "Bearer broken-token"})
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["error"] == "cloud_database_unavailable"
+    assert response.json()["detail"]["type"] == "RuntimeError"
+
+
 def test_google_sign_in_is_rate_limited_to_20_attempts(tmp_path, monkeypatch) -> None:
     client = make_client(tmp_path, monkeypatch)
     headers = {"x-forwarded-for": "203.0.113.20"}

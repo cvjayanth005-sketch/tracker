@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import deque
 from contextlib import asynccontextmanager
 from datetime import date
+import logging
 import os
 from pathlib import Path
 import time
@@ -67,6 +68,7 @@ from .services import (
 AUTH_RATE_LIMIT = int(os.environ.get("AUTH_RATE_LIMIT", "20"))
 AUTH_RATE_WINDOW_SECONDS = int(os.environ.get("AUTH_RATE_WINDOW_SECONDS", "900"))
 _auth_attempts: dict[str, deque[float]] = {}
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -110,6 +112,25 @@ def check_auth_rate_limit(request: Request) -> None:
     attempts.append(now)
 
 
+def cloud_database_unavailable(exc: Exception) -> None:
+    logger.exception("Cloud database operation failed")
+    raise HTTPException(
+        status_code=503,
+        detail={
+            "error": "cloud_database_unavailable",
+            "message": "The backend could not reach Supabase. Check SUPABASE_DATABASE_URL in Render.",
+            "type": type(exc).__name__,
+        },
+    ) from exc
+
+
+def cloud_session_user(token: str | None) -> dict | None:
+    try:
+        return cloud_store.session_user(token)
+    except Exception as exc:
+        cloud_database_unavailable(exc)
+
+
 app = FastAPI(title="Personal Fat Loss + Hybrid Training Tracker API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
@@ -129,6 +150,14 @@ def health() -> dict:
     return {"ok": True}
 
 
+@app.get("/api/cloud/status")
+def cloud_status() -> dict:
+    try:
+        return cloud_store.status()
+    except Exception as exc:
+        cloud_database_unavailable(exc)
+
+
 @app.get("/api/config")
 def public_config() -> dict:
     return {"googleClientId": os.environ.get("GOOGLE_CLIENT_ID", "")}
@@ -139,8 +168,11 @@ def google_login(payload: GoogleLoginRequest, request: Request) -> dict:
     check_auth_rate_limit(request)
     profile = verify_google_id_token(payload.credential)
     if cloud_store.enabled():
-        user = cloud_store.create_or_update_user(profile)
-        session = cloud_store.create_session(int(user["id"]))
+        try:
+            user = cloud_store.create_or_update_user(profile)
+            session = cloud_store.create_session(int(user["id"]))
+        except Exception as exc:
+            cloud_database_unavailable(exc)
         return {
             "session": session,
             "user": {
@@ -167,7 +199,7 @@ def google_login(payload: GoogleLoginRequest, request: Request) -> dict:
 @app.get("/api/auth/me")
 def auth_me(token: str | None = Depends(bearer_token)) -> dict:
     if cloud_store.enabled():
-        user = cloud_store.session_user(token)
+        user = cloud_session_user(token)
         if user is None:
             raise HTTPException(status_code=401, detail="Sign in required.")
         return {
@@ -193,7 +225,10 @@ def auth_me(token: str | None = Depends(bearer_token)) -> dict:
 @app.post("/api/auth/logout")
 def auth_logout(token: str | None = Depends(bearer_token)) -> dict:
     if cloud_store.enabled():
-        cloud_store.delete_session(token)
+        try:
+            cloud_store.delete_session(token)
+        except Exception as exc:
+            cloud_database_unavailable(exc)
         return {"ok": True}
     with connect() as conn:
         if token:
@@ -272,10 +307,13 @@ def plan_timeline(date_: date | None = Query(default=None, alias="date")) -> dic
 @app.get("/api/state/version")
 def state_version(token: str | None = Depends(bearer_token)) -> dict:
     if cloud_store.enabled():
-        user = cloud_store.session_user(token)
+        user = cloud_session_user(token)
         if user is None:
             raise HTTPException(status_code=401, detail="Sign in required.")
-        return cloud_store.get_state_version(int(user["id"]))
+        try:
+            return cloud_store.get_state_version(int(user["id"]))
+        except Exception as exc:
+            cloud_database_unavailable(exc)
     with connect() as conn:
         user = require_user(conn, token)
         return get_state_version(conn, int(user["id"]))
@@ -284,10 +322,13 @@ def state_version(token: str | None = Depends(bearer_token)) -> dict:
 @app.get("/api/state")
 def state(token: str | None = Depends(bearer_token)) -> dict:
     if cloud_store.enabled():
-        user = cloud_store.session_user(token)
+        user = cloud_session_user(token)
         if user is None:
             raise HTTPException(status_code=401, detail="Sign in required.")
-        return cloud_store.get_state_document(int(user["id"]))
+        try:
+            return cloud_store.get_state_document(int(user["id"]))
+        except Exception as exc:
+            cloud_database_unavailable(exc)
     with connect() as conn:
         user = require_user(conn, token)
         return get_state_document(conn, int(user["id"]))
@@ -296,10 +337,13 @@ def state(token: str | None = Depends(bearer_token)) -> dict:
 @app.put("/api/state")
 def put_state(payload: StateDocument, token: str | None = Depends(bearer_token)) -> dict:
     if cloud_store.enabled():
-        user = cloud_store.session_user(token)
+        user = cloud_session_user(token)
         if user is None:
             raise HTTPException(status_code=401, detail="Sign in required.")
-        result = cloud_store.put_state_document(payload.model_dump(), int(user["id"]))
+        try:
+            result = cloud_store.put_state_document(payload.model_dump(), int(user["id"]))
+        except Exception as exc:
+            cloud_database_unavailable(exc)
         if result.get("conflict"):
             raise HTTPException(status_code=409, detail=result)
         return result
@@ -386,7 +430,7 @@ def coach_note(payload: CoachNoteRequest) -> dict:
 @app.post("/api/onboarding/draft")
 def draft_onboarding(payload: OnboardingDraftRequest, token: str | None = Depends(bearer_token)) -> dict:
     if cloud_store.enabled():
-        if cloud_store.session_user(token) is None:
+        if cloud_session_user(token) is None:
             raise HTTPException(status_code=401, detail="Sign in required.")
     else:
         with connect() as conn:
