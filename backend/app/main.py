@@ -114,12 +114,18 @@ def check_auth_rate_limit(request: Request) -> None:
 
 def cloud_database_unavailable(exc: Exception) -> None:
     logger.exception("Cloud database operation failed")
+    detail = str(exc)
+    for secret_name in ("SUPABASE_DATABASE_URL", "DATABASE_URL"):
+        secret = os.environ.get(secret_name)
+        if secret:
+            detail = detail.replace(secret, f"[{secret_name}]")
     raise HTTPException(
         status_code=503,
         detail={
             "error": "cloud_database_unavailable",
             "message": "The backend could not reach Supabase. Check SUPABASE_DATABASE_URL in Render.",
             "type": type(exc).__name__,
+            "detail": detail[:500],
         },
     ) from exc
 
