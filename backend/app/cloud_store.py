@@ -33,7 +33,8 @@ def connect() -> Iterator[psycopg.Connection[dict[str, Any]]]:
         raise RuntimeError("SUPABASE_DATABASE_URL or DATABASE_URL is not configured.")
     if psycopg is None or dict_row is None:
         raise RuntimeError("psycopg is required when Supabase/Postgres storage is enabled.")
-    with psycopg.connect(url, row_factory=dict_row, connect_timeout=10, prepare_threshold=None) as conn:
+    with psycopg.connect(url, row_factory=dict_row, connect_timeout=10) as conn:
+        conn.prepare_threshold = None
         yield conn
 
 
