@@ -1,10 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { getGoogleClientId, signInWithGoogleCredential } from '@/auth/session'
 
-const THRESHOLD = 0.85
-const THUMB = 40
-const PAD = 4
-
 declare global {
   interface Window {
     google?: {
@@ -51,27 +47,17 @@ function GoogleMark() {
   )
 }
 
-function prefersReducedMotion(): boolean {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
-type Phase = 'idle' | 'dragging' | 'snapping' | 'armed' | 'signing'
+type Phase = 'idle' | 'prompting' | 'signing'
 
 export function GoogleSlideSignIn({
   onStatus,
 }: {
   onStatus?: (status: string | null) => void
 }) {
-  const trackRef = useRef<HTMLDivElement | null>(null)
-  const thumbRef = useRef<HTMLButtonElement | null>(null)
   const googleHostRef = useRef<HTMLDivElement | null>(null)
   const onStatusRef = useRef(onStatus)
-  const offsetRef = useRef(0)
-  const grabXRef = useRef(0)
-  const maxRef = useRef(0)
   const phaseRef = useRef<Phase>('idle')
 
-  const [offset, setOffset] = useState(0)
   const [phase, setPhase] = useState<Phase>('idle')
   const [ready, setReady] = useState(false)
   const [googleClientId, setGoogleClientId] = useState('')
@@ -81,11 +67,6 @@ export function GoogleSlideSignIn({
   const setPhaseBoth = (next: Phase) => {
     phaseRef.current = next
     setPhase(next)
-  }
-
-  const setOffsetBoth = (next: number) => {
-    offsetRef.current = next
-    setOffset(next)
   }
 
   useEffect(() => {
@@ -114,7 +95,6 @@ export function GoogleSlideSignIn({
         callback: (response) => {
           if (!response.credential) {
             setPhaseBoth('idle')
-            setOffsetBoth(0)
             onStatusRef.current?.('Sign-in was cancelled.')
             return
           }
@@ -124,7 +104,6 @@ export function GoogleSlideSignIn({
             .then(() => onStatusRef.current?.('Signed in. Syncing backup...'))
             .catch((error) => {
               setPhaseBoth('idle')
-              setOffsetBoth(0)
               onStatusRef.current?.(error instanceof Error ? error.message : String(error))
             })
         },
@@ -152,17 +131,22 @@ export function GoogleSlideSignIn({
   }, [googleClientId])
 
   const triggerGoogle = () => {
+    if (phaseRef.current === 'prompting' || phaseRef.current === 'signing') return
+    if (!ready) {
+      onStatusRef.current?.('Google sign-in is not ready yet.')
+      return
+    }
     if (!window.google?.accounts.id.prompt) {
       onStatusRef.current?.('Google sign-in is not ready yet. Try again.')
       setPhaseBoth('idle')
-      setOffsetBoth(0)
       return
     }
 
+    setPhaseBoth('prompting')
+    onStatusRef.current?.('Opening Google...')
     window.google.accounts.id.prompt((notification) => {
       if (notification.isDismissedMoment()) {
         setPhaseBoth('idle')
-        setOffsetBoth(0)
         onStatusRef.current?.('Sign-in dismissed.')
         return
       }
@@ -176,7 +160,7 @@ export function GoogleSlideSignIn({
           (host?.firstElementChild as HTMLElement | null)
 
         if (host) {
-          host.className = 'mt-3'
+          host.className = 'mt-3 flex justify-center'
           host.removeAttribute('aria-hidden')
           host.style.cssText = ''
         }
@@ -193,144 +177,31 @@ export function GoogleSlideSignIn({
           'unavailable'
         onStatusRef.current?.(`Google sign-in unavailable (${reason}).`)
         setPhaseBoth('idle')
-        setOffsetBoth(0)
       }
     })
   }
 
-  const measureMax = () => {
-    const track = trackRef.current
-    if (!track) return 0
-    return Math.max(0, track.clientWidth - THUMB - PAD * 2)
-  }
-
-  const complete = () => {
-    const max = measureMax()
-    maxRef.current = max
-    setOffsetBoth(max)
-    setPhaseBoth('armed')
-    onStatusRef.current?.('Opening Google...')
-    // Must stay synchronous with the pointer/keyboard gesture — a timeout
-    // breaks the user-activation chain and Google will ignore the click.
-    triggerGoogle()
-  }
-
-  const activateWithoutSlide = () => {
-    if (phaseRef.current === 'signing' || phaseRef.current === 'armed') return
-    if (!ready) {
-      onStatusRef.current?.('Google sign-in is not ready yet.')
-      return
-    }
-    complete()
-  }
-
-  const onPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
-    if (phaseRef.current === 'signing' || phaseRef.current === 'armed') return
-    if (!ready) return
-
-    if (prefersReducedMotion()) {
-      activateWithoutSlide()
-      return
-    }
-
-    const thumb = thumbRef.current
-    if (!thumb) return
-
-    // Interrupt any snap-back mid-flight from the live presentation value.
-    const style = getComputedStyle(thumb)
-    const matrix = new DOMMatrixReadOnly(style.transform)
-    const live = Number.isFinite(matrix.m41) ? matrix.m41 : offsetRef.current
-    setOffsetBoth(Math.max(0, live))
-    setPhaseBoth('dragging')
-
-    maxRef.current = measureMax()
-    grabXRef.current = event.clientX - offsetRef.current
-    thumb.setPointerCapture(event.pointerId)
-    event.preventDefault()
-  }
-
-  const onPointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
-    if (phaseRef.current !== 'dragging') return
-    const next = Math.min(maxRef.current, Math.max(0, event.clientX - grabXRef.current))
-    setOffsetBoth(next)
-  }
-
-  const onPointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
-    if (phaseRef.current !== 'dragging') return
-    const thumb = thumbRef.current
-    if (thumb?.hasPointerCapture(event.pointerId)) {
-      thumb.releasePointerCapture(event.pointerId)
-    }
-
-    const max = maxRef.current || measureMax()
-    if (max > 0 && offsetRef.current / max >= THRESHOLD) {
-      complete()
-      return
-    }
-
-    setPhaseBoth('snapping')
-    setOffsetBoth(0)
-  }
-
-  const busy = phase === 'armed' || phase === 'signing'
-  const progress = maxRef.current > 0 ? offset / maxRef.current : 0
-  const labelOpacity = Math.max(0, 1 - progress * 1.35)
+  const busy = phase === 'prompting' || phase === 'signing'
 
   return (
     <div className="relative mt-4">
-      <div
-        ref={trackRef}
-        className="relative h-12 w-full select-none overflow-hidden rounded-full bg-[#1f1f1f] ring-1 ring-inset ring-white/10"
-        role="group"
+      <button
+        type="button"
         aria-label="Sign in with Google"
+        disabled={!ready || busy}
+        onClick={triggerGoogle}
+        className="group relative flex min-h-12 w-full items-center justify-center gap-3 overflow-hidden rounded-2xl bg-ink-50 px-4 text-sm font-semibold text-ink-950 shadow-[0_18px_42px_-24px_rgba(255,255,255,0.65)] ring-1 ring-inset ring-white/90 transition-[transform,background,box-shadow] active:scale-[0.985] disabled:cursor-wait disabled:opacity-70"
       >
-        <div
-          className="pointer-events-none absolute inset-0 flex items-center justify-center px-12 text-[13px] font-medium tracking-[-0.01em] text-white/90"
-          style={{ opacity: labelOpacity }}
-        >
-          {busy ? 'Signing in…' : 'Sign in with Google'}
-        </div>
-
-        {/* Fill trail behind the thumb */}
-        <div
-          className="pointer-events-none absolute inset-y-1 left-1 rounded-full bg-white/8"
-          style={{ width: `${offset + THUMB}px` }}
-          aria-hidden="true"
-        />
-
-        <button
-          ref={thumbRef}
-          type="button"
-          aria-label="Slide to sign in with Google"
-          disabled={!ready || busy}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault()
-              activateWithoutSlide()
-            }
-          }}
-          onClick={() => {
-            // Tap / reduced-motion path when the user doesn't drag.
-            if (phaseRef.current === 'idle' || phaseRef.current === 'snapping') {
-              if (prefersReducedMotion()) activateWithoutSlide()
-            }
-          }}
-          className={`absolute top-1 left-1 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-[0_8px_20px_-10px_rgba(0,0,0,0.65)] ring-1 ring-black/5 touch-none ${
-            !ready || busy ? 'cursor-wait opacity-80' : 'cursor-grab active:cursor-grabbing'
-          } ${phase === 'dragging' ? '' : 'transition-transform duration-[400ms] ease-[cubic-bezier(.2,.9,.2,1)]'}`}
-          style={{ transform: `translate3d(${offset}px, 0, 0)` }}
-        >
+        <span className="absolute inset-x-0 top-0 h-px bg-white" aria-hidden="true" />
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
           <GoogleMark />
-        </button>
-      </div>
+        </span>
+        <span>{phase === 'signing' ? 'Signing in...' : busy ? 'Opening Google...' : 'Continue with Google'}</span>
+      </button>
 
       {/*
-        GIS must stay in the DOM so we can click its trusted button after the
-        slide completes. Keep it visually hidden but not display:none.
+        GIS stays in the DOM so browser trust rules can fall back to the
+        official button when One Tap is unavailable. Keep it hidden until then.
       */}
       <div
         ref={googleHostRef}
