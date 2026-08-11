@@ -143,8 +143,8 @@ export function CoachChatButton() {
       </button>
 
       {open ? (
-        <section className="surface fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+10rem)] z-40 mx-auto flex max-h-[70dvh] max-w-lg flex-col rounded-3xl p-3 shadow-[0_28px_90px_-46px_rgba(0,240,255,0.9)] lg:inset-x-auto lg:bottom-24 lg:right-6 lg:w-[27rem]">
-          <div className="flex items-center justify-between gap-3 border-b border-white/8 px-2 pb-3">
+        <section className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+10rem)] z-40 mx-auto flex max-h-[70dvh] max-w-lg flex-col rounded-3xl border border-white/18 bg-[linear-gradient(180deg,rgba(20,24,34,0.94),rgba(6,8,16,0.88))] p-3 shadow-[0_28px_90px_-46px_rgba(0,240,255,0.9),inset_0_1px_1px_rgba(255,255,255,0.28),inset_0_0_0_1px_rgba(255,255,255,0.08)] backdrop-blur-2xl backdrop-saturate-150 lg:inset-x-auto lg:bottom-24 lg:right-6 lg:w-[27rem]">
+          <div className="flex items-center justify-between gap-3 border-b border-white/12 bg-white/[0.03] px-2 pb-3">
             <div>
               <div className="text-sm font-semibold text-ink-50">AI coach</div>
               <div className="text-[11px] text-ink-400">Insights from your tracker data</div>
@@ -164,17 +164,17 @@ export function CoachChatButton() {
             {messages.map((message, index) => (
               <div
                 key={`${message.role}-${index}`}
-                className={`max-w-[88%] rounded-2xl px-3 py-2 text-[13px] leading-relaxed ${
+                className={`max-w-[88%] rounded-2xl px-3 py-2 text-[13px] leading-relaxed shadow-[0_10px_28px_-20px_rgba(0,0,0,0.8)] ${
                   message.role === 'user'
                     ? 'ml-auto bg-accent text-ink-950'
-                    : 'bg-white/8 text-ink-100 ring-1 ring-inset ring-white/8'
+                    : 'bg-white/12 text-ink-100 ring-1 ring-inset ring-white/12'
                 }`}
               >
                 {message.content}
               </div>
             ))}
             {busy ? (
-              <div className="max-w-[70%] rounded-2xl bg-white/8 px-3 py-2 text-[13px] text-ink-300 ring-1 ring-inset ring-white/8">
+              <div className="max-w-[70%] rounded-2xl bg-white/12 px-3 py-2 text-[13px] text-ink-300 ring-1 ring-inset ring-white/12">
                 Reading your logs...
               </div>
             ) : null}
@@ -192,7 +192,7 @@ export function CoachChatButton() {
                   key={starter}
                   type="button"
                   onClick={() => void submit(starter)}
-                  className="shrink-0 rounded-full bg-white/8 px-3 py-1.5 text-[12px] font-medium text-ink-200 ring-1 ring-inset ring-white/10"
+                  className="shrink-0 rounded-full bg-white/12 px-3 py-1.5 text-[12px] font-medium text-ink-100 ring-1 ring-inset ring-white/14"
                 >
                   {starter}
                 </button>
@@ -201,7 +201,7 @@ export function CoachChatButton() {
           ) : null}
 
           <form
-            className="flex gap-2 border-t border-white/8 pt-3"
+            className="flex gap-2 border-t border-white/12 pt-3"
             onSubmit={(event) => {
               event.preventDefault()
               void submit()
@@ -213,7 +213,7 @@ export function CoachChatButton() {
               onChange={(event) => setInput(event.target.value)}
               rows={1}
               placeholder="Ask about food, workout, weight, recovery..."
-              className="min-h-11 flex-1 resize-none rounded-2xl bg-black/25 px-3 py-3 text-sm text-ink-50 outline-none ring-1 ring-inset ring-white/10 placeholder:text-ink-500 focus:ring-accent/60"
+              className="min-h-11 flex-1 resize-none rounded-2xl bg-black/45 px-3 py-3 text-sm text-ink-50 outline-none ring-1 ring-inset ring-white/14 placeholder:text-ink-500 focus:ring-accent/60"
             />
             <button
               type="submit"
