@@ -343,6 +343,36 @@ def test_frontend_coach_note_shape_is_supported(tmp_path, monkeypatch) -> None:
     assert response.json()["provider"] == "rules"
 
 
+def test_coach_chat_requires_auth_and_returns_rules_fallback(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    payload = {
+        "question": "What should I focus on today?",
+        "context": {
+            "dashboard": {"recommendation": {"headline": "On target - change nothing"}},
+            "weekAverages": {"calories": 2050, "protein": 165, "steps": 9800},
+        },
+        "messages": [],
+    }
+
+    assert client.post("/api/coach-chat", json=payload).status_code == 401
+
+    login = client.post(
+        "/api/auth/google",
+        json={"credential": fake_google_credential("chat-user", "chat@example.com")},
+    ).json()
+    response = client.post(
+        "/api/coach-chat",
+        json=payload,
+        headers={"Authorization": f"Bearer {login['session']['token']}"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["provider"] == "rules"
+    assert "On target" in data["answer"]
+
+
 def test_frontend_coach_note_uses_groq_without_changing_rules(tmp_path, monkeypatch) -> None:
     client = make_client(tmp_path, monkeypatch)
     monkeypatch.setenv("GROQ_API_KEY", "test-key")

@@ -525,6 +525,116 @@ def request_groq_note(summary: dict[str, Any], api_key: str, model: str) -> str:
     return note.strip()[:900]
 
 
+def fallback_coach_chat(_question: str, context: dict[str, Any]) -> str:
+    dashboard = context.get("dashboard") if isinstance(context, dict) else {}
+    recommendation = dashboard.get("recommendation") if isinstance(dashboard, dict) else {}
+    headline = recommendation.get("headline") if isinstance(recommendation, dict) else None
+    week = context.get("weekAverages") if isinstance(context, dict) else {}
+    parts = []
+    if isinstance(headline, str) and headline:
+        parts.append(f"Current priority: {headline}.")
+    if isinstance(week, dict):
+        calories = week.get("calories")
+        protein = week.get("protein")
+        steps = week.get("steps")
+        if calories or protein or steps:
+            parts.append(
+                "Recent averages: "
+                + ", ".join(
+                    item
+                    for item in [
+                        f"{round(calories)} kcal" if isinstance(calories, (int, float)) else "",
+                        f"{round(protein)} g protein" if isinstance(protein, (int, float)) else "",
+                        f"{round(steps)} steps" if isinstance(steps, (int, float)) else "",
+                    ]
+                    if item
+                )
+                + "."
+            )
+    parts.append(
+        "The AI coach is offline, so keep the deterministic plan as the source of truth. "
+        "Ask again after the Groq connection is available for a deeper read."
+    )
+    return " ".join(parts)
+
+
+def request_groq_chat(
+    question: str,
+    context: dict[str, Any],
+    history: list[dict[str, str]],
+    api_key: str,
+    model: str,
+) -> str:
+    clipped_history = [
+        {
+            "role": item.get("role", "user") if item.get("role") in {"user", "assistant"} else "user",
+            "content": str(item.get("content", ""))[:900],
+        }
+        for item in history[-8:]
+        if str(item.get("content", "")).strip()
+    ]
+    response = httpx.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json={
+            "model": model,
+            "temperature": 0.35,
+            "max_completion_tokens": 520,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are an AI coach inside a fat-loss and hybrid-training tracker. "
+                        "Use only the supplied tracker context and chat history. "
+                        "Give practical insight about food logging, protein, steps, sleep, running, "
+                        "lifting, RIR, adherence, and trend weight. Do not invent missing logs. "
+                        "Do not change targets, phases, calories, or workouts; say those require the app controls. "
+                        "For injuries, medical limitations, chest pain, fainting, eating disorder signals, or severe symptoms, "
+                        "recommend a qualified professional and avoid aggressive advice. "
+                        "Keep answers concise: 2-5 short paragraphs or bullets."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": "Tracker context JSON:\n" + json.dumps(context, sort_keys=True)[:12000],
+                },
+                *clipped_history,
+                {"role": "user", "content": question},
+            ],
+        },
+        timeout=18.0,
+    )
+    response.raise_for_status()
+    data = response.json()
+    answer = data["choices"][0]["message"]["content"]
+    if not isinstance(answer, str) or not answer.strip():
+        raise ValueError("Groq returned an empty chat response.")
+    return answer.strip()[:2200]
+
+
+def coach_chat(payload: dict[str, Any]) -> dict[str, Any]:
+    question = str(payload.get("question", "")).strip()
+    context = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+    messages = payload.get("messages") if isinstance(payload.get("messages"), list) else []
+    groq_key = os.environ.get("GROQ_API_KEY")
+    groq_model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
+    if groq_key:
+        try:
+            return {
+                "answer": request_groq_chat(question, context, messages, groq_key, groq_model),
+                "provider": "groq",
+                "model": groq_model,
+            }
+        except (httpx.HTTPError, RuntimeError, ValueError, KeyError, IndexError):
+            return {
+                "answer": fallback_coach_chat(question, context),
+                "provider": "rules",
+                "model": None,
+                "fallback": True,
+            }
+    return {"answer": fallback_coach_chat(question, context), "provider": "rules", "model": None}
+
+
 def extract_pdf_text(file_base64: str) -> str:
     try:
         raw = base64.b64decode(file_base64, validate=True)

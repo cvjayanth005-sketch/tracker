@@ -27,6 +27,7 @@ from . import cloud_store
 from .database import connect, get_settings, init_db, row_to_dict, upsert_settings
 from .schemas import (
     CoachNoteRequest,
+    CoachChatRequest,
     DayLogUpdate,
     ExcelPlanImportRequest,
     GoogleLoginRequest,
@@ -50,6 +51,7 @@ from .services import (
     build_today,
     cached_coach_note,
     cached_coach_note_for_summary,
+    coach_chat,
     create_run,
     get_or_create_day,
     get_state_document,
@@ -431,6 +433,17 @@ def coach_note(payload: CoachNoteRequest) -> dict:
                 payload.force,
             )
         return cached_coach_note(conn, payload.force)
+
+
+@app.post("/api/coach-chat")
+def chat_with_coach(payload: CoachChatRequest, token: str | None = Depends(bearer_token)) -> dict:
+    if cloud_store.enabled():
+        if cloud_session_user(token) is None:
+            raise HTTPException(status_code=401, detail="Sign in required.")
+    else:
+        with connect() as conn:
+            require_user(conn, token)
+    return coach_chat(payload.model_dump())
 
 
 @app.post("/api/onboarding/draft")

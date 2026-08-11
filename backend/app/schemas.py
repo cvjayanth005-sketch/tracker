@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -82,6 +82,17 @@ class CoachNoteRequest(BaseModel):
     summary: dict[str, Any] | None = None
     promptVersion: str | None = None
     rulesVersion: str | None = None
+
+
+class CoachChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class CoachChatRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=1200)
+    context: dict[str, Any]
+    messages: list[CoachChatMessage] = Field(default_factory=list)
 
 
 class OnboardingDraftRequest(BaseModel):

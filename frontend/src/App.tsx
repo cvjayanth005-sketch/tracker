@@ -2,6 +2,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Aurora } from '@/components/Aurora'
+import { CoachChatButton } from '@/components/CoachChatButton'
 import { GoogleSlideSignIn } from '@/components/GoogleSlideSignIn'
 import { Icon, type IconName } from '@/components/Icon'
 import { getSettings } from '@/db/repo'
@@ -364,6 +365,7 @@ function TrackerShell() {
     <div className="min-h-dvh">
       <Aurora />
       <StatusChip />
+      <CoachChatButton />
 
       {/* Desktop floating rail. Hidden below lg, where the tab bar takes over. */}
       <aside className="pointer-events-none fixed inset-y-0 left-0 z-20 hidden w-24 flex-col items-center py-5 lg:flex">
