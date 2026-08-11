@@ -26,7 +26,7 @@ export function CoachChatButton() {
     {
       role: 'assistant',
       content:
-        'Ask me about your food, workout, running, recovery, or weight trend. I will use your tracker data, not rewrite your plan.',
+        'Ask me anything about your food, workouts, recovery, or progress. I will answer normally and use your tracker data when it helps.',
     },
   ])
   const [busy, setBusy] = useState(false)
