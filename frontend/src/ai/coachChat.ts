@@ -11,6 +11,7 @@ export interface CoachChatResponse {
   provider?: 'groq' | 'rules'
   model?: string | null
   fallback?: boolean
+  fallbackReason?: string
 }
 
 async function apiError(response: Response): Promise<Error> {

@@ -122,6 +122,7 @@ export function CoachChatButton() {
     try {
       const response = await askCoach(question, context, sanitizeMessages(messages))
       setMessages([...nextMessages, { role: 'assistant', content: response.answer }])
+      if (response.fallbackReason) setError(`AI fallback: ${response.fallbackReason}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {

@@ -629,12 +629,13 @@ def coach_chat(payload: dict[str, Any]) -> dict[str, Any]:
                 "provider": "groq",
                 "model": groq_model,
             }
-        except (httpx.HTTPError, RuntimeError, ValueError, KeyError, IndexError):
+        except (httpx.HTTPError, RuntimeError, ValueError, KeyError, IndexError) as exc:
             return {
                 "answer": fallback_coach_chat(question, context),
                 "provider": "rules",
                 "model": None,
                 "fallback": True,
+                "fallbackReason": f"{type(exc).__name__}: {str(exc)[:300]}",
             }
     return {"answer": fallback_coach_chat(question, context), "provider": "rules", "model": None}
 
