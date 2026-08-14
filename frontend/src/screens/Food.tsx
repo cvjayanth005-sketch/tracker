@@ -1,15 +1,16 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
-import { mealsForDate } from '@/db/repo'
+import { mealsBetween, mealsForDate } from '@/db/repo'
 import { outcomeFor } from '@/domain/compliance'
 import { buildFoodContext } from '@/domain/foodContext'
-import { formatShort } from '@/domain/date'
+import { addDays, formatShort } from '@/domain/date'
 import { useDashboard } from '@/hooks/useDashboard'
 import { Card, EmptyState, Meter, PageHeader, Pill, SectionTitle } from '@/components/ui'
 import { lastSevenDates } from '@/components/SevenDayBars'
 import { MacroSummary } from '@/components/food/MacroSummary'
 import { MacroTrends } from '@/components/food/MacroTrends'
+import { MealHistory } from '@/components/food/MealHistory'
 import { MealLogger } from '@/components/food/MealLogger'
 import { MealTimeline } from '@/components/food/MealTimeline'
 import { NutritionCoachCard } from '@/components/food/NutritionCoachCard'
@@ -20,6 +21,7 @@ export default function Food() {
 
   const profile = useLiveQuery(() => db.profile.get('me'), [], undefined)
   const todayMeals = useLiveQuery(() => mealsForDate(today), [today], [])
+  const historyMeals = useLiveQuery(() => mealsBetween(addDays(today, -21), today), [today], [])
 
   const dates = useMemo(() => lastSevenDates(today), [today])
 
@@ -61,6 +63,9 @@ export default function Food() {
         Today&apos;s meals
       </SectionTitle>
       <MealTimeline meals={todayMeals ?? []} />
+
+      <SectionTitle>Daily history</SectionTitle>
+      <MealHistory today={today} logs={dash.logs} meals={historyMeals ?? []} targets={food.macroTargets} />
 
       <SectionTitle>7-day trends</SectionTitle>
       <MacroTrends today={today} logs={dash.logs} calorieTarget={phase.calories} proteinTarget={phase.proteinG} />

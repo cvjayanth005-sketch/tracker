@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildFoodContext } from './foodContext'
+import { buildFoodContext, deriveMacroTargets } from './foodContext'
 import { asLocalDate } from './date'
 import { defaultPhases } from './seed'
 import { makeLog } from './testUtils'
@@ -89,6 +89,17 @@ describe('buildFoodContext', () => {
     expect(ctx.today.proteinBySlot.dinner).toBe(70)
     expect(ctx.observations.some((note) => note.toLowerCase().includes('back-loaded'))).toBe(true)
     expect(ctx.observations.some((note) => note.includes('protein target'))).toBe(true)
+  })
+
+  it('derives carb/fat ring targets from calories and protein', () => {
+    const t = deriveMacroTargets(2000, 180)
+    // fat = 27% of 2000 kcal / 9 ≈ 60g; carbs fill the rest.
+    expect(t.fatG).toBe(60)
+    expect(t.calories).toBe(2000)
+    expect(t.proteinG).toBe(180)
+    // carbs kcal = 2000 - 180*4 - 60*9 = 2000 - 720 - 540 = 740 → 185g
+    expect(t.carbsG).toBe(185)
+    expect(buildFoodContext(TODAY, phase(), profile(), [], []).macroTargets).toEqual(t)
   })
 
   it('averages the 7-day window and ignores days outside it', () => {

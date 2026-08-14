@@ -18,6 +18,28 @@ export interface MacroSplit {
   fatPct: number
 }
 
+export interface MacroTargets {
+  calories: number
+  proteinG: number
+  carbsG: number
+  fatG: number
+}
+
+/** Fraction of the calorie budget assigned to dietary fat when deriving targets. */
+const FAT_TARGET_KCAL_SHARE = 0.27
+
+/**
+ * Ring targets from the two numbers the plan actually sets. Protein and calories
+ * come from the phase; fat takes a fixed share of the calorie budget and carbs
+ * fill whatever calories remain — a reasonable default for a physique goal that
+ * the user can refine later.
+ */
+export function deriveMacroTargets(calories: number, proteinG: number): MacroTargets {
+  const fatG = Math.round((calories * FAT_TARGET_KCAL_SHARE) / 9)
+  const carbsKcal = Math.max(0, calories - proteinG * KCAL_PER_G.protein - fatG * KCAL_PER_G.fat)
+  return { calories, proteinG, carbsG: Math.round(carbsKcal / KCAL_PER_G.carbs), fatG }
+}
+
 export interface FoodContextMeal {
   slot: MealSlot
   name: string
@@ -38,6 +60,8 @@ export interface FoodContext {
     currentWeightKg: number | null
   } | null
   targets: { calories: number; proteinG: number; mealsPerDay: number }
+  /** Per-macro gram targets for the daily rings. Carbs/fat are derived. */
+  macroTargets: MacroTargets
   today: {
     logged: boolean
     mealCount: number
@@ -140,6 +164,7 @@ export function buildFoodContext(
             currentWeightKg: todayLog?.weightKg ?? null,
           },
     targets: { calories: phase.calories, proteinG: phase.proteinG, mealsPerDay: phase.mealsPerDay },
+    macroTargets: deriveMacroTargets(phase.calories, phase.proteinG),
     today: {
       logged: todayMeals.length > 0 || calories !== null || proteinG !== null,
       mealCount: todayMeals.length,
