@@ -18,7 +18,7 @@ function sanitizeMessages(messages: CoachChatMessage[]): CoachChatMessage[] {
     .map((message) => ({ ...message, content: message.content.slice(0, 900) }))
 }
 
-export function CoachChatButton() {
+export function CoachChatButton({ placement = 'floating' }: { placement?: 'floating' | 'inline' }) {
   const dash = useDashboard(30)
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState('')
@@ -136,12 +136,18 @@ export function CoachChatButton() {
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-sm font-black text-ink-950 shadow-[0_22px_48px_-22px_rgba(57,255,20,0.9)] ring-1 ring-inset ring-white/45 transition-transform active:scale-95 lg:bottom-auto lg:right-6 lg:top-5 lg:h-12 lg:w-auto lg:gap-2 lg:rounded-2xl lg:px-4 lg:text-[13px]"
+        className={
+          placement === 'floating'
+            ? 'fixed bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-sm font-black text-ink-950 shadow-[0_22px_48px_-22px_rgba(57,255,20,0.9)] ring-1 ring-inset ring-white/45 transition-transform active:scale-95 lg:bottom-auto lg:right-6 lg:top-5 lg:h-12 lg:w-auto lg:gap-2 lg:rounded-2xl lg:px-4 lg:text-[13px]'
+            : 'flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-accent px-4 text-[13px] font-black text-ink-950 shadow-[0_18px_40px_-24px_rgba(57,255,20,0.9)] ring-1 ring-inset ring-white/45 transition-transform active:scale-95'
+        }
         aria-label="Open AI coach chat"
         title="AI coach chat"
       >
         <span>AI</span>
-        <span className="hidden font-semibold lg:inline">Coach</span>
+        <span className={placement === 'floating' ? 'hidden font-semibold lg:inline' : 'font-semibold'}>
+          Coach
+        </span>
       </button>
 
       {open ? (

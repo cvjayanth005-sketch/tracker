@@ -1,8 +1,10 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { outcomeFor, type MetricKey } from '@/domain/compliance'
-import { addDays, dayOfWeek, formatShort, weekdayName } from '@/domain/date'
+import { asLocalDate, dateRange, dayOfWeek, formatShort, weekdayName } from '@/domain/date'
+import { planWeek } from '@/domain/plan'
 import { paceMinPerKm } from '@/domain/running'
+import { resolvePhaseForDate } from '@/db/repo'
 import { upsertLog } from '@/db/repo'
 import { useDashboard } from '@/hooks/useDashboard'
 import { NumberField, RatingField, TextArea, TriToggle } from '@/components/fields'
@@ -12,6 +14,9 @@ import { TrendChart } from '@/components/TrendChart'
 import { Card, EmptyState, Meter, Pill, Stat } from '@/components/ui'
 import { statInt, statVal } from '@/components/format'
 import type { DailyLog, LocalDate, Phase, Run } from '@/domain/types'
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 const METRIC_LABEL: Record<MetricKey, string> = {
   calories: 'Calories',
@@ -39,166 +44,96 @@ function runSummary(runs: Run[]): string | null {
   return parts.join(' · ')
 }
 
-function MiniBars({ values, tone = 'bg-accent' }: { values: Array<number | null>; tone?: string }) {
-  return (
-    <div className="flex h-20 items-end gap-1.5">
-      {values.map((value, index) => (
-        <span
-          key={`${value}-${index}`}
-          className={`w-2 rounded-full ${value !== null && value > 0 ? tone : 'bg-white/8'}`}
-          style={{
-            height: `${Math.max(8, value ?? 8)}%`,
-            opacity: value !== null && value > 0 ? 0.95 : 1,
-          }}
-        />
-      ))}
-    </div>
-  )
+function monthStart(date: LocalDate): LocalDate {
+  return asLocalDate(`${date.slice(0, 7)}-01`)
 }
 
-function SleepTrend({ values }: { values: Array<number | null> }) {
-  const known = values.filter((value): value is number => value !== null)
-  if (known.length < 2) {
-    return <div className="h-20 w-full rounded-2xl bg-white/5" />
-  }
-
-  const points = values
-    .map((value, index) => {
-      if (value === null) return null
-      const x = 8 + index * (164 / Math.max(1, values.length - 1))
-      const y = 70 - value * 0.58
-      return `${x.toFixed(1)},${Math.max(12, Math.min(70, y)).toFixed(1)}`
-    })
-    .filter((point): point is string => point !== null)
-    .join(' ')
-
-  return (
-    <svg viewBox="0 0 180 80" className="h-20 w-full" aria-hidden="true">
-      <polyline
-        points={points}
-        fill="none"
-        stroke="#60a5fa"
-        strokeWidth="5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <polyline
-        points={points}
-        fill="none"
-        stroke="#4ade80"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        opacity=".82"
-        transform="translate(0 9)"
-      />
-    </svg>
-  )
+function monthDays(start: LocalDate): LocalDate[] {
+  const [year, month] = start.split('-').map(Number) as [number, number]
+  const last = new Date(Date.UTC(year, month, 0)).getUTCDate()
+  return dateRange(start, asLocalDate(`${year}-${String(month).padStart(2, '0')}-${String(last).padStart(2, '0')}`))
 }
 
-function FiveWeekCalendar({
+function TodayCalendar({
   today,
-  phase,
+  phases,
+  planStartDate,
   index,
   metrics,
 }: {
   today: LocalDate
-  phase: Phase
+  phases: Phase[]
+  planStartDate: LocalDate | null
   index: Map<LocalDate, DailyLog>
   metrics: MetricKey[]
 }) {
-  const start = addDays(today, -34)
-  const days = Array.from({ length: 35 }, (_, i) => addDays(start, i))
-  const labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+  const cursor = monthStart(today)
+  const days = monthDays(cursor)
+  const leading = dayOfWeek(cursor)
+  const [year, month] = cursor.split('-').map(Number) as [number, number]
+  const monthLabel = `${MONTH_NAMES[month - 1]} ${year}`
 
   return (
-    <div className="glass-tile mt-4 rounded-[2rem] p-4">
-      <div className="grid grid-cols-7 gap-x-2 gap-y-3">
-        {labels.map((label, index) => (
-          <div
-            key={`${label}-${index}`}
-            className="text-center text-[10px] font-bold text-ink-100"
-          >
-            {label}
-          </div>
+    <Card>
+      <div className="mb-3 flex items-baseline justify-between">
+        <div className="text-sm font-semibold text-ink-50">{monthLabel}</div>
+        <Link to="/calendar" className="text-[11px] font-medium text-accent">
+          Full calendar
+        </Link>
+      </div>
+      <div className="grid grid-cols-7 gap-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+        {WEEKDAYS.map((day) => (
+          <div key={day}>{day}</div>
+        ))}
+      </div>
+      <div className="mt-2 grid grid-cols-7 gap-1.5">
+        {Array.from({ length: leading }).map((_, index) => (
+          <div key={`blank-${index}`} className="aspect-square" />
         ))}
         {days.map((date) => {
+          const phase = resolvePhaseForDate(phases, date)
+          if (!phase) return null
           const log = index.get(date)
           const applicable = metrics.filter((metric) => outcomeFor(metric, log, phase, date) !== 'notScheduled')
           const outcomes = applicable.map((metric) => outcomeFor(metric, log, phase, date))
           const hasMiss = outcomes.includes('missed')
           const allHit = outcomes.length > 0 && outcomes.every((outcome) => outcome === 'hit')
           const isToday = date === today
-          const state = hasMiss ? 'Miss' : allHit ? 'Hit' : 'Open'
+          const week = planWeek(planStartDate, date)
+          const classes = hasMiss
+            ? 'bg-alert/18 text-alert ring-alert/25'
+            : allHit
+              ? 'bg-accent/18 text-accent ring-accent/25'
+              : 'bg-white/6 text-ink-300 ring-white/10'
 
           return (
-            <span
+            <Link
               key={date}
-              title={`${formatShort(date)} · ${state}`}
-              aria-label={`${formatShort(date)} ${state}`}
-              className={`mx-auto h-9 w-9 rounded-full border transition-transform hover:scale-105 sm:h-10 sm:w-10 ${
-                hasMiss
-                  ? 'border-alert/45 bg-alert/70 shadow-[0_0_22px_-8px_rgba(251,113,133,.9)]'
-                  : allHit
-                    ? 'border-white/75 bg-ink-50 shadow-[0_0_22px_-10px_rgba(255,255,255,.85)]'
-                    : 'border-white/10 bg-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,.12)]'
-              } ${isToday ? 'ring-2 ring-info/70 ring-offset-2 ring-offset-transparent' : ''}`}
-            />
+              to={`/calendar/${date}`}
+              className={`relative aspect-square rounded-2xl p-2 text-left ring-1 ring-inset transition-transform active:scale-95 ${classes}`}
+              aria-label={formatShort(date, true)}
+            >
+              <span className="tabular text-sm font-semibold">{Number(date.slice(8, 10))}</span>
+              {week && dayOfWeek(date) === 1 ? (
+                <span className="absolute bottom-1.5 left-2 text-[9px] text-ink-500">W{week}</span>
+              ) : null}
+              {isToday ? (
+                <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-info" />
+              ) : null}
+            </Link>
           )
         })}
       </div>
-      <div className="mt-4 grid grid-cols-3 text-[11px] font-medium text-ink-200">
+      <div className="mt-4 grid grid-cols-3 text-[11px] font-medium text-ink-300">
         <span className="flex items-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-full bg-ink-50" /> Hit
+          <span className="h-2.5 w-2.5 rounded-full bg-accent" /> Hit
         </span>
         <span className="flex items-center justify-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-full bg-white/18" /> Open
+          <span className="h-2.5 w-2.5 rounded-full bg-white/30" /> Open
         </span>
         <span className="flex items-center justify-end gap-2">
-          <span className="h-2.5 w-2.5 rounded-full bg-alert/80" /> Miss
+          <span className="h-2.5 w-2.5 rounded-full bg-alert" /> Miss
         </span>
-      </div>
-    </div>
-  )
-}
-
-function MetricCard({
-  title,
-  value,
-  unit,
-  sub,
-  icon,
-  children,
-}: {
-  title: string
-  value: string | null
-  unit?: string
-  sub: string
-  icon: string
-  children: React.ReactNode
-}) {
-  return (
-    <Card className="min-h-[11rem] overflow-hidden p-4">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <span className="glass-inset flex h-11 w-11 items-center justify-center rounded-2xl text-lg">
-            {icon}
-          </span>
-          <div>
-            <div className="text-lg font-semibold text-ink-50">{title}</div>
-            <div className="text-[11px] text-ink-500">Last 7 days</div>
-          </div>
-        </div>
-        <span className="text-[11px] text-ink-500">{sub}</span>
-      </div>
-      <div className="mt-4 grid grid-cols-[auto_1fr] items-end gap-4">
-        <div>
-          <span className="tabular text-3xl font-semibold leading-none text-ink-50">
-            {value ?? <span className="text-ink-600">—</span>}
-          </span>
-          {unit ? <span className="ml-1 text-sm text-ink-300">{unit}</span> : null}
-        </div>
-        {children}
       </div>
     </Card>
   )
@@ -279,7 +214,7 @@ function metricProgress(
 
 export default function Today() {
   const dash = useDashboard(30)
-  const { today, phase, settings, todayLog, index, change, review } = dash
+  const { today, phase, settings, phases, todayLog, index, change, review } = dash
 
   const todaySchedule = useMemo(
     () => phase?.schedule.find((s) => s.dow === dayOfWeek(today)),
@@ -321,19 +256,6 @@ export default function Today() {
     },
   ]
 
-  const recentDates = Array.from({ length: 12 }, (_, i) => addDays(today, i - 11))
-  const activityBars = recentDates.map((date) => {
-    const value = index.get(date)?.steps ?? null
-    return value === null ? null : Math.min(100, (value / phase.steps) * 100)
-  })
-  const nutritionBars = recentDates.map((date) => {
-    const value = index.get(date)?.calories ?? null
-    return value === null ? null : Math.min(100, (value / phase.calories) * 100)
-  })
-  const sleepPoints = recentDates.map((date) => {
-    const value = index.get(date)?.sleepHours ?? null
-    return value === null ? null : Math.min(100, (value / phase.sleepHours) * 100)
-  })
   /*
    * The weigh-in card appears at the very top on a phone and at the head of the
    * log column on a laptop. Rendering it in both places, with only one visible
@@ -424,38 +346,6 @@ export default function Today() {
               </div>
             </div>
           </Card>
-
-          <div className="grid gap-3 md:grid-cols-3">
-            <MetricCard
-              title="Activity"
-              value={statInt(dash.weekAverages?.steps)}
-              sub="Steps"
-              icon="↗"
-            >
-              <MiniBars values={activityBars} />
-            </MetricCard>
-            <MetricCard
-              title="Nutrition"
-              value={statInt(dash.weekAverages?.calories)}
-              unit="kcal"
-              sub={`${statInt(dash.weekAverages?.protein) ?? '—'}g protein`}
-              icon="◐"
-            >
-              <MiniBars
-                tone="bg-[linear-gradient(180deg,#ff6a1a,#f8c24e)]"
-                values={nutritionBars}
-              />
-            </MetricCard>
-            <MetricCard
-              title="Sleep"
-              value={statVal(dash.weekAverages?.sleep, 1)}
-              unit="h"
-              sub="Avg"
-              icon="▰"
-            >
-              <SleepTrend values={sleepPoints} />
-            </MetricCard>
-          </div>
 
           {/* Desktop has the room for the trend line; the phone does not. */}
           <Card className="hidden lg:block">
@@ -589,15 +479,21 @@ export default function Today() {
             </Card>
 
             <div className="space-y-4">
-              <Card className="overflow-hidden">
-                <div className="flex items-baseline justify-between px-1">
+              <div>
+                <div className="mb-2.5 flex items-baseline justify-between px-1">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">
-                    Last 5 weeks
+                    Calendar
                   </div>
-                  <span className="text-[11px] text-ink-500">Plan history</span>
+                  <span className="text-[11px] text-ink-500">This month</span>
                 </div>
-                <FiveWeekCalendar today={today} phase={phase} index={index} metrics={checklist} />
-              </Card>
+                <TodayCalendar
+                  today={today}
+                  phases={phases}
+                  planStartDate={settings.planStartDate}
+                  index={index}
+                  metrics={checklist}
+                />
+              </div>
 
               <div id="today-log" className="scroll-mt-6">
               </div>

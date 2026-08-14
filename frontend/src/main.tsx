@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
 import { registerSW } from 'virtual:pwa-register'
 import App from './App'
 import { ensureSeeded } from '@/db/database'
@@ -8,8 +9,9 @@ import { requestPersistentStorage } from '@/sync/client'
 import Today from '@/screens/Today'
 import Calendar from '@/screens/Calendar'
 import DayDetail from '@/screens/DayDetail'
+import Food from '@/screens/Food'
+import Activity from '@/screens/Activity'
 import WorkoutScreen from '@/screens/WorkoutScreen'
-import Progress from '@/screens/Progress'
 import Plan from '@/screens/Plan'
 import './index.css'
 
@@ -26,10 +28,12 @@ const router = createBrowserRouter([
     element: <App />,
     children: [
       { index: true, element: <Today /> },
+      { path: 'food', element: <Food /> },
+      { path: 'activity', element: <Activity /> },
       { path: 'calendar', element: <Calendar /> },
       { path: 'calendar/:date', element: <DayDetail /> },
       { path: 'workout', element: <WorkoutScreen /> },
-      { path: 'progress', element: <Progress /> },
+      { path: 'progress', element: <Navigate to="/activity" replace /> },
       { path: 'plan', element: <Plan /> },
     ],
   },

@@ -2,7 +2,6 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Aurora } from '@/components/Aurora'
-import { CoachChatButton } from '@/components/CoachChatButton'
 import { GoogleSlideSignIn } from '@/components/GoogleSlideSignIn'
 import { Icon, type IconName } from '@/components/Icon'
 import { getSettings } from '@/db/repo'
@@ -22,8 +21,8 @@ import { getAuthState, signOut, subscribeAuth, type AuthState } from '@/auth/ses
 
 const TABS: Array<{ to: string; label: string; icon: IconName }> = [
   { to: '/', label: 'Today', icon: 'today' },
-  { to: '/calendar', label: 'Calendar', icon: 'calendar' },
-  { to: '/progress', label: 'Progress', icon: 'progress' },
+  { to: '/food', label: 'Food', icon: 'food' },
+  { to: '/activity', label: 'Activity', icon: 'activity' },
   { to: '/plan', label: 'Plan', icon: 'plan' },
 ]
 
@@ -365,7 +364,6 @@ function TrackerShell() {
     <div className="min-h-dvh">
       <Aurora />
       <StatusChip />
-      <CoachChatButton />
 
       {/* Desktop floating rail. Hidden below lg, where the tab bar takes over. */}
       <aside className="pointer-events-none fixed inset-y-0 left-0 z-20 hidden w-24 flex-col items-center py-5 lg:flex">
