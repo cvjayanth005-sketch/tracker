@@ -38,6 +38,8 @@ function meal(slot: MealSlot, partial: Partial<Meal> = {}): Meal {
     slot,
     name: partial.name ?? slot,
     time: null,
+    quantity: null,
+    unit: null,
     calories: null,
     proteinG: null,
     carbsG: null,
@@ -147,6 +149,22 @@ describe('buildFoodContext', () => {
     const strip = buildConsistencyStrip(TODAY, logs, phase(), 14)
     expect(strip.days.at(-1)!.status).toBe('none')
     expect(strip.streak).toBe(2)
+  })
+
+  it('reports day completeness and hedges a partial under-target day', () => {
+    const empty = buildFoodContext(TODAY, phase(), profile(), [], [])
+    expect(empty.today.completeness).toBe('empty')
+
+    const partial = buildFoodContext(TODAY, phase(), profile(), [makeLog('2026-08-15', { calories: 800, proteinG: 60 })], [])
+    expect(partial.today.completeness).toBe('partial')
+    expect(partial.today.logComplete).toBe(false)
+    expect(partial.observations.some((n) => n.toLowerCase().includes('still open'))).toBe(true)
+
+    const done = buildFoodContext(TODAY, phase(), profile(), [makeLog('2026-08-15', { calories: 800, proteinG: 60, foodComplete: true })], [])
+    expect(done.today.completeness).toBe('complete')
+    expect(done.today.logComplete).toBe(true)
+    // A day the user marked done is not flagged as partial, even if under target.
+    expect(done.observations.some((n) => n.toLowerCase().includes('still open'))).toBe(false)
   })
 
   it('averages the 7-day window and ignores days outside it', () => {

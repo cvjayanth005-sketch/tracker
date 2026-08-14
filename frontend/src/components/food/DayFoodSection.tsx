@@ -3,6 +3,7 @@ import { computeEatingWindow, waterTargetForWeight } from '@/domain/foodContext'
 import { NumberField } from '@/components/fields'
 import { Card } from '@/components/ui'
 import type { DailyLog, LocalDate, Meal, Phase } from '@/domain/types'
+import { DayCompleteToggle } from './DayCompleteToggle'
 import { IntakeExtras } from './IntakeExtras'
 import { MACRO } from './palette'
 import { MealLogger } from './MealLogger'
@@ -38,6 +39,9 @@ export function DayFoodSection({
 
   return (
     <div className="space-y-3">
+      <div className="flex justify-end">
+        <DayCompleteToggle date={date} complete={log?.foodComplete === true} />
+      </div>
       {hasMeals ? (
         <Card className="!p-4">
           <div className="mb-3 flex items-center justify-between">

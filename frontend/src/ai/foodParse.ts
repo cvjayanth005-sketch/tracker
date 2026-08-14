@@ -15,6 +15,8 @@ export interface MealDraft {
   slot: MealSlot
   name: string
   time: string | null
+  quantity: number | null
+  unit: string | null
   calories: number | null
   proteinG: number | null
   carbsG: number | null

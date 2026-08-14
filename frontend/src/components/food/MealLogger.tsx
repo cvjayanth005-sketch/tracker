@@ -14,7 +14,19 @@ function guessSlot(): MealSlot {
 }
 
 function blankDraft(slot: MealSlot): MealDraft {
-  return { slot, name: '', time: null, calories: null, proteinG: null, carbsG: null, fatG: null, fiberG: null, notes: null }
+  return {
+    slot,
+    name: '',
+    time: null,
+    quantity: null,
+    unit: null,
+    calories: null,
+    proteinG: null,
+    carbsG: null,
+    fatG: null,
+    fiberG: null,
+    notes: null,
+  }
 }
 
 const MACRO_FIELDS = [
@@ -83,6 +95,23 @@ function DraftRow({
         >
           ✕
         </button>
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-500">Portion</span>
+        <input
+          type="number"
+          inputMode="decimal"
+          value={draft.quantity ?? ''}
+          onChange={(e) => onChange({ quantity: num(e.target.value) })}
+          placeholder="—"
+          className="tabular w-16 rounded-lg bg-white/5 px-2 py-1.5 text-center text-[13px] text-ink-50 outline-none ring-1 ring-inset ring-white/10 placeholder:text-ink-600 focus:ring-accent/60"
+        />
+        <input
+          value={draft.unit ?? ''}
+          onChange={(e) => onChange({ unit: e.target.value.trim() || null })}
+          placeholder="g / cup / piece"
+          className="min-w-0 flex-1 rounded-lg bg-white/5 px-2.5 py-1.5 text-[13px] text-ink-100 outline-none ring-1 ring-inset ring-white/10 placeholder:text-ink-600 focus:ring-accent/60"
+        />
       </div>
       <div className="mt-2 grid grid-cols-4 gap-1.5">
         {MACRO_FIELDS.map((field) => (

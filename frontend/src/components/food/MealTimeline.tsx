@@ -30,6 +30,29 @@ function MealEditor({ meal, onClose }: { meal: Meal; onClose: () => void }) {
         }}
         className="w-full rounded-xl bg-white/5 px-3 py-2 text-sm font-medium text-ink-50 outline-none ring-1 ring-inset ring-white/10 focus:ring-accent/60"
       />
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-500">Portion</span>
+        <input
+          type="number"
+          inputMode="decimal"
+          defaultValue={meal.quantity ?? ''}
+          onBlur={(e) => {
+            const next = num(e.target.value)
+            if (next !== (meal.quantity ?? null)) void updateMeal(meal.id, { quantity: next })
+          }}
+          placeholder="—"
+          className="tabular w-16 rounded-lg bg-white/5 px-2 py-1.5 text-center text-[13px] text-ink-50 outline-none ring-1 ring-inset ring-white/10 placeholder:text-ink-600 focus:ring-accent/60"
+        />
+        <input
+          defaultValue={meal.unit ?? ''}
+          onBlur={(e) => {
+            const next = e.target.value.trim() || null
+            if (next !== (meal.unit ?? null)) void updateMeal(meal.id, { unit: next })
+          }}
+          placeholder="g / cup / piece"
+          className="min-w-0 flex-1 rounded-lg bg-white/5 px-2.5 py-1.5 text-[13px] text-ink-100 outline-none ring-1 ring-inset ring-white/10 placeholder:text-ink-600 focus:ring-accent/60"
+        />
+      </div>
       <div className="grid grid-cols-4 gap-1.5">
         {MACRO_CHIPS.map((field) => (
           <label key={field.key} className="block">
@@ -90,7 +113,15 @@ function MealRow({ meal }: { meal: Meal }) {
     <div className="rounded-2xl bg-white/[0.03] p-3 ring-1 ring-inset ring-white/8">
       <button type="button" onClick={() => setEditing((v) => !v)} className="flex w-full items-start justify-between gap-3 text-left">
         <div className="min-w-0">
-          <div className="truncate text-sm font-medium text-ink-50">{meal.name || 'Untitled meal'}</div>
+          <div className="truncate text-sm font-medium text-ink-50">
+            {meal.name || 'Untitled meal'}
+            {meal.quantity !== null ? (
+              <span className="ml-1.5 text-[11px] font-normal text-ink-500">
+                {meal.quantity}
+                {meal.unit ? ` ${meal.unit}` : ''}
+              </span>
+            ) : null}
+          </div>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {MACRO_CHIPS.map((field) =>
               meal[field.key] === null ? null : (

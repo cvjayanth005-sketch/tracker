@@ -15,6 +15,7 @@ import { MealHistory } from '@/components/food/MealHistory'
 import { MealLogger } from '@/components/food/MealLogger'
 import { MealTimeline } from '@/components/food/MealTimeline'
 import { QuickAddFoods } from '@/components/food/QuickAddFoods'
+import { DayCompleteToggle } from '@/components/food/DayCompleteToggle'
 import { NutritionCoachCard } from '@/components/food/NutritionCoachCard'
 
 export default function Food() {
@@ -79,7 +80,14 @@ export default function Food() {
         <MealLogger date={today} />
       </div>
 
-      <SectionTitle action={<span className="text-xs text-ink-400">{food.today.mealCount} today</span>}>
+      <SectionTitle
+        action={
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-ink-400">{food.today.mealCount} today</span>
+            <DayCompleteToggle date={today} complete={food.today.logComplete} />
+          </div>
+        }
+      >
         Today&apos;s meals
       </SectionTitle>
       <MealTimeline meals={todayMeals ?? []} />

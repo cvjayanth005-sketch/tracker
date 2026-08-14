@@ -165,6 +165,19 @@ export class TrackerDb extends Dexie {
     // Saved-food library: reusable dishes logged with one tap so repeats read
     // identically. Indexed by name and recency for the recent/favourite lists.
     this.version(10).stores({ foods: 'id, name, lastUsedAt' })
+    // Portion capture on meals: amount + unit, so estimates have a real basis.
+    this.version(11).upgrade(async (tx) => {
+      await tx.table<Meal, 'id'>('meals').toCollection().modify((meal) => {
+        meal.quantity ??= null
+        meal.unit ??= null
+      })
+    })
+    // "Done eating" flag so the coach can tell a finished day from a partial one.
+    this.version(12).upgrade(async (tx) => {
+      await tx.table<DailyLog, 'date'>('dailyLogs').toCollection().modify((log) => {
+        log.foodComplete ??= null
+      })
+    })
   }
 }
 

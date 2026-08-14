@@ -65,6 +65,10 @@ export interface FoodContext {
   macroTargets: MacroTargets
   today: {
     logged: boolean
+    /** User marked the day's eating as finished — totals are safe to judge. */
+    logComplete: boolean
+    /** How finished today's food log looks, for the coach to hedge partial days. */
+    completeness: 'empty' | 'partial' | 'complete'
     mealCount: number
     calories: number | null
     proteinG: number | null
@@ -272,6 +276,13 @@ export function buildFoodContext(
     macroTargets: deriveMacroTargets(phase.calories, phase.proteinG),
     today: {
       logged: todayMeals.length > 0 || calories !== null || proteinG !== null,
+      logComplete: todayLog?.foodComplete === true,
+      completeness:
+        todayLog?.foodComplete === true
+          ? 'complete'
+          : todayMeals.length === 0 && calories === null
+            ? 'empty'
+            : 'partial',
       mealCount: todayMeals.length,
       calories,
       proteinG,
@@ -340,6 +351,13 @@ function deriveObservations(ctx: FoodContext): string[] {
   if (ctx.weekAverages.days >= 3 && ctx.weekAverages.proteinG !== null && ctx.weekAverages.proteinG < targets.proteinG * 0.85) {
     notes.push(
       `7-day protein averages ${ctx.weekAverages.proteinG}g vs the ${targets.proteinG}g target — a consistent gap.`,
+    )
+  }
+
+  // Only when a partial day could be misread as a genuinely low-calorie one.
+  if (today.completeness === 'partial' && (today.caloriesRemaining === null || today.caloriesRemaining > 300)) {
+    notes.push(
+      `Today's food log is still open (${today.mealCount} meal${today.mealCount === 1 ? '' : 's'} so far) — treat today's totals as partial, not a finished day.`,
     )
   }
 

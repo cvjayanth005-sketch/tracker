@@ -100,6 +100,7 @@ export function rowsToDailyLogs(rows: Cell[][]): ExcelImportPreview {
       sodiumMg: null,
       alcoholUnits: null,
       caffeineMg: null,
+      foodComplete: null,
       steps: number(cell(row, stepsCol)),
       runKm: number(cell(row, runCol)),
       gymDone: checked(cell(row, gymCol)) ? true : null,

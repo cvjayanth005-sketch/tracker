@@ -139,6 +139,12 @@ export interface DailyLog {
   sodiumMg: number | null
   alcoholUnits: number | null
   caffeineMg: number | null
+  /**
+   * User's "done eating for the day" flag. `true` = the food log is final and
+   * safe to judge; `null` = still in progress. Lets the coach avoid mistaking a
+   * half-logged day for a genuinely low-calorie one.
+   */
+  foodComplete: boolean | null
   steps: number | null
   runKm: number | null
   /** Null = unknown whether a session happened; false = confirmed no session. */
@@ -173,6 +179,14 @@ export interface Meal {
   name: string
   /** Local clock time `HH:mm`, or null when not recorded. */
   time: string | null
+  /**
+   * Portion the macros describe — amount plus a free unit (`g`, `ml`, `piece`,
+   * `cup`, `serving`…). Recorded so a portion the coach or user changes has a
+   * basis, and so the AI estimate is anchored to a real quantity instead of a
+   * blind guess. Descriptive only; macros are not auto-scaled from it.
+   */
+  quantity: number | null
+  unit: string | null
   calories: number | null
   proteinG: number | null
   carbsG: number | null
@@ -197,6 +211,9 @@ export interface SavedFood {
   name: string
   /** Remembered default slot, so a saved breakfast lands in breakfast. */
   defaultSlot: MealSlot | null
+  /** Remembered default portion, carried onto each logged repeat. */
+  quantity: number | null
+  unit: string | null
   calories: number | null
   proteinG: number | null
   carbsG: number | null
