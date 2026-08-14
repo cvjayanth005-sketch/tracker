@@ -155,8 +155,8 @@ function MoveRing({
   const runningPct = total > 0 ? runningKcal / total : 0
 
   return (
-    <Card className="h-full">
-      <div className="flex h-full flex-col">
+    <Card>
+      <div>
         <div className="flex items-start justify-between">
           <div>
             <div className="text-sm font-semibold text-ink-50">Movement Burn</div>
@@ -165,7 +165,7 @@ function MoveRing({
           <Pill tone={pct >= 100 ? 'good' : 'info'}>{Math.round(pct)}%</Pill>
         </div>
 
-        <div className="grid flex-1 items-center gap-4 py-4 sm:grid-cols-[10rem_1fr]">
+        <div className="mt-5 grid items-center gap-4 sm:grid-cols-[10rem_1fr]">
           <div className="relative mx-auto h-40 w-40">
             <svg viewBox={`0 0 ${size} ${size}`} className="h-40 w-40 -rotate-90">
               <circle
@@ -361,7 +361,7 @@ export default function Activity() {
       </div>
 
       <SectionTitle>Progress</SectionTitle>
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
         <div className="grid gap-4 lg:grid-cols-3 xl:grid-cols-1">
           <SevenDayProgress
             title="Steps"
@@ -409,7 +409,7 @@ export default function Activity() {
         </div>
       </div>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
+      <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
         <div>
           <SectionTitle>Strength Progress</SectionTitle>
           <Card>
