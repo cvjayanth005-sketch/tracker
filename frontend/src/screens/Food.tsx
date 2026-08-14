@@ -8,6 +8,7 @@ import { addDays, formatShort } from '@/domain/date'
 import { useDashboard } from '@/hooks/useDashboard'
 import { Card, EmptyState, Meter, PageHeader, Pill, SectionTitle } from '@/components/ui'
 import { lastSevenDates } from '@/components/SevenDayBars'
+import { AdaptiveTDEE } from '@/components/food/AdaptiveTDEE'
 import { IntakeExtras } from '@/components/food/IntakeExtras'
 import { MacroSummary } from '@/components/food/MacroSummary'
 import { MacroTrends } from '@/components/food/MacroTrends'
@@ -94,6 +95,9 @@ export default function Food() {
 
       <SectionTitle>Daily history</SectionTitle>
       <MealHistory today={today} logs={dash.logs} meals={historyMeals ?? []} targets={food.macroTargets} />
+
+      <SectionTitle>Metabolism</SectionTitle>
+      <AdaptiveTDEE today={today} logs={dash.logs} targetKcal={phase.calories} />
 
       <SectionTitle>7-day trends</SectionTitle>
       <MacroTrends today={today} logs={dash.logs} calorieTarget={phase.calories} proteinTarget={phase.proteinG} />
