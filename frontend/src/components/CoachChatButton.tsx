@@ -259,7 +259,7 @@ export function CoachChatButton({
     <section
       className={
         cardMode
-          ? 'surface flex min-h-[28rem] flex-col rounded-3xl p-4 sm:p-5'
+          ? 'surface flex min-h-[22rem] flex-col rounded-3xl p-4 sm:p-5'
           : 'fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+10rem)] z-50 mx-auto flex max-h-[70dvh] max-w-lg flex-col rounded-3xl border border-white/18 bg-[linear-gradient(180deg,rgba(20,24,34,0.94),rgba(6,8,16,0.88))] p-3 shadow-[0_28px_90px_-46px_rgba(0,240,255,0.9),inset_0_1px_1px_rgba(255,255,255,0.28),inset_0_0_0_1px_rgba(255,255,255,0.08)] backdrop-blur-2xl backdrop-saturate-150 lg:inset-x-auto lg:bottom-auto lg:right-6 lg:top-20 lg:w-[27rem]'
       }
     >

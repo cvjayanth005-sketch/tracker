@@ -690,47 +690,50 @@ export default function Activity() {
       <PageHeader title="Activity" eyebrow="Training · recovery · coach" />
 
       <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_30rem]">
-        <Card className="overflow-hidden">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-2xl">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
-                {weekdayName(today)} · {formatShort(today)}
+        <div className="min-w-0 space-y-4">
+          <Card className="overflow-hidden">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div className="max-w-2xl">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
+                  {weekdayName(today)} · {formatShort(today)}
+                </div>
+                <h2 className="mt-2 text-3xl font-semibold tracking-tight text-ink-50">
+                  Day Training
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-ink-300">
+                  {scheduled ? scheduleLabel(scheduled) : 'No training split found for today.'}
+                </p>
               </div>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-ink-50">
-                Day Training
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-ink-300">
-                {scheduled ? scheduleLabel(scheduled) : 'No training split found for today.'}
-              </p>
+
+              <div className="lg:w-64">
+                <div className="glass-inset rounded-2xl p-3">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-400">
+                    Next action
+                  </div>
+                  <div className="mt-2 text-sm font-semibold leading-snug text-ink-50">
+                    {nextAction}
+                  </div>
+                </div>
+                <Link
+                  to="/workout"
+                  className="mt-2 block rounded-2xl bg-accent px-4 py-3 text-center text-sm font-semibold text-ink-950 shadow-[0_18px_40px_-24px_rgba(57,255,20,0.9)]"
+                >
+                  Open workout
+                </Link>
+              </div>
             </div>
 
-            <div className="lg:w-64">
-              <div className="glass-inset rounded-2xl p-3">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-400">
-                  Next action
-                </div>
-                <div className="mt-2 text-sm font-semibold leading-snug text-ink-50">
-                  {nextAction}
-                </div>
-              </div>
-              <Link
-                to="/workout"
-                className="mt-2 block rounded-2xl bg-accent px-4 py-3 text-center text-sm font-semibold text-ink-950 shadow-[0_18px_40px_-24px_rgba(57,255,20,0.9)]"
-              >
-                Open workout
-              </Link>
-            </div>
-          </div>
+            <TrainingChecklist
+              scheduled={scheduled}
+              todayLog={todayLog}
+              gymOutcome={todayGymOutcome}
+              runOutcome={todayRunOutcome}
+              phase={phase}
+            />
+          </Card>
 
-          <TrainingChecklist
-            scheduled={scheduled}
-            todayLog={todayLog}
-            gymOutcome={todayGymOutcome}
-            runOutcome={todayRunOutcome}
-            phase={phase}
-          />
-
-        </Card>
+          <CoachChatButton placement="card" starters={ACTIVITY_COACH_PROMPTS} />
+        </div>
 
         <Card>
           <div className="mb-3 flex items-baseline justify-between">
@@ -769,9 +772,6 @@ export default function Activity() {
 
         </Card>
       </div>
-
-      <SectionTitle>Training Coach</SectionTitle>
-      <CoachChatButton placement="card" starters={ACTIVITY_COACH_PROMPTS} />
 
       <SectionTitle>Progress</SectionTitle>
       <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
