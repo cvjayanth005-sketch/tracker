@@ -178,6 +178,22 @@ export class TrackerDb extends Dexie {
         log.foodComplete ??= null
       })
     })
+    // Sugar + saturated fat quality sub-macros on meals, their daily rollups,
+    // and the saved-food library.
+    this.version(13).upgrade(async (tx) => {
+      await tx.table<Meal, 'id'>('meals').toCollection().modify((meal) => {
+        meal.sugarG ??= null
+        meal.satFatG ??= null
+      })
+      await tx.table<DailyLog, 'date'>('dailyLogs').toCollection().modify((log) => {
+        log.sugarG ??= null
+        log.satFatG ??= null
+      })
+      await tx.table<SavedFood, 'id'>('foods').toCollection().modify((food) => {
+        food.sugarG ??= null
+        food.satFatG ??= null
+      })
+    })
   }
 }
 

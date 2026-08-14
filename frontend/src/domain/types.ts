@@ -130,6 +130,8 @@ export interface DailyLog {
   carbsG: number | null
   fatG: number | null
   fiberG: number | null
+  sugarG: number | null
+  satFatG: number | null
   /**
    * Food intake logged as a running daily total, independent of the meal
    * rollup. These are the cheap-to-log inputs that let the coach explain scale
@@ -192,6 +194,9 @@ export interface Meal {
   carbsG: number | null
   fatG: number | null
   fiberG: number | null
+  /** Quality sub-macros: sugar (of the carbs) and saturated fat (of the fat). */
+  sugarG: number | null
+  satFatG: number | null
   notes: string | null
   /** How the macros were captured: hand-entered, or estimated by the AI parser. */
   source: 'manual' | 'ai'
@@ -219,6 +224,8 @@ export interface SavedFood {
   carbsG: number | null
   fatG: number | null
   fiberG: number | null
+  sugarG: number | null
+  satFatG: number | null
   useCount: number
   lastUsedAt: Instant | null
   createdAt: Instant

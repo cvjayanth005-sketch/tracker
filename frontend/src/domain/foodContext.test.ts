@@ -45,6 +45,8 @@ function meal(slot: MealSlot, partial: Partial<Meal> = {}): Meal {
     carbsG: null,
     fatG: null,
     fiberG: null,
+    sugarG: null,
+    satFatG: null,
     notes: null,
     source: 'manual',
     createdAt: STAMP,

@@ -28,6 +28,8 @@ export interface MealDraft {
   carbsG: number | null
   fatG: number | null
   fiberG: number | null
+  sugarG: number | null
+  satFatG: number | null
   notes: string | null
 }
 

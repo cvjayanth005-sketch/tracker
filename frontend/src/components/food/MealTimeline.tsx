@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { deleteMeal, saveMealAsFood, updateMeal } from '@/db/repo'
 import { Card } from '@/components/ui'
 import type { Meal } from '@/domain/types'
-import { MACRO, SLOT_META, SLOT_ORDER } from './palette'
+import { MACRO, SLOT_META, SLOT_ORDER, SUBMACRO, type SubMacroKey } from './palette'
 
 const MACRO_CHIPS = [
   { key: 'calories', ...MACRO.calories },
@@ -70,6 +70,27 @@ function MealEditor({ meal, onClose }: { meal: Meal; onClose: () => void }) {
               placeholder="—"
               className="tabular w-full rounded-lg bg-white/5 px-2 py-1.5 text-center text-[13px] font-semibold text-ink-50 outline-none ring-1 ring-inset ring-white/10 placeholder:font-normal placeholder:text-ink-600 focus:ring-accent/60"
             />
+          </label>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        {(Object.keys(SUBMACRO) as SubMacroKey[]).map((key) => (
+          <label key={key} className="flex items-center gap-2 rounded-lg bg-white/[0.03] px-2 py-1">
+            <span className="text-[10px] font-semibold" style={{ color: SUBMACRO[key].color }}>
+              {SUBMACRO[key].label}
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              defaultValue={meal[key] ?? ''}
+              onBlur={(e) => {
+                const next = num(e.target.value)
+                if (next !== (meal[key] ?? null)) void updateMeal(meal.id, { [key]: next })
+              }}
+              placeholder="—"
+              className="tabular ml-auto w-14 rounded bg-white/5 px-1.5 py-1 text-center text-[12px] text-ink-100 outline-none ring-1 ring-inset ring-white/10 placeholder:text-ink-600 focus:ring-accent/60"
+            />
+            <span className="text-[9px] text-ink-500">g</span>
           </label>
         ))}
       </div>

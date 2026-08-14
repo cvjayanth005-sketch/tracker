@@ -3,7 +3,7 @@ import { parseMeals, type EstimateConfidence, type MealDraft } from '@/ai/foodPa
 import { addMeals } from '@/db/repo'
 import { Button, Card } from '@/components/ui'
 import type { LocalDate, MealSlot } from '@/domain/types'
-import { MACRO, SLOT_META, SLOT_ORDER } from './palette'
+import { MACRO, SLOT_META, SLOT_ORDER, SUBMACRO, type SubMacroKey } from './palette'
 
 function guessSlot(): MealSlot {
   const hour = new Date().getHours()
@@ -28,6 +28,8 @@ function blankDraft(slot: MealSlot): MealDraft {
     carbsG: null,
     fatG: null,
     fiberG: null,
+    sugarG: null,
+    satFatG: null,
     notes: null,
   }
 }
@@ -130,6 +132,24 @@ function DraftRow({
               placeholder="—"
               className="tabular w-full rounded-lg bg-white/5 px-2 py-1.5 text-center text-[13px] font-semibold text-ink-50 outline-none ring-1 ring-inset ring-white/10 placeholder:font-normal placeholder:text-ink-600 focus:ring-accent/60"
             />
+          </label>
+        ))}
+      </div>
+      <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+        {(Object.keys(SUBMACRO) as SubMacroKey[]).map((key) => (
+          <label key={key} className="flex items-center gap-2 rounded-lg bg-white/[0.03] px-2 py-1">
+            <span className="text-[10px] font-semibold" style={{ color: SUBMACRO[key].color }}>
+              {SUBMACRO[key].label}
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              value={draft[key] ?? ''}
+              onChange={(e) => onChange({ [key]: num(e.target.value) })}
+              placeholder="—"
+              className="tabular ml-auto w-14 rounded bg-white/5 px-1.5 py-1 text-center text-[12px] text-ink-100 outline-none ring-1 ring-inset ring-white/10 placeholder:text-ink-600 focus:ring-accent/60"
+            />
+            <span className="text-[9px] text-ink-500">g</span>
           </label>
         ))}
       </div>
@@ -237,6 +257,8 @@ export function MealLogger({ date }: { date: LocalDate }) {
           carbsG: draft.carbsG,
           fatG: draft.fatG,
           fiberG: draft.fiberG,
+          sugarG: draft.sugarG,
+          satFatG: draft.satFatG,
           notes: draft.notes,
         })),
         aiParsed ? 'ai' : 'manual',

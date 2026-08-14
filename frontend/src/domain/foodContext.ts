@@ -75,6 +75,8 @@ export interface FoodContext {
     carbsG: number | null
     fatG: number | null
     fiberG: number | null
+    sugarG: number | null
+    satFatG: number | null
     caloriesRemaining: number | null
     proteinRemaining: number | null
     /** Energy share of each macro, from grams. Null until macros are logged. */
@@ -289,6 +291,8 @@ export function buildFoodContext(
       carbsG,
       fatG,
       fiberG: todayLog?.fiberG ?? null,
+      sugarG: todayLog?.sugarG ?? null,
+      satFatG: todayLog?.satFatG ?? null,
       caloriesRemaining: calories === null ? null : round(phase.calories - calories),
       proteinRemaining: proteinG === null ? null : round(phase.proteinG - proteinG),
       macroSplitPct: macroSplit(proteinG, carbsG, fatG),

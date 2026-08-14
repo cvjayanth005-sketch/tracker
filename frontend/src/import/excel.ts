@@ -96,6 +96,8 @@ export function rowsToDailyLogs(rows: Cell[][]): ExcelImportPreview {
       carbsG: null,
       fatG: null,
       fiberG: null,
+      sugarG: null,
+      satFatG: null,
       waterMl: null,
       sodiumMg: null,
       alcoholUnits: null,

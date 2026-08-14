@@ -3,6 +3,7 @@ import { fmtInt } from '@/components/format'
 import { weekdayName, formatShort } from '@/domain/date'
 import type { ConsistencyStrip, FoodContext } from '@/domain/foodContext'
 import { MacroLegend, MacroRings, type MacroTotals } from './MacroRings'
+import { SUBMACRO } from './palette'
 
 const ON_COLOR = '#39ff14'
 
@@ -102,14 +103,27 @@ export function MacroSummary({ food, consistency }: { food: FoodContext; consist
         </div>
         <div>
           <MacroLegend totals={totals} targets={macroTargets} />
-          {today.fiberG !== null || today.mealCount > 0 ? (
-            <div className="mt-3.5 border-t border-white/8 pt-3 text-[11px] text-ink-500">
+          {today.fiberG !== null || today.sugarG !== null || today.satFatG !== null || today.mealCount > 0 ? (
+            <div className="mt-3.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 border-t border-white/8 pt-3 text-[11px] text-ink-500">
               {today.fiberG !== null ? (
-                <>
-                  Fiber <span className="font-semibold text-ink-300">{Math.round(today.fiberG)} g</span> ·{' '}
-                </>
+                <span>
+                  Fiber <span className="font-semibold text-ink-300">{Math.round(today.fiberG)} g</span>
+                </span>
               ) : null}
-              {today.mealCount} meal{today.mealCount === 1 ? '' : 's'} logged
+              {today.sugarG !== null ? (
+                <span>
+                  Sugar <span className="font-semibold" style={{ color: SUBMACRO.sugarG.color }}>{Math.round(today.sugarG)} g</span>
+                </span>
+              ) : null}
+              {today.satFatG !== null ? (
+                <span>
+                  Sat fat <span className="font-semibold" style={{ color: SUBMACRO.satFatG.color }}>{Math.round(today.satFatG)} g</span>
+                </span>
+              ) : null}
+              <span className="text-ink-600">·</span>
+              <span>
+                {today.mealCount} meal{today.mealCount === 1 ? '' : 's'} logged
+              </span>
             </div>
           ) : null}
         </div>

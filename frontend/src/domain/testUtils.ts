@@ -16,6 +16,8 @@ export function makeLog(date: string, partial: Partial<DailyLog> = {}): DailyLog
     carbsG: null,
     fatG: null,
     fiberG: null,
+    sugarG: null,
+    satFatG: null,
     waterMl: null,
     sodiumMg: null,
     alcoholUnits: null,

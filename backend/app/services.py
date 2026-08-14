@@ -973,6 +973,8 @@ def normalize_food_parse(raw: dict[str, Any], default_slot: str, provider: str) 
                 "carbsG": _macro(item.get("carbsG"), 900),
                 "fatG": _macro(item.get("fatG"), 500),
                 "fiberG": _macro(item.get("fiberG"), 200),
+                "sugarG": _macro(item.get("sugarG"), 900),
+                "satFatG": _macro(item.get("satFatG"), 500),
                 "notes": (str(item.get("notes", "")).strip()[:240] or None),
             }
         )
@@ -1007,13 +1009,14 @@ def request_groq_food_parse(text: str, default_slot: str, api_key: str, model: s
                         "You estimate nutrition from a short free-text description of what someone ate. "
                         "Return strict JSON only, no prose. Shape: "
                         '{"meals":[{"slot","name","time","quantity","unit","calories","caloriesLow","caloriesHigh",'
-                        '"confidence","proteinG","carbsG","fatG","fiberG","notes"}],"summary"}. '
+                        '"confidence","proteinG","carbsG","fatG","fiberG","sugarG","satFatG","notes"}],"summary"}. '
                         "One entry per distinct dish or item. slot is one of breakfast, lunch, dinner, snack; "
                         f"infer it from wording or time, otherwise use \"{default_slot}\". "
                         "time is 24h HH:mm or null. quantity is the numeric portion and unit its measure "
                         "(g, ml, piece, cup, tbsp, serving); estimate a sensible portion when unstated and put it there. "
                         "Macros are grams; calories are kcal; use realistic estimates for that portion and null when a "
-                        "food gives no basis to estimate. caloriesLow/caloriesHigh bound a plausible calorie range for "
+                        "food gives no basis to estimate. sugarG is the sugar within carbsG and satFatG the saturated "
+                        "fat within fatG (each <= its parent). caloriesLow/caloriesHigh bound a plausible calorie range for "
                         "the item; confidence is high, medium, or low reflecting how sure the estimate is (vague or "
                         "restaurant/homemade dishes are lower). IMPORTANT: include cooking fats — oil, butter, dressing, "
                         "sauce — in the calorie and fat estimate even when the user forgets to mention them, and note it. "
@@ -1058,6 +1061,8 @@ def fallback_food_parse(text: str, default_slot: str) -> dict[str, Any]:
             "carbsG": None,
             "fatG": None,
             "fiberG": None,
+            "sugarG": None,
+            "satFatG": None,
             "notes": None,
         }
         for name in (names or [text.strip()[:160]])

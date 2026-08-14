@@ -42,6 +42,8 @@ function blankLog(date: LocalDate): DailyLog {
     carbsG: null,
     fatG: null,
     fiberG: null,
+    sugarG: null,
+    satFatG: null,
     waterMl: null,
     sodiumMg: null,
     alcoholUnits: null,
@@ -201,6 +203,8 @@ async function rollUpMealTotals(date: LocalDate): Promise<void> {
     carbsG: sum((meal) => meal.carbsG),
     fatG: sum((meal) => meal.fatG),
     fiberG: sum((meal) => meal.fiberG),
+    sugarG: sum((meal) => meal.sugarG),
+    satFatG: sum((meal) => meal.satFatG),
     mealsOnPlan: meals.length === 0 ? null : meals.length,
     updatedAt: now(),
   })
@@ -226,6 +230,8 @@ export async function addMeal(
     carbsG: null,
     fatG: null,
     fiberG: null,
+    sugarG: null,
+    satFatG: null,
     notes: null,
     source,
     createdAt: stamp,
@@ -285,6 +291,8 @@ export async function addMeals(
     carbsG: null,
     fatG: null,
     fiberG: null,
+    sugarG: null,
+    satFatG: null,
     notes: null,
     source,
     ...draft,
@@ -320,7 +328,7 @@ export async function favouriteFoods(limit = 12): Promise<SavedFood[]> {
  * skips anything already saved so Recent and Saved don't show duplicates.
  */
 export async function recentMealTemplates(limit = 12): Promise<
-  Array<Pick<Meal, 'name' | 'slot' | 'quantity' | 'unit' | 'calories' | 'proteinG' | 'carbsG' | 'fatG' | 'fiberG'>>
+  Array<Pick<Meal, 'name' | 'slot' | 'quantity' | 'unit' | 'calories' | 'proteinG' | 'carbsG' | 'fatG' | 'fiberG' | 'sugarG' | 'satFatG'>>
 > {
   const [meals, saved] = await Promise.all([
     db.meals.orderBy('date').reverse().limit(200).toArray(),
@@ -328,7 +336,7 @@ export async function recentMealTemplates(limit = 12): Promise<
   ])
   const savedNames = new Set(saved.map((food) => food.name.trim().toLowerCase()))
   const seen = new Set<string>()
-  const out: Array<Pick<Meal, 'name' | 'slot' | 'quantity' | 'unit' | 'calories' | 'proteinG' | 'carbsG' | 'fatG' | 'fiberG'>> = []
+  const out: Array<Pick<Meal, 'name' | 'slot' | 'quantity' | 'unit' | 'calories' | 'proteinG' | 'carbsG' | 'fatG' | 'fiberG' | 'sugarG' | 'satFatG'>> = []
   for (const meal of meals) {
     const key = meal.name.trim().toLowerCase()
     if (!key || seen.has(key) || savedNames.has(key)) continue
@@ -343,6 +351,8 @@ export async function recentMealTemplates(limit = 12): Promise<
       carbsG: meal.carbsG,
       fatG: meal.fatG,
       fiberG: meal.fiberG,
+      sugarG: meal.sugarG,
+      satFatG: meal.satFatG,
     })
     if (out.length >= limit) break
   }
@@ -368,6 +378,8 @@ export async function saveFood(
     carbsG: null,
     fatG: null,
     fiberG: null,
+    sugarG: null,
+    satFatG: null,
     useCount: existing?.useCount ?? 0,
     lastUsedAt: existing?.lastUsedAt ?? null,
     createdAt: existing?.createdAt ?? stamp,
@@ -404,6 +416,8 @@ export async function logSavedFood(
       carbsG: food.carbsG,
       fatG: food.fatG,
       fiberG: food.fiberG,
+      sugarG: food.sugarG,
+      satFatG: food.satFatG,
     },
     'manual',
   )
@@ -414,7 +428,7 @@ export async function logSavedFood(
 /** Log a recent meal template (not yet saved) straight into today. */
 export async function logMealTemplate(
   date: LocalDate,
-  template: Pick<Meal, 'name' | 'slot' | 'quantity' | 'unit' | 'calories' | 'proteinG' | 'carbsG' | 'fatG' | 'fiberG'>,
+  template: Pick<Meal, 'name' | 'slot' | 'quantity' | 'unit' | 'calories' | 'proteinG' | 'carbsG' | 'fatG' | 'fiberG' | 'sugarG' | 'satFatG'>,
 ): Promise<void> {
   await addMeal(
     date,
@@ -428,6 +442,8 @@ export async function logMealTemplate(
       carbsG: template.carbsG,
       fatG: template.fatG,
       fiberG: template.fiberG,
+      sugarG: template.sugarG,
+      satFatG: template.satFatG,
     },
     'manual',
   )
@@ -445,6 +461,8 @@ export async function saveMealAsFood(meal: Meal): Promise<SavedFood> {
     carbsG: meal.carbsG,
     fatG: meal.fatG,
     fiberG: meal.fiberG,
+    sugarG: meal.sugarG,
+    satFatG: meal.satFatG,
   })
 }
 

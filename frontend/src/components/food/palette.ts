@@ -10,6 +10,14 @@ export const MACRO = {
 
 export type MacroKey = keyof typeof MACRO
 
+/** Quality sub-macros shown as secondary readouts, keyed by their Meal field. */
+export const SUBMACRO = {
+  sugarG: { color: '#ff6fb5', glow: 'rgb(255 111 181 / 0.26)', label: 'Sugar', unit: 'g' },
+  satFatG: { color: '#ff8a5c', glow: 'rgb(255 138 92 / 0.26)', label: 'Sat fat', unit: 'g' },
+} as const
+
+export type SubMacroKey = keyof typeof SUBMACRO
+
 export const SLOT_META: Record<MealSlot, { label: string; icon: string }> = {
   breakfast: { label: 'Breakfast', icon: '☀️' },
   lunch: { label: 'Lunch', icon: '🍽️' },
