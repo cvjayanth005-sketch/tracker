@@ -30,7 +30,14 @@ import {
 } from '@/components/ui'
 import { fmtInt, statVal } from '@/components/format'
 import { paceMinPerKm } from '@/domain/running'
-import type { Exercise, Run, RunType, SessionType, WorkoutSet } from '@/domain/types'
+import type {
+  Exercise,
+  ExercisePrescription,
+  Run,
+  RunType,
+  SessionType,
+  WorkoutSet,
+} from '@/domain/types'
 
 const SESSION_TYPES: Array<Exclude<SessionType, 'rest' | 'run'>> = ['upper', 'lower', 'full']
 const RUN_TYPES: RunType[] = ['recovery', 'easy', 'long', 'tempo', 'intervals']
@@ -60,9 +67,15 @@ export default function WorkoutScreen() {
   if (!phase) return <EmptyState title="Setting up" body="Preparing your local database." />
 
   const sessionType = workout?.sessionType ?? scheduled?.sessionType ?? 'upper'
-  const plannedExercises = (exercises ?? []).filter(
-    (e) => sessionType === 'full' || e.sessionType === sessionType,
+  const prescriptionByExercise = new Map(
+    (workout?.prescription?.exercises ?? []).map((item) => [item.exerciseId, item]),
   )
+  const plannedExercises = workout?.prescription
+    ? workout.prescription.exercises.flatMap((item) => {
+        const exercise = (exercises ?? []).find((candidate) => candidate.id === item.exerciseId)
+        return exercise ? [exercise] : []
+      })
+    : (exercises ?? []).filter((e) => sessionType === 'full' || e.sessionType === sessionType)
 
   // Progression reads only sessions before today, so today's own half-finished
   // sets never feed back into today's advice.
@@ -112,6 +125,36 @@ export default function WorkoutScreen() {
           </div>
 
           <SectionTitle>Strength</SectionTitle>
+          {workout?.prescription ? (
+            <Card className="mb-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="text-[10px] font-semibold uppercase text-ink-400">
+                    Adaptive session applied
+                  </div>
+                  <div className="mt-1 text-sm font-semibold text-ink-50">
+                    {workout.prescription.headline}
+                  </div>
+                  <div className="mt-1 text-[11px] text-ink-400">
+                    {workout.prescription.adjustments.join(' · ') || 'Original progression retained'}
+                  </div>
+                </div>
+                <Pill
+                  tone={
+                    workout.prescription.readinessBand === 'ready'
+                      ? 'good'
+                      : workout.prescription.readinessBand === 'reduce'
+                        ? 'warn'
+                        : 'info'
+                  }
+                >
+                  {workout.prescription.readinessScore == null
+                    ? 'readiness pending'
+                    : `${workout.prescription.readinessScore}/100 readiness`}
+                </Pill>
+              </div>
+            </Card>
+          ) : null}
           {!workout ? (
             !pickerOpen ? (
             <Card>
@@ -162,6 +205,7 @@ export default function WorkoutScreen() {
                   workoutId={workout.id}
                   sets={(sets ?? []).filter((s) => s.exerciseId === exercise.id)}
                   advice={evaluateProgression(exercise, priorHistory)}
+                  prescription={prescriptionByExercise.get(exercise.id)}
                 />
               ))}
             </div>
@@ -422,11 +466,13 @@ function ExerciseBlock({
   workoutId,
   sets,
   advice,
+  prescription,
 }: {
   exercise: Exercise
   workoutId: string
   sets: WorkoutSet[]
   advice: ReturnType<typeof evaluateProgression>
+  prescription: ExercisePrescription | undefined
 }) {
   const ordered = [...sets].sort((a, b) => a.setNumber - b.setNumber)
 
@@ -442,7 +488,8 @@ function ExerciseBlock({
   const add = () =>
     void addSet(workoutId, exercise.id, {
       // Prefill from the previous set in this session, then from the plan.
-      weightKg: ordered.at(-1)?.weightKg ?? advice.suggestedWeightKg,
+      weightKg:
+        ordered.at(-1)?.weightKg ?? prescription?.suggestedWeightKg ?? advice.suggestedWeightKg,
       reps: null,
       rir: null,
     })
@@ -453,14 +500,18 @@ function ExerciseBlock({
         <div>
           <h3 className="text-[15px] font-semibold leading-tight">{exercise.name}</h3>
           <p className="mt-0.5 text-[11px] text-ink-400">
-            {exercise.targetSets} × {exercise.repRangeMin}-{exercise.repRangeMax} @ RIR{' '}
-            {exercise.targetRir}
+            {prescription?.targetSets ?? exercise.targetSets} ×{' '}
+            {prescription?.repRangeMin ?? exercise.repRangeMin}-
+            {prescription?.repRangeMax ?? exercise.repRangeMax} @ RIR{' '}
+            {prescription?.targetRir ?? exercise.targetRir}
           </p>
         </div>
         <Pill tone={adviceTone}>{advice.headline}</Pill>
       </div>
 
-      <p className="mt-1.5 text-[12px] leading-relaxed text-ink-400">{advice.detail}</p>
+      <p className="mt-1.5 text-[12px] leading-relaxed text-ink-400">
+        {prescription?.reason ?? advice.detail}
+      </p>
 
       {ordered.length > 0 ? (
         <div className="mt-3">
@@ -488,8 +539,10 @@ function ExerciseBlock({
           onClick={() =>
             void addSet(workoutId, exercise.id, {
               isWarmup: true,
-              weightKg: advice.suggestedWeightKg
-                ? Math.round(advice.suggestedWeightKg * 0.5)
+              weightKg: (prescription?.suggestedWeightKg ?? advice.suggestedWeightKg)
+                ? Math.round(
+                    (prescription?.suggestedWeightKg ?? advice.suggestedWeightKg ?? 0) * 0.5,
+                  )
                 : null,
             })
           }

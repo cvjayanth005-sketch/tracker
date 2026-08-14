@@ -1,13 +1,18 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { askCoach, type CoachChatMessage } from '@/ai/coachChat'
 import { db } from '@/db/database'
+import { startWorkout, upsertLog } from '@/db/repo'
+import { buildAdaptiveSession } from '@/domain/adaptiveTraining'
 import { buildCoachSummary } from '@/domain/rules'
 import { buildFoodContext } from '@/domain/foodContext'
 import { dayOfWeek } from '@/domain/date'
 import { evaluateProgression, sessionVolume } from '@/domain/progression'
+import type { DailyLog, Rating, WorkoutPrescription } from '@/domain/types'
 import { useDashboard } from '@/hooks/useDashboard'
 import { listenForCoachPrompt } from '@/components/coachEvents'
+import { Pill } from '@/components/ui'
 
 const DEFAULT_STARTERS = [
   'What should I focus on today?',
@@ -35,6 +40,7 @@ export function CoachChatButton({
   subtitle?: ReactNode
 }) {
   const dash = useDashboard(30)
+  const navigate = useNavigate()
   const cardMode = placement === 'card'
   const [open, setOpen] = useState(cardMode)
   const [input, setInput] = useState('')
@@ -73,6 +79,18 @@ export function CoachChatButton({
     [],
   )
   const exercises = useLiveQuery(() => db.exercises.toArray(), [], [])
+  const todayWorkout = useLiveQuery(
+    () => db.workouts.where('date').equals(dash.today).first(),
+    [dash.today],
+  )
+  const todaySetCount = useLiveQuery(
+    () =>
+      todayWorkout
+        ? db.workoutSets.where('workoutId').equals(todayWorkout.id).count()
+        : Promise.resolve(0),
+    [todayWorkout?.id],
+    0,
+  )
   const profile = useLiveQuery(() => db.profile.get('me'), [], undefined)
   const todayMeals = useLiveQuery(
     () => db.meals.where('date').equals(dash.today).toArray(),
@@ -80,12 +98,35 @@ export function CoachChatButton({
     [],
   )
 
+  const history = useMemo(
+    () =>
+      (recentWorkouts ?? []).map((workout) => ({
+        workout,
+        sets: (recentSets ?? []).filter((set) => set.workoutId === workout.id),
+      })),
+    [recentSets, recentWorkouts],
+  )
+  const todaySchedule = dash.phase?.schedule.find((day) => day.dow === dayOfWeek(dash.today))
+  const adaptiveSession = useMemo(() => {
+    if (
+      !dash.phase ||
+      !todaySchedule?.gym ||
+      todaySchedule.sessionType === 'rest' ||
+      todaySchedule.sessionType === 'run'
+    ) {
+      return null
+    }
+    return buildAdaptiveSession({
+      sessionType: todaySchedule.sessionType,
+      targetSleepHours: dash.phase.sleepHours,
+      log: dash.todayLog,
+      exercises: exercises ?? [],
+      history: history.filter((item) => item.workout.date !== dash.today),
+    })
+  }, [dash.phase, dash.today, dash.todayLog, exercises, history, todaySchedule])
+
   const context = useMemo(() => {
     const exerciseById = new Map((exercises ?? []).map((exercise) => [exercise.id, exercise.name]))
-    const history = (recentWorkouts ?? []).map((workout) => ({
-      workout,
-      sets: (recentSets ?? []).filter((set) => set.workoutId === workout.id),
-    }))
     const workouts = history.slice(0, 8).map(({ workout, sets }) => {
       return {
         date: workout.date,
@@ -105,7 +146,6 @@ export function CoachChatButton({
       }
     })
     const phase = dash.phase
-    const todaySchedule = phase?.schedule.find((day) => day.dow === dayOfWeek(dash.today))
     const activeExercises = (exercises ?? []).filter((exercise) => !exercise.archived)
     const exercisePlan = activeExercises.map((exercise) => {
       const progression = evaluateProgression(exercise, history)
@@ -157,7 +197,11 @@ export function CoachChatButton({
               sleepHours: dash.todayLog?.sleepHours ?? null,
               energy: dash.todayLog?.energy ?? null,
               soreness: dash.todayLog?.soreness ?? null,
+              stress: dash.todayLog?.stress ?? null,
+              trainingMinutesAvailable: dash.todayLog?.trainingMinutesAvailable ?? null,
+              trainingConstraints: dash.todayLog?.trainingConstraints ?? null,
             },
+            adaptiveRecommendation: adaptiveSession,
             weeklySplit: phase.schedule,
             exercisePlan,
             recentWorkouts: workouts,
@@ -215,6 +259,9 @@ export function CoachChatButton({
         energy: log.energy,
         hunger: log.hunger,
         soreness: log.soreness,
+        stress: log.stress ?? null,
+        trainingMinutesAvailable: log.trainingMinutesAvailable ?? null,
+        trainingConstraints: log.trainingConstraints ?? null,
         notes: log.notes,
       })),
       recentRuns: dash.runs.slice(0, 6).map((run) => ({
@@ -228,7 +275,16 @@ export function CoachChatButton({
       })),
       recentWorkouts: workouts,
     }
-  }, [dash, exercises, recentSets, recentWorkouts, profile, todayMeals])
+  }, [adaptiveSession, dash, exercises, history, profile, todayMeals, todaySchedule])
+
+  const applyAdaptiveSession = async () => {
+    if (!adaptiveSession) return
+    if (!todayWorkout?.finishedAt && todaySetCount === 0) {
+      await startWorkout(dash.today, adaptiveSession.sessionType, adaptiveSession)
+      await upsertLog(dash.today, { gymDone: true })
+    }
+    navigate('/workout')
+  }
 
   useEffect(() => {
     if (messages.length === 1 && !busy) return
@@ -298,6 +354,19 @@ export function CoachChatButton({
           </span>
         )}
       </div>
+
+      {cardMode ? (
+        <AdaptiveReadinessPanel
+          log={dash.todayLog}
+          prescription={adaptiveSession}
+          targetSleepHours={dash.phase?.sleepHours ?? null}
+          scheduled={Boolean(todaySchedule?.gym)}
+          workoutFinished={Boolean(todayWorkout?.finishedAt)}
+          workoutStarted={todaySetCount > 0}
+          onSave={(patch) => void upsertLog(dash.today, patch)}
+          onApply={() => void applyAdaptiveSession()}
+        />
+      ) : null}
 
       <div
         ref={chatScrollRef}
@@ -403,5 +472,260 @@ export function CoachChatButton({
       </button>
       {open ? coachPanel : null}
     </>
+  )
+}
+
+const READINESS_VALUES = [1, 2, 3, 4, 5] as const
+const TIME_OPTIONS = [30, 45, 60, 90] as const
+
+function CompactRating({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: Rating | null
+  onChange: (value: Rating | null) => void
+}) {
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase text-ink-400">
+        <span>{label}</span>
+        <span className="tabular text-ink-500">{value ?? '—'}/5</span>
+      </div>
+      <div className="grid grid-cols-5 gap-1" role="group" aria-label={label}>
+        {READINESS_VALUES.map((option) => (
+          <button
+            key={option}
+            type="button"
+            onClick={() => onChange(value === option ? null : option)}
+            className={`tabular h-8 rounded-lg text-[11px] font-semibold transition-colors ${
+              value === option
+                ? 'bg-info text-ink-950'
+                : 'bg-black/25 text-ink-400 ring-1 ring-inset ring-white/10'
+            }`}
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ConstraintField({
+  value,
+  onCommit,
+}: {
+  value: string | null
+  onCommit: (value: string | null) => void
+}) {
+  const [text, setText] = useState(value ?? '')
+  useEffect(() => setText(value ?? ''), [value])
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-[10px] font-semibold uppercase text-ink-400">
+        Training constraint
+      </span>
+      <input
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        onBlur={() => onCommit(text.trim() || null)}
+        placeholder="None, or note discomfort / equipment limits"
+        className="h-9 w-full rounded-xl bg-black/25 px-3 text-[12px] text-ink-100 outline-none ring-1 ring-inset ring-white/10 placeholder:text-ink-600 focus:ring-info/50"
+      />
+    </label>
+  )
+}
+
+function CompactSleepField({
+  value,
+  target,
+  onCommit,
+}: {
+  value: number | null
+  target: number | null
+  onCommit: (value: number | null) => void
+}) {
+  const [text, setText] = useState(value == null ? '' : String(value))
+  useEffect(() => setText(value == null ? '' : String(value)), [value])
+  return (
+    <label className="block">
+      <span className="mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase text-ink-400">
+        <span>Sleep</span>
+        <span className="normal-case text-ink-500">target {target ?? '—'}h</span>
+      </span>
+      <span className="flex h-8 items-center rounded-lg bg-black/25 px-2.5 ring-1 ring-inset ring-white/10 focus-within:ring-info/50">
+        <input
+          type="number"
+          inputMode="decimal"
+          min="0"
+          max="16"
+          step="0.1"
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          onBlur={() => {
+            const parsed = Number(text)
+            onCommit(
+              text.trim() === '' || !Number.isFinite(parsed)
+                ? null
+                : Math.max(0, Math.min(16, parsed)),
+            )
+          }}
+          placeholder="—"
+          className="tabular min-w-0 flex-1 bg-transparent text-center text-[12px] font-semibold text-ink-100 outline-none placeholder:text-ink-600"
+        />
+        <span className="text-[10px] text-ink-500">h</span>
+      </span>
+    </label>
+  )
+}
+
+function AdaptiveReadinessPanel({
+  log,
+  prescription,
+  targetSleepHours,
+  scheduled,
+  workoutFinished,
+  workoutStarted,
+  onSave,
+  onApply,
+}: {
+  log: DailyLog | undefined
+  prescription: WorkoutPrescription | null
+  targetSleepHours: number | null
+  scheduled: boolean
+  workoutFinished: boolean
+  workoutStarted: boolean
+  onSave: (patch: Partial<DailyLog>) => void
+  onApply: () => void
+}) {
+  const tone =
+    prescription?.readinessBand === 'ready'
+      ? 'good'
+      : prescription?.readinessBand === 'reduce'
+        ? 'warn'
+        : prescription?.readinessBand === 'steady'
+          ? 'info'
+          : 'neutral'
+
+  return (
+    <div className="border-b border-white/12 py-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-semibold uppercase text-ink-400">
+            Readiness check
+          </div>
+          <div className="mt-1 text-base font-semibold text-ink-50">
+            {prescription?.headline ?? (scheduled ? 'Complete today\'s check-in' : 'Recovery day')}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Pill tone={tone}>
+            {prescription?.readinessScore == null ? 'score pending' : `${prescription.readinessScore}/100`}
+          </Pill>
+          <span className="text-[10px] uppercase text-ink-500">
+            {prescription?.confidence ?? 'low'} confidence
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <CompactSleepField
+          value={log?.sleepHours ?? null}
+          target={targetSleepHours}
+          onCommit={(sleepHours) => onSave({ sleepHours })}
+        />
+        <CompactRating
+          label="Energy"
+          value={log?.energy ?? null}
+          onChange={(energy) => onSave({ energy })}
+        />
+        <CompactRating
+          label="Soreness"
+          value={log?.soreness ?? null}
+          onChange={(soreness) => onSave({ soreness })}
+        />
+        <CompactRating
+          label="Stress"
+          value={log?.stress ?? null}
+          onChange={(stress) => onSave({ stress })}
+        />
+      </div>
+
+      <div className="mt-3 grid items-end gap-3 sm:grid-cols-[auto_minmax(0,1fr)]">
+        <div>
+          <div className="mb-1.5 text-[10px] font-semibold uppercase text-ink-400">Time</div>
+          <div className="flex gap-1" role="group" aria-label="Minutes available">
+            {TIME_OPTIONS.map((minutes) => (
+              <button
+                key={minutes}
+                type="button"
+                onClick={() =>
+                  onSave({
+                    trainingMinutesAvailable:
+                      log?.trainingMinutesAvailable === minutes ? null : minutes,
+                  })
+                }
+                className={`h-9 rounded-lg px-2.5 text-[11px] font-semibold transition-colors ${
+                  log?.trainingMinutesAvailable === minutes
+                    ? 'bg-accent text-ink-950'
+                    : 'bg-black/25 text-ink-400 ring-1 ring-inset ring-white/10'
+                }`}
+              >
+                {minutes}m
+              </button>
+            ))}
+          </div>
+        </div>
+        <ConstraintField
+          value={log?.trainingConstraints ?? null}
+          onCommit={(trainingConstraints) => onSave({ trainingConstraints })}
+        />
+      </div>
+
+      {prescription ? (
+        <div className="mt-4 border-t border-white/8 pt-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-[10px] font-semibold uppercase text-ink-400">
+                Adaptive session · {prescription.exercises.length} exercises
+              </div>
+              <div className="mt-1 text-[11px] text-ink-500">
+                {prescription.adjustments[0] ?? 'Current plan and progression retained'}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onApply}
+              className="min-h-10 rounded-xl bg-accent px-4 text-[12px] font-semibold text-ink-950 transition-transform active:scale-[0.97]"
+            >
+              {workoutFinished
+                ? 'Open completed workout'
+                : workoutStarted
+                  ? 'Open active workout'
+                  : 'Apply session'}
+            </button>
+          </div>
+          <div className="mt-3 divide-y divide-white/8 border-y border-white/8">
+            {prescription.exercises.slice(0, 4).map((exercise) => (
+              <div
+                key={exercise.exerciseId}
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-2 text-[11px]"
+              >
+                <div className="min-w-0">
+                  <div className="truncate font-semibold text-ink-200">{exercise.exerciseName}</div>
+                  <div className="truncate text-ink-500">{exercise.reason}</div>
+                </div>
+                <div className="tabular text-right text-ink-300">
+                  {exercise.targetSets} × {exercise.repRangeMin}-{exercise.repRangeMax}
+                  <span className="ml-2 text-ink-500">RIR {exercise.targetRir}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
   )
 }

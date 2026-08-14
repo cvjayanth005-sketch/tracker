@@ -45,6 +45,7 @@ function session(date: string, sets: Array<Partial<WorkoutSet>>): SessionHistory
     startedAt: null,
     finishedAt: null,
     notes: null,
+    prescription: null,
   }
   return { workout, sets: sets.map((s) => set({ ...s, workoutId: workout.id })) }
 }

@@ -131,6 +131,32 @@ export class TrackerDb extends Dexie {
           log.fiberG ??= null
         })
       })
+    this.version(7)
+      .stores({ dailyLogs: 'date', workouts: 'id, date' })
+      .upgrade(async (tx) => {
+        await tx.table<DailyLog, 'date'>('dailyLogs').toCollection().modify((log) => {
+          log.waterMl ??= null
+          log.sodiumMg ??= null
+          log.alcoholUnits ??= null
+          log.caffeineMg ??= null
+          log.stress ??= null
+          log.trainingMinutesAvailable ??= null
+          log.trainingConstraints ??= null
+        })
+        await tx.table<Workout, 'id'>('workouts').toCollection().modify((workout) => {
+          workout.prescription ??= null
+        })
+      })
+    // Hydration and the other cheap intake proxies (sodium, alcohol, caffeine)
+    // the coach uses to explain weight fluctuations without a wearable.
+    this.version(8).upgrade(async (tx) => {
+      await tx.table<DailyLog, 'date'>('dailyLogs').toCollection().modify((log) => {
+        log.waterMl ??= null
+        log.sodiumMg ??= null
+        log.alcoholUnits ??= null
+        log.caffeineMg ??= null
+      })
+    })
   }
 }
 

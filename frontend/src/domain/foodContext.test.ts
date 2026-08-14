@@ -102,6 +102,28 @@ describe('buildFoodContext', () => {
     expect(buildFoodContext(TODAY, phase(), profile(), [], []).macroTargets).toEqual(t)
   })
 
+  it('sizes the water target from bodyweight and reads hydration back', () => {
+    const log = makeLog('2026-08-15', { weightKg: 90, waterMl: 1000, sodiumMg: 4000, alcoholUnits: 3 })
+    const ctx = buildFoodContext(TODAY, phase(), profile(), [log], [])
+    expect(ctx.today.hydration.targetMl).toBe(3150) // 90kg × 35ml
+    expect(ctx.today.hydration.waterMl).toBe(1000)
+    // low water (< 60% of target), high sodium, and alcohol all get flagged.
+    expect(ctx.observations.some((n) => n.toLowerCase().includes('hydration'))).toBe(true)
+    expect(ctx.observations.some((n) => n.toLowerCase().includes('sodium'))).toBe(true)
+    expect(ctx.observations.some((n) => n.toLowerCase().includes('alcohol'))).toBe(true)
+  })
+
+  it('computes the eating window from timed meals and flags late eating', () => {
+    const meals = [
+      meal('breakfast', { name: 'oats', time: '08:00' }),
+      meal('dinner', { name: 'curry', time: '22:30' }),
+    ]
+    const ctx = buildFoodContext(TODAY, phase(), profile(), [], meals)
+    expect(ctx.today.eatingWindow).toEqual({ firstMealTime: '08:00', lastMealTime: '22:30', windowHours: 14.5 })
+    expect(ctx.observations.some((n) => n.toLowerCase().includes('eating window'))).toBe(true)
+    expect(ctx.observations.some((n) => n.toLowerCase().includes('late eating'))).toBe(true)
+  })
+
   it('averages the 7-day window and ignores days outside it', () => {
     const logs = [
       makeLog('2026-08-07', { proteinG: 999 }), // 8 days back — excluded

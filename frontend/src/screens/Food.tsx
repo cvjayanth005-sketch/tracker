@@ -8,6 +8,7 @@ import { addDays, formatShort } from '@/domain/date'
 import { useDashboard } from '@/hooks/useDashboard'
 import { Card, EmptyState, Meter, PageHeader, Pill, SectionTitle } from '@/components/ui'
 import { lastSevenDates } from '@/components/SevenDayBars'
+import { IntakeExtras } from '@/components/food/IntakeExtras'
 import { MacroSummary } from '@/components/food/MacroSummary'
 import { MacroTrends } from '@/components/food/MacroTrends'
 import { MealHistory } from '@/components/food/MealHistory'
@@ -54,7 +55,18 @@ export default function Food() {
       </div>
 
       <SectionTitle>Today</SectionTitle>
-      <MacroSummary food={food} />
+      <div className="grid gap-3 lg:grid-cols-2 lg:items-start">
+        <MacroSummary food={food} />
+        <IntakeExtras
+          date={today}
+          waterMl={food.today.hydration.waterMl}
+          waterTargetMl={food.today.hydration.targetMl}
+          caffeineMg={food.today.hydration.caffeineMg}
+          alcoholUnits={food.today.hydration.alcoholUnits}
+          sodiumMg={food.today.hydration.sodiumMg}
+          eatingWindow={food.today.eatingWindow}
+        />
+      </div>
 
       <SectionTitle>Log a meal</SectionTitle>
       <MealLogger date={today} />

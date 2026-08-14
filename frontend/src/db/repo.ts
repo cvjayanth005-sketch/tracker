@@ -13,6 +13,7 @@ import type {
   RunType,
   Settings,
   Workout,
+  WorkoutPrescription,
   WorkoutSet,
 } from '@/domain/types'
 
@@ -39,6 +40,10 @@ function blankLog(date: LocalDate): DailyLog {
     carbsG: null,
     fatG: null,
     fiberG: null,
+    waterMl: null,
+    sodiumMg: null,
+    alcoholUnits: null,
+    caffeineMg: null,
     steps: null,
     runKm: null,
     gymDone: null,
@@ -47,6 +52,9 @@ function blankLog(date: LocalDate): DailyLog {
     energy: null,
     hunger: null,
     soreness: null,
+    stress: null,
+    trainingMinutesAvailable: null,
+    trainingConstraints: null,
     notes: null,
     createdAt: stamp,
     updatedAt: stamp,
@@ -75,6 +83,13 @@ export async function upsertLog(
   await db.dailyLogs.put(next)
   await markDirty()
   return next
+}
+
+/** Add (or subtract) water for a day, clamped at zero. Powers the +250 ml taps. */
+export async function addWater(date: LocalDate, deltaMl: number): Promise<void> {
+  const existing = await db.dailyLogs.get(date)
+  const current = existing?.waterMl ?? 0
+  await upsertLog(date, { waterMl: Math.max(0, current + deltaMl) })
 }
 
 export async function deleteLog(date: LocalDate): Promise<void> {
@@ -516,9 +531,18 @@ export async function getWorkoutForDate(date: LocalDate): Promise<Workout | unde
 export async function startWorkout(
   date: LocalDate,
   sessionType: Workout['sessionType'],
+  prescription: WorkoutPrescription | null = null,
 ): Promise<Workout> {
   const existing = await getWorkoutForDate(date)
-  if (existing) return existing
+  if (existing) {
+    if (prescription && !existing.finishedAt) {
+      const next = { ...existing, sessionType, prescription }
+      await db.workouts.put(next)
+      await markDirty()
+      return next
+    }
+    return existing
+  }
   const workout: Workout = {
     id: uid(),
     date,
@@ -526,6 +550,7 @@ export async function startWorkout(
     startedAt: now(),
     finishedAt: null,
     notes: null,
+    prescription,
   }
   await db.workouts.put(workout)
   await markDirty()

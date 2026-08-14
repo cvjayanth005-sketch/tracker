@@ -1,7 +1,9 @@
 import { upsertLog } from '@/db/repo'
+import { computeEatingWindow, waterTargetForWeight } from '@/domain/foodContext'
 import { NumberField } from '@/components/fields'
 import { Card } from '@/components/ui'
 import type { DailyLog, LocalDate, Meal, Phase } from '@/domain/types'
+import { IntakeExtras } from './IntakeExtras'
 import { MACRO } from './palette'
 import { MealLogger } from './MealLogger'
 import { MealTimeline } from './MealTimeline'
@@ -86,6 +88,16 @@ export function DayFoodSection({
 
       <MealLogger date={date} />
       {hasMeals ? <MealTimeline meals={meals} /> : null}
+
+      <IntakeExtras
+        date={date}
+        waterMl={log?.waterMl ?? null}
+        waterTargetMl={waterTargetForWeight(log?.weightKg ?? phase?.startWeightKg ?? null)}
+        caffeineMg={log?.caffeineMg ?? null}
+        alcoholUnits={log?.alcoholUnits ?? null}
+        sodiumMg={log?.sodiumMg ?? null}
+        eatingWindow={computeEatingWindow(meals)}
+      />
     </div>
   )
 }

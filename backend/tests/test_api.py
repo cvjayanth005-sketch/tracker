@@ -389,12 +389,26 @@ def test_coach_chat_fallback_uses_activity_context() -> None:
                     }
                 },
                 "recoveryConcern": {"reason": "short_sleep", "averageValue": 6.4},
+                "adaptiveRecommendation": {
+                    "headline": "Keep the session productive, not maximal",
+                    "readinessScore": 63,
+                    "exercises": [
+                        {
+                            "exerciseName": "Bench Press",
+                            "targetSets": 3,
+                            "repRangeMin": 6,
+                            "repRangeMax": 10,
+                        }
+                    ],
+                },
             }
         },
     )
 
     assert "upper plus 5 km easy" in answer
     assert "short sleep" in answer
+    assert "63/100 readiness" in answer
+    assert "Bench Press: 3 sets of 6-10 reps" in answer
 
 
 def test_frontend_coach_note_uses_groq_without_changing_rules(tmp_path, monkeypatch) -> None:

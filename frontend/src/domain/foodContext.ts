@@ -77,6 +77,16 @@ export interface FoodContext {
     meals: FoodContextMeal[]
     /** Protein grams by slot, so the coach can see back-loaded protein. */
     proteinBySlot: Record<MealSlot, number | null>
+    /** Cheap intake proxies that explain scale moves without a wearable. */
+    hydration: {
+      waterMl: number | null
+      targetMl: number
+      sodiumMg: number | null
+      alcoholUnits: number | null
+      caffeineMg: number | null
+    }
+    /** Meal-timing span from logged clock times. Null until a timed meal exists. */
+    eatingWindow: { firstMealTime: string; lastMealTime: string; windowHours: number } | null
   }
   weekAverages: {
     days: number
@@ -115,6 +125,52 @@ function macroSplit(proteinG: number | null, carbsG: number | null, fatG: number
 
 const SLOTS: MealSlot[] = ['breakfast', 'lunch', 'dinner', 'snack']
 
+/** ml of water per kg of bodyweight used to size the daily hydration target. */
+const WATER_ML_PER_KG = 35
+const DEFAULT_WATER_TARGET_ML = 2500
+
+/** Minutes since midnight for an `HH:mm` string, or null if unparseable. */
+function minutesOfDay(time: string | null): number | null {
+  if (!time) return null
+  const [hour = '', minute = ''] = time.split(':')
+  const h = Number(hour)
+  const m = Number(minute)
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null
+  return h * 60 + m
+}
+
+export interface EatingWindow {
+  firstMealTime: string
+  lastMealTime: string
+  windowHours: number
+}
+
+/** Hydration target in ml for a given bodyweight (or the default when unknown). */
+export function waterTargetForWeight(weightKg: number | null | undefined): number {
+  return weightKg ? Math.round(weightKg * WATER_ML_PER_KG) : DEFAULT_WATER_TARGET_ML
+}
+
+export function computeEatingWindow(meals: Meal[]): EatingWindow | null {
+  const timed = meals
+    .map((meal) => ({ time: meal.time, minutes: minutesOfDay(meal.time) }))
+    .filter((entry): entry is { time: string; minutes: number } => entry.minutes !== null)
+  if (timed.length < 2) {
+    // A single timed meal still tells us when eating started/ended.
+    if (timed.length === 1) {
+      return { firstMealTime: timed[0]!.time, lastMealTime: timed[0]!.time, windowHours: 0 }
+    }
+    return null
+  }
+  const sorted = [...timed].sort((a, b) => a.minutes - b.minutes)
+  const first = sorted[0]!
+  const last = sorted[sorted.length - 1]!
+  return {
+    firstMealTime: first.time,
+    lastMealTime: last.time,
+    windowHours: round((last.minutes - first.minutes) / 60, 1),
+  }
+}
+
 export function buildFoodContext(
   today: LocalDate,
   phase: Phase,
@@ -142,6 +198,10 @@ export function buildFoodContext(
   const proteinG = todayLog?.proteinG ?? null
   const carbsG = todayLog?.carbsG ?? null
   const fatG = todayLog?.fatG ?? null
+
+  const currentWeight = todayLog?.weightKg ?? profile?.startWeightKg ?? null
+  const waterTargetMl = waterTargetForWeight(currentWeight)
+  const eatingWindow = computeEatingWindow(todayMeals)
 
   const goalDirection = ((): 'lose' | 'gain' | 'maintain' | null => {
     const start = profile?.startWeightKg ?? null
@@ -187,6 +247,14 @@ export function buildFoodContext(
         fiberG: meal.fiberG,
       })),
       proteinBySlot,
+      hydration: {
+        waterMl: todayLog?.waterMl ?? null,
+        targetMl: waterTargetMl,
+        sodiumMg: todayLog?.sodiumMg ?? null,
+        alcoholUnits: todayLog?.alcoholUnits ?? null,
+        caffeineMg: todayLog?.caffeineMg ?? null,
+      },
+      eatingWindow,
     },
     weekAverages: {
       days: weekLogs.length,
@@ -228,6 +296,30 @@ function deriveObservations(ctx: FoodContext): string[] {
     notes.push(
       `7-day protein averages ${ctx.weekAverages.proteinG}g vs the ${targets.proteinG}g target — a consistent gap.`,
     )
+  }
+
+  const { hydration, eatingWindow } = today
+  if (hydration.waterMl !== null && hydration.waterMl < hydration.targetMl * 0.6) {
+    notes.push(
+      `Hydration is low — ${hydration.waterMl}ml of about ${hydration.targetMl}ml. Under-drinking can hold water and hide fat loss on the scale.`,
+    )
+  }
+  if (hydration.alcoholUnits !== null && hydration.alcoholUnits >= 2) {
+    notes.push(
+      `${hydration.alcoholUnits} alcohol units logged — a scale bump over the next day is water, not fat, and it blunts recovery.`,
+    )
+  }
+  if (hydration.sodiumMg !== null && hydration.sodiumMg > 3500) {
+    notes.push(`Sodium is high today (${hydration.sodiumMg}mg); expect a temporary water-weight jump, not real gain.`)
+  }
+  if (eatingWindow && eatingWindow.windowHours > 14) {
+    notes.push(`Meals span ${eatingWindow.windowHours}h today — a tighter eating window often helps appetite control.`)
+  }
+  if (eatingWindow) {
+    const lastHour = Number(eatingWindow.lastMealTime.split(':')[0])
+    if (Number.isFinite(lastHour) && lastHour >= 22) {
+      notes.push(`Last meal was at ${eatingWindow.lastMealTime} — late eating can cost sleep quality and recovery.`)
+    }
   }
 
   return notes

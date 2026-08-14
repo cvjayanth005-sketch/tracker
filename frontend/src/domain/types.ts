@@ -130,6 +130,15 @@ export interface DailyLog {
   carbsG: number | null
   fatG: number | null
   fiberG: number | null
+  /**
+   * Food intake logged as a running daily total, independent of the meal
+   * rollup. These are the cheap-to-log inputs that let the coach explain scale
+   * moves and hydration without any wearable: water, sodium, alcohol, caffeine.
+   */
+  waterMl: number | null
+  sodiumMg: number | null
+  alcoholUnits: number | null
+  caffeineMg: number | null
   steps: number | null
   runKm: number | null
   /** Null = unknown whether a session happened; false = confirmed no session. */
@@ -139,6 +148,9 @@ export interface DailyLog {
   energy: Rating | null
   hunger: Rating | null
   soreness: Rating | null
+  stress: Rating | null
+  trainingMinutesAvailable: number | null
+  trainingConstraints: string | null
   notes: string | null
   createdAt: Instant
   updatedAt: Instant
@@ -211,6 +223,35 @@ export interface Workout {
   startedAt: Instant | null
   finishedAt: Instant | null
   notes: string | null
+  prescription: WorkoutPrescription | null
+}
+
+export type ReadinessBand = 'ready' | 'steady' | 'reduce' | 'insufficient'
+export type DataConfidence = 'high' | 'medium' | 'low'
+
+export interface ExercisePrescription {
+  exerciseId: string
+  exerciseName: string
+  targetSets: number
+  repRangeMin: number
+  repRangeMax: number
+  targetRir: number
+  suggestedWeightKg: number | null
+  action: 'increase' | 'hold' | 'reduce' | 'establish'
+  reason: string
+}
+
+/** A reviewed, executable recommendation. Free-form chat never mutates this. */
+export interface WorkoutPrescription {
+  version: 1
+  generatedAt: Instant
+  sessionType: Exclude<SessionType, 'rest' | 'run'>
+  readinessScore: number | null
+  readinessBand: ReadinessBand
+  confidence: DataConfidence
+  headline: string
+  adjustments: string[]
+  exercises: ExercisePrescription[]
 }
 
 export interface WorkoutSet {

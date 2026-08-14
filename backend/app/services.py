@@ -549,6 +549,24 @@ def fallback_coach_chat(question: str, context: dict[str, Any]) -> str:
         recovery = activity.get("recoveryConcern")
         if isinstance(recovery, dict) and recovery.get("reason"):
             parts.append(f"Recovery flag: {str(recovery['reason']).replace('_', ' ')}.")
+        adaptive = activity.get("adaptiveRecommendation")
+        if isinstance(adaptive, dict):
+            adaptive_headline = adaptive.get("headline")
+            readiness = adaptive.get("readinessScore")
+            if isinstance(adaptive_headline, str) and adaptive_headline:
+                detail = adaptive_headline
+                if isinstance(readiness, (int, float)):
+                    detail += f" ({round(readiness)}/100 readiness)"
+                parts.append(detail + ".")
+            exercises = adaptive.get("exercises")
+            if isinstance(exercises, list) and exercises and isinstance(exercises[0], dict):
+                first = exercises[0]
+                name = first.get("exerciseName")
+                sets = first.get("targetSets")
+                rep_min = first.get("repRangeMin")
+                rep_max = first.get("repRangeMax")
+                if isinstance(name, str) and isinstance(sets, int):
+                    parts.append(f"Start with {name}: {sets} sets of {rep_min}-{rep_max} reps.")
     if isinstance(headline, str) and headline:
         parts.append(f"Current priority: {headline}.")
     if isinstance(week, dict):
@@ -627,6 +645,10 @@ def request_groq_chat(
                         "use context.activity before giving advice. It contains the user's body-goal direction, today's "
                         "session, full weekly split, exercise prescriptions, per-exercise progression evidence, recent "
                         "sets and volume, running progression, compliance, and seven days of recovery signals. "
+                        "The activity.adaptiveRecommendation block is the app's executable session proposal, calculated "
+                        "from today's sleep, energy, soreness, stress, available time, constraints, and progression data. "
+                        "Use its readiness score, confidence, exercise targets, and reasons as the primary source when "
+                        "discussing today's workout; explain it clearly rather than contradicting it without evidence. "
                         "Keep suggestions consistent with the current split and double-progression rules. Recommend "
                         "specific exercises, sets, rep ranges, or load changes only when that context supports them; "
                         "state when the data is incomplete. Balance stimulus and recovery, avoid stacking missed work, "
