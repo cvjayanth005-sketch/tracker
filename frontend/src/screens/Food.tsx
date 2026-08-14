@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { mealsBetween, mealsForDate } from '@/db/repo'
 import { outcomeFor } from '@/domain/compliance'
-import { buildFoodContext } from '@/domain/foodContext'
+import { buildConsistencyStrip, buildFoodContext } from '@/domain/foodContext'
 import { addDays, formatShort } from '@/domain/date'
 import { useDashboard } from '@/hooks/useDashboard'
 import { Card, EmptyState, Meter, PageHeader, Pill, SectionTitle } from '@/components/ui'
@@ -30,6 +30,10 @@ export default function Food() {
     () => (phase ? buildFoodContext(today, phase, profile, dash.logs, todayMeals ?? []) : null),
     [today, phase, profile, dash.logs, todayMeals],
   )
+  const consistency = useMemo(
+    () => (phase ? buildConsistencyStrip(today, dash.logs, phase, 14) : null),
+    [today, phase, dash.logs],
+  )
 
   if (!phase || !settings || !food) {
     return <EmptyState title="Setting up" body="Preparing your local database." />
@@ -55,8 +59,8 @@ export default function Food() {
       </div>
 
       <SectionTitle>Today</SectionTitle>
-      <div className="grid gap-3 lg:grid-cols-2 lg:items-start">
-        <MacroSummary food={food} />
+      <div className="grid gap-3 lg:grid-cols-2 lg:items-stretch">
+        <MacroSummary food={food} consistency={consistency ?? undefined} />
         <IntakeExtras
           date={today}
           waterMl={food.today.hydration.waterMl}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildFoodContext, deriveMacroTargets } from './foodContext'
+import { buildConsistencyStrip, buildFoodContext, deriveMacroTargets } from './foodContext'
 import { asLocalDate } from './date'
 import { defaultPhases } from './seed'
 import { makeLog } from './testUtils'
@@ -122,6 +122,31 @@ describe('buildFoodContext', () => {
     expect(ctx.today.eatingWindow).toEqual({ firstMealTime: '08:00', lastMealTime: '22:30', windowHours: 14.5 })
     expect(ctx.observations.some((n) => n.toLowerCase().includes('eating window'))).toBe(true)
     expect(ctx.observations.some((n) => n.toLowerCase().includes('late eating'))).toBe(true)
+  })
+
+  it('builds the consistency strip and counts the current streak', () => {
+    const logs = [
+      makeLog('2026-08-12', { calories: 2000, proteinG: 180 }), // on
+      makeLog('2026-08-13', { calories: 3200, proteinG: 60 }), //  off (breaks streak)
+      makeLog('2026-08-14', { calories: 2000, proteinG: 180 }), // on
+      makeLog('2026-08-15', { calories: 2000, proteinG: 180 }), // on (today)
+    ]
+    const strip = buildConsistencyStrip(TODAY, logs, phase(), 14)
+    expect(strip.days).toHaveLength(14)
+    const last = strip.days.slice(-4)
+    expect(last.map((d) => d.status)).toEqual(['on', 'off', 'on', 'on'])
+    expect(strip.streak).toBe(2) // today + yesterday, broken by 08-13
+  })
+
+  it('does not let an unlogged today break the streak', () => {
+    const logs = [
+      makeLog('2026-08-13', { calories: 2000, proteinG: 180 }),
+      makeLog('2026-08-14', { calories: 2000, proteinG: 180 }),
+      // 2026-08-15 (today) not logged
+    ]
+    const strip = buildConsistencyStrip(TODAY, logs, phase(), 14)
+    expect(strip.days.at(-1)!.status).toBe('none')
+    expect(strip.streak).toBe(2)
   })
 
   it('averages the 7-day window and ignores days outside it', () => {

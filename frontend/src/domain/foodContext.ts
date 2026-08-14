@@ -1,4 +1,5 @@
 import { addDays, compareDates } from '@/domain/date'
+import { outcomeFor } from '@/domain/compliance'
 import type { DailyLog, LocalDate, Meal, MealSlot, Phase, UserProfile } from '@/domain/types'
 
 /**
@@ -169,6 +170,50 @@ export function computeEatingWindow(meals: Meal[]): EatingWindow | null {
     lastMealTime: last.time,
     windowHours: round((last.minutes - first.minutes) / 60, 1),
   }
+}
+
+export type ConsistencyStatus = 'on' | 'off' | 'none'
+export interface ConsistencyDay {
+  date: LocalDate
+  status: ConsistencyStatus
+}
+export interface ConsistencyStrip {
+  days: ConsistencyDay[]
+  streak: number
+}
+
+/**
+ * Per-day nutrition adherence over a trailing window, plus the current streak.
+ * A day is `on` when both calories and protein hit target, `off` when logged but
+ * short, `none` when no food was recorded. The streak counts consecutive `on`
+ * days ending at the most recent one, without penalizing an unlogged today.
+ */
+export function buildConsistencyStrip(
+  today: LocalDate,
+  logs: DailyLog[],
+  phase: Phase,
+  windowDays = 14,
+): ConsistencyStrip {
+  const byDate = new Map(logs.map((log) => [log.date, log]))
+  const days: ConsistencyDay[] = []
+  for (let i = windowDays - 1; i >= 0; i--) {
+    const date = addDays(today, -i)
+    const log = byDate.get(date)
+    const cal = outcomeFor('calories', log, phase, date)
+    const pro = outcomeFor('protein', log, phase, date)
+    const status: ConsistencyStatus =
+      cal === 'hit' && pro === 'hit' ? 'on' : cal === 'unknown' && pro === 'unknown' ? 'none' : 'off'
+    days.push({ date, status })
+  }
+
+  let streak = 0
+  for (let i = days.length - 1; i >= 0; i--) {
+    const status = days[i]!.status
+    if (i === days.length - 1 && status === 'none') continue // today may just be incomplete
+    if (status === 'on') streak += 1
+    else break
+  }
+  return { days, streak }
 }
 
 export function buildFoodContext(

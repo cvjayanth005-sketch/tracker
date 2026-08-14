@@ -1,10 +1,65 @@
 import { Card } from '@/components/ui'
 import { fmtInt } from '@/components/format'
-import type { FoodContext } from '@/domain/foodContext'
+import { weekdayName, formatShort } from '@/domain/date'
+import type { ConsistencyStrip, FoodContext } from '@/domain/foodContext'
 import { MacroLegend, MacroRings, type MacroTotals } from './MacroRings'
 
+const ON_COLOR = '#39ff14'
+
+/** Trailing adherence dots + current streak — fills the card and rewards consistency. */
+function ConsistencyRow({ strip }: { strip: ConsistencyStrip }) {
+  return (
+    <div className="mt-4 border-t border-white/8 pt-3.5">
+      <div className="mb-2.5 flex items-center justify-between">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-400">
+          Last {strip.days.length} days
+        </span>
+        {strip.streak > 0 ? (
+          <span className="flex items-center gap-1 rounded-full bg-accent/12 px-2 py-0.5 text-[11px] font-semibold text-accent ring-1 ring-inset ring-accent/20">
+            🔥 {strip.streak}-day streak
+          </span>
+        ) : (
+          <span className="text-[11px] text-ink-500">Hit calories + protein to build a streak</span>
+        )}
+      </div>
+      <div className="flex items-center gap-[5px]">
+        {strip.days.map((day) => {
+          const title = `${weekdayName(day.date)} ${formatShort(day.date)} — ${
+            day.status === 'on' ? 'on target' : day.status === 'off' ? 'missed' : 'not logged'
+          }`
+          return (
+            <span
+              key={day.date}
+              title={title}
+              className="h-2.5 flex-1 rounded-full"
+              style={
+                day.status === 'on'
+                  ? { backgroundColor: ON_COLOR, boxShadow: `0 0 8px ${ON_COLOR}66` }
+                  : day.status === 'off'
+                    ? { backgroundColor: 'rgb(255 255 255 / 0.16)' }
+                    : { boxShadow: 'inset 0 0 0 1.5px rgb(255 255 255 / 0.12)' }
+              }
+            />
+          )
+        })}
+      </div>
+      <div className="mt-2 flex items-center gap-3 text-[10px] text-ink-500">
+        <span className="flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: ON_COLOR }} /> on target
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-white/16" /> missed
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full ring-1 ring-inset ring-white/15" /> not logged
+        </span>
+      </div>
+    </div>
+  )
+}
+
 /** Today's macro rings + legend, driven by the shared food context. */
-export function MacroSummary({ food }: { food: FoodContext }) {
+export function MacroSummary({ food, consistency }: { food: FoodContext; consistency?: ConsistencyStrip }) {
   const { today, targets, macroTargets } = food
   const totals: MacroTotals = {
     calories: today.calories,
@@ -59,6 +114,7 @@ export function MacroSummary({ food }: { food: FoodContext }) {
           ) : null}
         </div>
       </div>
+      {consistency ? <ConsistencyRow strip={consistency} /> : null}
     </Card>
   )
 }
