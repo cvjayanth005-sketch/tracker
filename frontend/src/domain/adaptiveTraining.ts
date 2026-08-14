@@ -21,6 +21,7 @@ export interface ReadinessResult {
 interface AdaptiveSessionInput {
   sessionType: Exclude<SessionType, 'rest' | 'run'>
   targetSleepHours: number
+  sleepScore?: number | null
   log: DailyLog | undefined
   exercises: Exercise[]
   history: SessionHistory[]
@@ -37,9 +38,12 @@ function ratingScore(value: Rating, inverse = false): number {
 export function calculateReadiness(
   log: DailyLog | undefined,
   targetSleepHours: number,
+  sleepScore: number | null = null,
 ): ReadinessResult {
   const factors: ReadinessResult['factors'] = []
-  if (log?.sleepHours != null && targetSleepHours > 0) {
+  if (sleepScore != null) {
+    factors.push({ key: 'sleep', score: clamp(sleepScore) })
+  } else if (log?.sleepHours != null && targetSleepHours > 0) {
     factors.push({ key: 'sleep', score: clamp((log.sleepHours / targetSleepHours) * 100) })
   }
   if (log?.energy != null) factors.push({ key: 'energy', score: ratingScore(log.energy) })
@@ -77,7 +81,7 @@ function exerciseLimit(minutes: number | null): number {
 }
 
 export function buildAdaptiveSession(input: AdaptiveSessionInput): WorkoutPrescription {
-  const readiness = calculateReadiness(input.log, input.targetSleepHours)
+  const readiness = calculateReadiness(input.log, input.targetSleepHours, input.sleepScore ?? null)
   const available = input.exercises
     .filter(
       (exercise) =>

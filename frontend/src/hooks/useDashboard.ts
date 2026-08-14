@@ -29,6 +29,7 @@ import {
   type TrendPoint,
   type WeeklyChange,
 } from '@/domain/trend'
+import { calculateSleepScore, scoreSleepNights, type SleepScore, type ScoredSleepNight } from '@/domain/sleep'
 import type { DailyLog, LocalDate, Phase, Run, Settings } from '@/domain/types'
 import { API_BASE, scheduleSync } from '@/sync/client'
 
@@ -78,6 +79,8 @@ export interface Dashboard {
   runs: Run[]
   index: LogIndex
   todayLog: DailyLog | undefined
+  todaySleepScore: SleepScore
+  sleepScores: ScoredSleepNight[]
   change: WeeklyChange | undefined
   compliance: ComplianceReport | undefined
   recommendation: Recommendation | undefined
@@ -126,6 +129,8 @@ export function useDashboard(rangeDays = 90): Dashboard {
         runs: runs ?? [],
         index,
         todayLog: index.get(today),
+        todaySleepScore: calculateSleepScore(index.get(today), 0, logs ?? []),
+        sleepScores: [],
         change: undefined,
         compliance: undefined,
         recommendation: undefined,
@@ -151,6 +156,10 @@ export function useDashboard(rangeDays = 90): Dashboard {
       today,
       settings.minReadingsPerWindow,
     )
+    const sleepScores = scoreSleepNights(logs ?? [], phase.sleepHours)
+    const todaySleepScore =
+      sleepScores.find((night) => night.date === today)?.result ??
+      calculateSleepScore(index.get(today), phase.sleepHours, logs ?? [])
 
     const weekAverages: WeekAverages = {
       calories: windowAverage(index, today, (l) => l.calories).average,
@@ -171,6 +180,8 @@ export function useDashboard(rangeDays = 90): Dashboard {
       runs: runs ?? [],
       index,
       todayLog: index.get(today),
+      todaySleepScore,
+      sleepScores,
       change,
       compliance,
       recommendation,

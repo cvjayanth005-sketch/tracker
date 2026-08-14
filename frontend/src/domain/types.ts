@@ -111,6 +111,8 @@ export interface Settings {
 
 /** Subjective 1-5 scales. Null = not rated. */
 export type Rating = 1 | 2 | 3 | 4 | 5
+/** `4` is displayed as 4+ in the morning sleep check-in. */
+export type NightAwakenings = 0 | 1 | 2 | 3 | 4
 
 /**
  * One row per local calendar date, upserted throughout the day — morning weight
@@ -155,6 +157,14 @@ export interface DailyLog {
   gymDone: boolean | null
   mealsOnPlan: number | null
   sleepHours: number | null
+  /** Morning-rated sleep quality, where 1 is poor and 5 is excellent. */
+  sleepQuality: Rating | null
+  /** Local bedtime in HH:mm. Kept as entered so no timezone conversion can drift it. */
+  sleepBedtime: string | null
+  /** Local wake time in HH:mm, recorded against the wake date. */
+  sleepWakeTime: string | null
+  /** 4 represents four or more awakenings. */
+  nightAwakenings: NightAwakenings | null
   energy: Rating | null
   hunger: Rating | null
   soreness: Rating | null

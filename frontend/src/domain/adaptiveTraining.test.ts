@@ -41,6 +41,22 @@ describe('calculateReadiness', () => {
     expect(result.confidence).toBe('low')
     expect(result.band).toBe('steady')
   })
+
+  it('uses the richer sleep score when it is available', () => {
+    const result = calculateReadiness(
+      makeLog('2026-01-05', { sleepHours: 8, energy: 4, soreness: 2, stress: 2 }),
+      8,
+      40,
+    )
+    expect(result.factors.find((factor) => factor.key === 'sleep')).toMatchObject({ score: 40 })
+    expect(result.band).toBe('steady')
+  })
+
+  it('falls back to duration-only sleep when there is no score yet', () => {
+    const result = calculateReadiness(makeLog('2026-01-05', { sleepHours: 6 }), 8)
+    expect(result.factors).toEqual([{ key: 'sleep', score: 75 }])
+    expect(result.confidence).toBe('low')
+  })
 })
 
 describe('buildAdaptiveSession', () => {

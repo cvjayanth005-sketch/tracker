@@ -206,6 +206,16 @@ export class TrackerDb extends Dexie {
         food.micros ??= null
       })
     })
+    // Morning sleep check-in fields. They are nullable so existing duration
+    // history stays valid and an incomplete check-in is never mistaken for 0.
+    this.version(15).upgrade(async (tx) => {
+      await tx.table<DailyLog, 'date'>('dailyLogs').toCollection().modify((log) => {
+        log.sleepQuality ??= null
+        log.sleepBedtime ??= null
+        log.sleepWakeTime ??= null
+        log.nightAwakenings ??= null
+      })
+    })
   }
 }
 

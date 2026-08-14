@@ -9,6 +9,7 @@ import { upsertLog } from '@/db/repo'
 import { useDashboard } from '@/hooks/useDashboard'
 import { NumberField, RatingField, TextArea, TriToggle } from '@/components/fields'
 import { HeroWeight } from '@/components/HeroWeight'
+import { SleepCheckIn } from '@/components/SleepCheckIn'
 import { RecommendationCard } from '@/components/RecommendationCard'
 import { TrendChart } from '@/components/TrendChart'
 import { Card, EmptyState, Meter, Pill, Stat } from '@/components/ui'
@@ -292,7 +293,14 @@ export default function Today() {
       {/* Phone: weigh-in first, so the 6am job is a zero-scroll action. */}
       <div className="mt-4 lg:hidden">{heroWeight}</div>
 
-      <div className="mt-4 grid gap-4 lg:mt-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(21rem,.74fr)] lg:items-start lg:gap-5">
+      <SleepCheckIn
+        log={todayLog}
+        targetHours={phase.sleepHours}
+        score={dash.todaySleepScore}
+        onSave={save}
+      />
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(21rem,.74fr)] lg:items-start lg:gap-5">
         {/* ---------------- Dashboard column ---------------- */}
         <div className="space-y-4">
           <Card className="overflow-hidden">
@@ -568,15 +576,6 @@ export default function Today() {
                 value={todayLog?.mealsOnPlan ?? null}
                 onCommit={(mealsOnPlan) => save({ mealsOnPlan })}
                 target={`Out of ${phase.mealsPerDay}`}
-              />
-              <NumberField
-                id="today-log-sleep"
-                label="Sleep"
-                unit="h"
-                step="0.25"
-                value={todayLog?.sleepHours ?? null}
-                onCommit={(sleepHours) => save({ sleepHours })}
-                target={`Target ${phase.sleepHours}`}
               />
             </div>
           </Card>

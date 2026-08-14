@@ -12,12 +12,12 @@ import {
   YAxis,
 } from 'recharts'
 import { allExercises, recentSessions, upsertLog } from '@/db/repo'
-import { addDays, dayOfWeek, daysBetween, formatShort, weekdayName } from '@/domain/date'
+import { dayOfWeek, daysBetween, formatShort, weekdayName } from '@/domain/date'
 import { outcomeFor } from '@/domain/compliance'
 import { sessionVolume } from '@/domain/progression'
 import { useDashboard } from '@/hooks/useDashboard'
 import { CoachChatButton } from '@/components/CoachChatButton'
-import { WeeklyCheckIn } from '@/components/WeeklyCheckIn'
+import { SleepScoreCard } from '@/components/SleepScoreCard'
 import { Card, EmptyState, Meter, PageHeader, Pill, SectionTitle, Stat } from '@/components/ui'
 import { statInt, statVal } from '@/components/format'
 import { lastSevenDates } from '@/components/SevenDayBars'
@@ -622,7 +622,6 @@ export default function Activity() {
   const [selectedDate, setSelectedDate] = useState<LocalDate>(today)
 
   const dates = useMemo(() => lastSevenDates(today), [today])
-  const weekStart = useMemo(() => addDays(today, -dayOfWeek(today)), [today])
   const scheduled = useMemo(
     () => phase?.schedule.find((item) => item.dow === dayOfWeek(today)),
     [phase, today],
@@ -656,6 +655,8 @@ export default function Activity() {
 
   const steps = dates.map((date) => ({ date, value: index.get(date)?.steps ?? null }))
   const sleep = dates.map((date) => ({ date, value: index.get(date)?.sleepHours ?? null }))
+  const sleepScoreByDate = new Map(dash.sleepScores.map((night) => [night.date, night.result]))
+  const sleepScoreSeries = dates.map((date) => ({ date, result: sleepScoreByDate.get(date) }))
   const runs = dates.map((date) => ({ date, value: index.get(date)?.runKm ?? null }))
   const stepHits = steps.filter((point) => point.value != null && point.value >= phase.steps).length
   const sleepHits = sleep.filter(
@@ -774,7 +775,12 @@ export default function Activity() {
             </div>
           </Card>
 
-          <WeeklyCheckIn weekStart={weekStart} />
+          <SleepScoreCard
+            log={todayLog}
+            score={dash.todaySleepScore}
+            scores={sleepScoreSeries}
+            targetHours={phase.sleepHours}
+          />
         </div>
       </div>
 

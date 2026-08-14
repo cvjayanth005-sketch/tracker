@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { askCoach, type CoachChatMessage } from '@/ai/coachChat'
 import { db } from '@/db/database'
-import { getWeeklyCheckIn, startWorkout, upsertLog } from '@/db/repo'
+import { startWorkout, upsertLog } from '@/db/repo'
 import { buildAdaptiveSession } from '@/domain/adaptiveTraining'
 import { buildCoachSummary } from '@/domain/rules'
 import { buildFoodContext } from '@/domain/foodContext'
-import { addDays, dayOfWeek } from '@/domain/date'
+import { dayOfWeek } from '@/domain/date'
 import { evaluateProgression, sessionVolume } from '@/domain/progression'
 import type { DailyLog, Rating, WorkoutPrescription } from '@/domain/types'
 import { useDashboard } from '@/hooks/useDashboard'
@@ -92,14 +92,6 @@ export function CoachChatButton({
     0,
   )
   const profile = useLiveQuery(() => db.profile.get('me'), [], undefined)
-  const checkInWeekStart = useMemo(
-    () => addDays(dash.today, -dayOfWeek(dash.today)),
-    [dash.today],
-  )
-  const weeklyCheckIn = useLiveQuery(
-    () => getWeeklyCheckIn(checkInWeekStart),
-    [checkInWeekStart],
-  )
   const todayMeals = useLiveQuery(
     () => db.meals.where('date').equals(dash.today).toArray(),
     [dash.today],
@@ -127,11 +119,12 @@ export function CoachChatButton({
     return buildAdaptiveSession({
       sessionType: todaySchedule.sessionType,
       targetSleepHours: dash.phase.sleepHours,
+      sleepScore: dash.todaySleepScore.score,
       log: dash.todayLog,
       exercises: exercises ?? [],
       history: history.filter((item) => item.workout.date !== dash.today),
     })
-  }, [dash.phase, dash.today, dash.todayLog, exercises, history, todaySchedule])
+  }, [dash.phase, dash.today, dash.todayLog, dash.todaySleepScore.score, exercises, history, todaySchedule])
 
   const context = useMemo(() => {
     const exerciseById = new Map((exercises ?? []).map((exercise) => [exercise.id, exercise.name]))
@@ -175,9 +168,12 @@ export function CoachChatButton({
         },
       }
     })
+    const sleepScoreByDate = new Map(dash.sleepScores.map((night) => [night.date, night.result]))
     const recoveryDays = dash.logs.slice(-7).map((log) => ({
       date: log.date,
       sleepHours: log.sleepHours,
+      sleepScore: sleepScoreByDate.get(log.date)?.score ?? null,
+      sleepScoreConfidence: sleepScoreByDate.get(log.date)?.confidence ?? 'none',
       energy: log.energy,
       soreness: log.soreness,
       calories: log.calories,
@@ -203,6 +199,14 @@ export function CoachChatButton({
               completedGym: dash.todayLog?.gymDone ?? null,
               loggedRunKm: dash.todayLog?.runKm ?? null,
               sleepHours: dash.todayLog?.sleepHours ?? null,
+              sleepQuality: dash.todayLog?.sleepQuality ?? null,
+              sleepBedtime: dash.todayLog?.sleepBedtime ?? null,
+              sleepWakeTime: dash.todayLog?.sleepWakeTime ?? null,
+              nightAwakenings: dash.todayLog?.nightAwakenings ?? null,
+              sleepScore: dash.todaySleepScore.score,
+              sleepScoreConfidence: dash.todaySleepScore.confidence,
+              caffeineMg: dash.todayLog?.caffeineMg ?? null,
+              alcoholUnits: dash.todayLog?.alcoholUnits ?? null,
               energy: dash.todayLog?.energy ?? null,
               soreness: dash.todayLog?.soreness ?? null,
               stress: dash.todayLog?.stress ?? null,
@@ -210,7 +214,6 @@ export function CoachChatButton({
               trainingConstraints: dash.todayLog?.trainingConstraints ?? null,
             },
             adaptiveRecommendation: adaptiveSession,
-            weeklyCheckIn: weeklyCheckIn ?? null,
             weeklySplit: phase.schedule,
             exercisePlan,
             recentWorkouts: workouts,
@@ -265,6 +268,13 @@ export function CoachChatButton({
         runKm: log.runKm,
         gymDone: log.gymDone,
         sleepHours: log.sleepHours,
+        sleepQuality: log.sleepQuality,
+        sleepBedtime: log.sleepBedtime,
+        sleepWakeTime: log.sleepWakeTime,
+        nightAwakenings: log.nightAwakenings,
+        sleepScore: sleepScoreByDate.get(log.date)?.score ?? null,
+        caffeineMg: log.caffeineMg,
+        alcoholUnits: log.alcoholUnits,
         energy: log.energy,
         hunger: log.hunger,
         soreness: log.soreness,
@@ -284,7 +294,7 @@ export function CoachChatButton({
       })),
       recentWorkouts: workouts,
     }
-  }, [adaptiveSession, dash, exercises, history, profile, todayMeals, todaySchedule, weeklyCheckIn])
+  }, [adaptiveSession, dash, exercises, history, profile, todayMeals, todaySchedule])
 
   const applyAdaptiveSession = async () => {
     if (!adaptiveSession) return
