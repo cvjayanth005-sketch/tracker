@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
   Area,
@@ -11,16 +11,17 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { recentSessions } from '@/db/repo'
+import { allExercises, recentSessions, upsertLog } from '@/db/repo'
 import { dayOfWeek, daysBetween, formatShort, weekdayName } from '@/domain/date'
 import { outcomeFor } from '@/domain/compliance'
 import { sessionVolume } from '@/domain/progression'
 import { useDashboard } from '@/hooks/useDashboard'
 import { CoachChatButton } from '@/components/CoachChatButton'
+import { openCoachWithPrompt } from '@/components/coachEvents'
 import { Card, EmptyState, Meter, PageHeader, Pill, SectionTitle, Stat } from '@/components/ui'
 import { statInt, statVal } from '@/components/format'
 import { lastSevenDates } from '@/components/SevenDayBars'
-import type { DailyLog, DaySchedule, LocalDate, Phase } from '@/domain/types'
+import type { DailyLog, DaySchedule, Exercise, LocalDate, Phase } from '@/domain/types'
 
 const WEEK_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 const TONE_COLOR = {
@@ -35,6 +36,20 @@ const TONE_GLOW = {
   warn: 'rgb(255 225 0 / 0.23)',
 } as const
 
+const ACTIVITY_COACH_PROMPTS = [
+  'Plan tomorrow around my current training split and recovery.',
+  'Adjust this week based on my completed and missed activity.',
+  'Check my recovery using sleep, soreness, energy, and recent training.',
+  'Help me recover from a missed workout without overloading the week.',
+] as const
+
+const ACTIVITY_COACH_ACTIONS = [
+  { label: 'Plan tomorrow', prompt: ACTIVITY_COACH_PROMPTS[0] },
+  { label: 'Adjust week', prompt: ACTIVITY_COACH_PROMPTS[1] },
+  { label: 'Recovery check', prompt: ACTIVITY_COACH_PROMPTS[2] },
+  { label: 'Missed workout', prompt: ACTIVITY_COACH_PROMPTS[3] },
+] as const
+
 function scheduleLabel(day: DaySchedule): string {
   const strength = day.gym ? day.sessionType : 'Rest'
   const run = day.runKm ? `${day.runKm} km ${day.runType}` : null
@@ -46,56 +61,228 @@ function WeekSplit({
   today,
   dates,
   index,
+  selectedDate,
+  onSelectDate,
 }: {
   phase: Phase
   today: LocalDate
   dates: LocalDate[]
   index: Map<LocalDate, DailyLog>
+  selectedDate: LocalDate
+  onSelectDate: (date: LocalDate) => void
 }) {
   return (
     <div className="grid grid-cols-7 gap-1.5">
-      {phase.schedule.map((day) => {
-        const active = day.dow === dayOfWeek(today)
-        const date = dates.find((candidate) => dayOfWeek(candidate) === day.dow)
-        const log = date ? index.get(date) : undefined
-        const gymOutcome = date ? outcomeFor('gym', log, phase, date) : 'unknown'
-        const runOutcome = date ? outcomeFor('run', log, phase, date) : 'unknown'
-        const done = gymOutcome === 'hit' || runOutcome === 'hit'
-        const missed = gymOutcome === 'missed' || runOutcome === 'missed'
+      {dates.map((date) => {
+        const day = phase.schedule.find((candidate) => candidate.dow === dayOfWeek(date))
+        const active = date === today
+        const selected = date === selectedDate
+        const log = index.get(date)
+        const gymOutcome = outcomeFor('gym', log, phase, date)
+        const runOutcome = outcomeFor('run', log, phase, date)
+        const plannedOutcomes = [
+          ...(day?.gym ? [gymOutcome] : []),
+          ...(day?.runKm ? [runOutcome] : []),
+        ]
+        const done =
+          plannedOutcomes.length > 0 &&
+          plannedOutcomes.every((outcome) => outcome === 'hit')
+        const partial = plannedOutcomes.some((outcome) => outcome === 'hit') && !done
+        const missed = plannedOutcomes.some((outcome) => outcome === 'missed')
         return (
-          <div
-            key={day.dow}
-            className={`min-h-24 rounded-2xl p-2 ring-1 ring-inset ${
-              active
-                ? 'bg-accent/12 text-ink-50 ring-accent/35'
-                : 'bg-white/[0.045] text-ink-300 ring-white/8'
+          <button
+            type="button"
+            key={date}
+            onClick={() => onSelectDate(date)}
+            aria-pressed={selected}
+            title={`Open ${weekdayName(date)} ${formatShort(date)}`}
+            className={`min-h-24 rounded-2xl p-2 text-left ring-1 ring-inset transition-[background-color,box-shadow,transform] active:scale-[0.97] ${
+              selected
+                ? 'bg-info/12 text-ink-50 ring-info/45 shadow-[0_12px_30px_-24px_rgba(0,240,255,0.8)]'
+                : active
+                  ? 'bg-accent/10 text-ink-50 ring-accent/30'
+                  : 'bg-white/[0.045] text-ink-300 ring-white/8 hover:bg-white/[0.07]'
             }`}
           >
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-semibold text-ink-500">
-                {WEEK_LABELS[day.dow]}
+                {WEEK_LABELS[dayOfWeek(date)]}
               </span>
               <span
                 className={`h-1.5 w-1.5 rounded-full ${
                   done
                     ? 'bg-accent'
-                    : missed
-                      ? 'bg-alert'
-                      : active
-                        ? 'bg-info'
-                        : 'bg-white/18'
+                    : partial
+                      ? 'bg-info'
+                      : missed
+                        ? 'bg-alert'
+                        : active
+                          ? 'bg-info'
+                          : 'bg-white/18'
                 }`}
               />
             </div>
+            <div className="mt-1 tabular text-[10px] text-ink-500">
+              {formatShort(date).split(' ')[0]}
+            </div>
             <div className="mt-3 text-[11px] font-semibold capitalize leading-tight">
-              {day.gym ? day.sessionType : 'Rest'}
+              {day?.gym ? day.sessionType : 'Rest'}
             </div>
             <div className="mt-1 min-h-7 text-[10px] leading-tight text-ink-500">
-              {day.runKm ? `${day.runKm} km ${day.runType}` : 'No run'}
+              {day?.runKm ? `${day.runKm} km ${day.runType}` : 'No run'}
             </div>
-          </div>
+          </button>
         )
       })}
+    </div>
+  )
+}
+
+function SelectedDayPanel({
+  date,
+  today,
+  phase,
+  log,
+  exercises,
+}: {
+  date: LocalDate
+  today: LocalDate
+  phase: Phase
+  log: DailyLog | undefined
+  exercises: Exercise[]
+}) {
+  const schedule = phase.schedule.find((day) => day.dow === dayOfWeek(date))
+  const gymOutcome = outcomeFor('gym', log, phase, date)
+  const runOutcome = outcomeFor('run', log, phase, date)
+  const plannedOutcomes = [
+    ...(schedule?.gym ? [gymOutcome] : []),
+    ...(schedule?.runKm ? [runOutcome] : []),
+  ]
+  const completed =
+    plannedOutcomes.length > 0 && plannedOutcomes.every((outcome) => outcome === 'hit')
+  const partial = plannedOutcomes.some((outcome) => outcome === 'hit') && !completed
+  const missed = plannedOutcomes.some((outcome) => outcome === 'missed')
+  const isToday = date === today
+  const canStartWorkout = isToday && schedule?.gym && schedule.sessionType !== 'rest'
+  const plannedExercises = schedule?.gym
+    ? exercises.filter(
+        (exercise) =>
+          schedule.sessionType === 'full' || exercise.sessionType === schedule.sessionType,
+      )
+    : []
+  const isRest = !schedule?.gym && !schedule?.runKm
+  const status = completed
+    ? 'Completed'
+    : partial
+      ? 'Partial'
+      : missed
+        ? 'Missed'
+        : isRest
+          ? 'Rest'
+          : isToday
+            ? 'Today'
+            : 'Open'
+  const statusTone = completed
+    ? 'good'
+    : missed
+      ? 'bad'
+      : partial || isToday
+        ? 'info'
+        : 'neutral'
+
+  return (
+    <div className="glass-inset mt-3 rounded-2xl p-3.5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-semibold uppercase text-ink-400">
+            Selected day
+          </div>
+          <div className="mt-1 text-sm font-semibold text-ink-50">
+            {weekdayName(date)} · {formatShort(date)}
+          </div>
+        </div>
+        <Pill tone={statusTone}>{status}</Pill>
+      </div>
+
+      <div className="mt-3 grid grid-cols-3 gap-2 text-[11px]">
+        <div>
+          <div className="text-ink-500">Strength</div>
+          <div className="mt-1 truncate font-semibold capitalize text-ink-200">
+            {schedule?.gym ? schedule.sessionType : 'Rest'}
+          </div>
+        </div>
+        <div>
+          <div className="text-ink-500">Running</div>
+          <div className="mt-1 truncate font-semibold text-ink-200">
+            {schedule?.runKm ? `${schedule.runKm} km` : 'Rest'}
+          </div>
+        </div>
+        <div>
+          <div className="text-ink-500">Recovery</div>
+          <div className="mt-1 truncate font-semibold text-ink-200">
+            {log?.sleepHours == null ? 'Not logged' : `${log.sleepHours} h`}
+          </div>
+        </div>
+      </div>
+
+      {plannedExercises.length > 0 ? (
+        <div className="mt-3 border-t border-white/8 pt-3">
+          <div className="text-[10px] font-semibold uppercase text-ink-500">
+            Session preview · {plannedExercises.length} exercises
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {plannedExercises.slice(0, 4).map((exercise) => (
+              <span
+                key={exercise.id}
+                className="rounded-lg bg-black/25 px-2 py-1 text-[10px] text-ink-300 ring-1 ring-inset ring-white/8"
+              >
+                {exercise.name}
+              </span>
+            ))}
+            {plannedExercises.length > 4 ? (
+              <span className="px-1 py-1 text-[10px] text-ink-500">
+                +{plannedExercises.length - 4}
+              </span>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {canStartWorkout ? (
+          <Link
+            to="/workout"
+            className="rounded-xl bg-accent px-3 py-2 text-[11px] font-semibold text-ink-950"
+          >
+            Start workout
+          </Link>
+        ) : null}
+        <Link
+          to={`/calendar/${date}`}
+          className="rounded-xl bg-white/8 px-3 py-2 text-[11px] font-semibold text-ink-100 ring-1 ring-inset ring-white/10"
+        >
+          Open day
+        </Link>
+        {schedule?.runKm ? (
+          <Link
+            to={`/calendar/${date}#runs`}
+            className="rounded-xl bg-info/12 px-3 py-2 text-[11px] font-semibold text-info ring-1 ring-inset ring-info/20"
+          >
+            Log run
+          </Link>
+        ) : null}
+        {schedule?.gym && gymOutcome !== 'hit' ? (
+          <button
+            type="button"
+            onClick={() =>
+              void upsertLog(date, { gymDone: log?.gymDone === false ? null : false })
+            }
+            className="rounded-xl px-3 py-2 text-[11px] font-semibold text-ink-300 ring-1 ring-inset ring-white/10"
+          >
+            {log?.gymDone === false ? 'Clear rest mark' : 'Mark rest'}
+          </button>
+        ) : null}
+      </div>
     </div>
   )
 }
@@ -192,6 +379,7 @@ function MetricChart({
                 tick={{ fill: '#8888aa', fontSize: 10, fontWeight: 600 }}
                 tickMargin={12}
                 minTickGap={2}
+                interval={0}
               />
               <YAxis
                 axisLine={false}
@@ -437,6 +625,8 @@ export default function Activity() {
   const dash = useDashboard(30)
   const { today, phase, settings, index, todayLog } = dash
   const sessions = useLiveQuery(() => recentSessions(60), [], [])
+  const exercises = useLiveQuery(() => allExercises(), [], [] as Exercise[])
+  const [selectedDate, setSelectedDate] = useState<LocalDate>(today)
 
   const dates = useMemo(() => lastSevenDates(today), [today])
   const scheduled = useMemo(
@@ -499,17 +689,19 @@ export default function Activity() {
             : 'Training day is on track'
   const plannedGymDays = phase.schedule.filter((day) => day.gym).length
   const plannedRunKm = phase.schedule.reduce((sum, day) => sum + (day.runKm ?? 0), 0)
-  const gymDoneDays = dates.filter((date) => outcomeFor('gym', index.get(date), phase, date) === 'hit').length
+  const gymDoneDays = dates.filter(
+    (date) => outcomeFor('gym', index.get(date), phase, date) === 'hit',
+  ).length
 
   return (
     <div className="pb-4">
       <PageHeader
         title="Activity"
         eyebrow="Training · recovery · coach"
-        action={<CoachChatButton placement="inline" />}
+        action={<CoachChatButton placement="inline" starters={ACTIVITY_COACH_PROMPTS} />}
       />
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_30rem]">
+      <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_30rem]">
         <Card className="overflow-hidden">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-2xl">
@@ -549,6 +741,24 @@ export default function Activity() {
             runOutcome={todayRunOutcome}
             phase={phase}
           />
+
+          <div className="mt-5 border-t border-white/8 pt-4">
+            <div className="mb-2 text-[10px] font-semibold uppercase text-ink-500">
+              Coach this week
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {ACTIVITY_COACH_ACTIONS.map(({ label, prompt }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => openCoachWithPrompt(prompt)}
+                  className="min-h-11 rounded-xl bg-white/[0.045] px-3 py-2 text-left text-[11px] font-semibold text-ink-200 ring-1 ring-inset ring-white/8 transition-colors hover:bg-white/[0.08] active:bg-white/[0.1]"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </Card>
 
         <Card>
@@ -557,9 +767,25 @@ export default function Activity() {
               <div className="text-sm font-semibold text-ink-50">Full Week Split</div>
               <div className="mt-1 text-[11px] text-ink-500">{phase.name}</div>
             </div>
-            <Pill tone="info">{weeklyRunTarget > 0 ? `${weeklyRunTarget} km` : 'run optional'}</Pill>
+            <Pill tone="info">
+              {weeklyRunTarget > 0 ? `${weeklyRunTarget} km` : 'run optional'}
+            </Pill>
           </div>
-          <WeekSplit phase={phase} today={today} dates={dates} index={index} />
+          <WeekSplit
+            phase={phase}
+            today={today}
+            dates={dates}
+            index={index}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+          />
+          <SelectedDayPanel
+            date={selectedDate}
+            today={today}
+            phase={phase}
+            log={index.get(selectedDate)}
+            exercises={exercises ?? []}
+          />
           <div className="mt-3 grid grid-cols-2 gap-2">
             <Stat label="Gym" value={`${gymDoneDays}/${plannedGymDays}`} sub="done / planned" />
             <Stat
@@ -569,59 +795,69 @@ export default function Activity() {
               sub={`${plannedRunKm} km planned`}
             />
           </div>
+
         </Card>
       </div>
 
       <SectionTitle>Progress</SectionTitle>
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
-        <div className="grid gap-4 lg:grid-cols-3 xl:grid-cols-1">
-          <MetricChart
-            title="Steps"
-            unit="steps"
-            values={steps}
-            target={phase.steps}
-            tone="accent"
-          />
-          <MetricChart
-            title="Sleep"
-            unit="h"
-            values={sleep}
-            target={phase.sleepHours}
-            tone="info"
-          />
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        <MetricChart
+          title="Steps"
+          unit="steps"
+          values={steps}
+          target={phase.steps}
+          tone="accent"
+        />
+        <MetricChart
+          title="Sleep"
+          unit="h"
+          values={sleep}
+          target={phase.sleepHours}
+          tone="info"
+        />
+        <div className="lg:col-span-2 xl:col-span-1">
           <MetricChart
             title="Running"
             unit="km"
             values={runs}
-            target={weeklyRunTarget > 0 ? weeklyRunTarget / 7 : Math.max(1, scheduled?.runKm ?? 1)}
+            target={
+              weeklyRunTarget > 0 ? weeklyRunTarget / 7 : Math.max(1, scheduled?.runKm ?? 1)
+            }
             tone="warn"
           />
         </div>
-
-        <div className="space-y-4">
-          <MoveRing
-            walkingKcal={walkingKcal}
-            runningKcal={runningKcal}
-            target={movementTarget}
-          />
-
-          <Card>
-            <div className="text-sm font-semibold text-ink-50">Weekly Summary</div>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <Stat label="Avg steps" value={statInt(dash.weekAverages?.steps)} />
-              <Stat label="Avg sleep" value={statVal(dash.weekAverages?.sleep, 1)} unit="h" />
-              <Stat
-                label="Run volume"
-                value={statVal(dash.weekAverages?.runKmTotal, 1)}
-                unit="km"
-              />
-              <Stat label="Step hits" value={`${stepHits}/7`} />
-            </div>
-          </Card>
-        </div>
       </div>
 
-      <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
+      <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(22rem,0.8fr)]">
+        <MoveRing
+          walkingKcal={walkingKcal}
+          runningKcal={runningKcal}
+          target={movementTarget}
+        />
+
+        <Card>
+          <div className="text-sm font-semibold text-ink-50">Weekly Summary</div>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <Stat label="Avg steps" value={statInt(dash.weekAverages?.steps)} />
+            <Stat label="Avg sleep" value={statVal(dash.weekAverages?.sleep, 1)} unit="h" />
+            <Stat
+              label="Run volume"
+              value={statVal(dash.weekAverages?.runKmTotal, 1)}
+              unit="km"
+            />
+            <Stat label="Step hits" value={`${stepHits}/7`} />
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2 border-t border-white/8 pt-4">
+            <Pill tone={stepHits >= 5 ? 'good' : 'warn'}>steps {stepHits}/7</Pill>
+            <Pill tone={sleepHits >= 5 ? 'good' : 'info'}>sleep {sleepHits}/7</Pill>
+            <Pill tone={weeklyRunTarget > 0 && runTotal >= weeklyRunTarget ? 'good' : 'neutral'}>
+              runs {runTotal.toFixed(1)} km
+            </Pill>
+          </div>
+        </Card>
+      </div>
+
+      <div className="mt-4">
         <div>
           <SectionTitle>Strength Progress</SectionTitle>
           <Card>
@@ -642,35 +878,6 @@ export default function Activity() {
                 </div>
               ))}
             </div>
-          </Card>
-        </div>
-
-        <div>
-          <SectionTitle>Coach Context</SectionTitle>
-          <Card>
-            <div className="flex flex-wrap items-center gap-2">
-              <Pill tone={stepHits >= 5 ? 'good' : 'warn'}>steps {stepHits}/7</Pill>
-              <Pill tone={sleepHits >= 5 ? 'good' : 'info'}>sleep {sleepHits}/7</Pill>
-              <Pill tone={weeklyRunTarget > 0 && runTotal >= weeklyRunTarget ? 'good' : 'neutral'}>
-                runs {runTotal.toFixed(1)} km
-              </Pill>
-            </div>
-            <div className="mt-4 grid gap-2">
-              {['Plan tomorrow', 'Adjust this week', 'Recovery check', 'Missed workout fix'].map(
-                (prompt) => (
-                  <div
-                    key={prompt}
-                    className="rounded-2xl bg-white/[0.045] px-3 py-2 text-[12px] font-semibold text-ink-200 ring-1 ring-inset ring-white/8"
-                  >
-                    {prompt}
-                  </div>
-                ),
-              )}
-            </div>
-            <p className="mt-3 text-[12px] leading-relaxed text-ink-400">
-              Use Coach from the header to plan the next session around this split, current
-              recovery, and missed/open training work.
-            </p>
           </Card>
         </div>
       </div>

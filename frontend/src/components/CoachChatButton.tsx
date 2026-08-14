@@ -1,11 +1,12 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { askCoach, type CoachChatMessage } from '@/ai/coachChat'
 import { db } from '@/db/database'
 import { buildCoachSummary } from '@/domain/rules'
 import { useDashboard } from '@/hooks/useDashboard'
+import { listenForCoachPrompt } from '@/components/coachEvents'
 
-const STARTERS = [
+const DEFAULT_STARTERS = [
   'What should I focus on today?',
   'Why might my weight be stuck?',
   'How is my training recovery looking?',
@@ -18,7 +19,13 @@ function sanitizeMessages(messages: CoachChatMessage[]): CoachChatMessage[] {
     .map((message) => ({ ...message, content: message.content.slice(0, 900) }))
 }
 
-export function CoachChatButton({ placement = 'floating' }: { placement?: 'floating' | 'inline' }) {
+export function CoachChatButton({
+  placement = 'floating',
+  starters = DEFAULT_STARTERS,
+}: {
+  placement?: 'floating' | 'inline'
+  starters?: readonly string[]
+}) {
   const dash = useDashboard(30)
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState('')
@@ -32,6 +39,14 @@ export function CoachChatButton({ placement = 'floating' }: { placement?: 'float
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
+
+  useEffect(() => {
+    return listenForCoachPrompt((prompt) => {
+      setInput(prompt)
+      setOpen(true)
+      window.setTimeout(() => inputRef.current?.focus(), 0)
+    })
+  }, [])
 
   const recentWorkouts = useLiveQuery(
     () => db.workouts.orderBy('date').reverse().limit(5).toArray(),
@@ -195,7 +210,7 @@ export function CoachChatButton({ placement = 'floating' }: { placement?: 'float
 
           {messages.length === 1 ? (
             <div className="mb-2 flex gap-2 overflow-x-auto px-1">
-              {STARTERS.map((starter) => (
+              {starters.map((starter) => (
                 <button
                   key={starter}
                   type="button"

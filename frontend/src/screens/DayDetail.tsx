@@ -109,7 +109,7 @@ export default function DayDetail() {
             </div>
           </div>
 
-          <div>
+          <div id="runs" className="scroll-mt-6">
             <SectionTitle
               action={
                 <button
