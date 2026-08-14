@@ -692,8 +692,8 @@ export default function Activity() {
     <div className="pb-4">
       <PageHeader title="Activity" eyebrow="Training · recovery · coach" />
 
-      <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_30rem]">
-        <div className="min-w-0 space-y-4">
+      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_30rem]">
+        <div className="flex min-w-0 flex-col gap-4">
           <Card className="overflow-hidden">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div className="max-w-2xl">
@@ -735,7 +735,7 @@ export default function Activity() {
             />
           </Card>
 
-          <CoachChatButton placement="card" starters={ACTIVITY_COACH_PROMPTS} />
+          <CoachChatButton placement="card" starters={ACTIVITY_COACH_PROMPTS} fillHeight />
         </div>
 
         <div className="min-w-0 space-y-4">

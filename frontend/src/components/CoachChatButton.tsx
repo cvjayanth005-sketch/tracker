@@ -32,12 +32,15 @@ export function CoachChatButton({
   starters = DEFAULT_STARTERS,
   title,
   subtitle,
+  fillHeight = false,
 }: {
   placement?: 'floating' | 'inline' | 'card'
   starters?: readonly string[]
   /** Card-mode heading; defaults to the training-oriented copy. */
   title?: string
   subtitle?: ReactNode
+  /** Lets a card-mode coach absorb the remaining height in a dashboard column. */
+  fillHeight?: boolean
 }) {
   const dash = useDashboard(30)
   const navigate = useNavigate()
@@ -334,7 +337,9 @@ export function CoachChatButton({
     <section
       className={
         cardMode
-          ? 'surface flex min-h-[26rem] flex-col rounded-3xl p-4 sm:p-5'
+          ? `surface flex min-h-[26rem] flex-col rounded-3xl p-4 sm:p-5 ${
+              fillHeight ? 'xl:flex-1' : ''
+            }`
           : 'fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+10rem)] z-50 mx-auto flex max-h-[70dvh] max-w-lg flex-col rounded-3xl border border-white/18 bg-[linear-gradient(180deg,rgba(20,24,34,0.94),rgba(6,8,16,0.88))] p-3 shadow-[0_28px_90px_-46px_rgba(0,240,255,0.9),inset_0_1px_1px_rgba(255,255,255,0.28),inset_0_0_0_1px_rgba(255,255,255,0.08)] backdrop-blur-2xl backdrop-saturate-150 lg:inset-x-auto lg:bottom-auto lg:right-6 lg:top-20 lg:w-[27rem]'
       }
     >
@@ -390,7 +395,7 @@ export function CoachChatButton({
       <div
         ref={chatScrollRef}
         className={`min-h-0 flex-1 space-y-3 overflow-y-auto px-1 py-3 ${
-          cardMode ? 'max-h-36' : ''
+          cardMode ? (fillHeight ? 'max-h-36 xl:max-h-none' : 'max-h-36') : ''
         }`}
         role="log"
         aria-live="polite"
