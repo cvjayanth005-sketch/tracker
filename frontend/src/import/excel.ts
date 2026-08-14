@@ -93,6 +93,9 @@ export function rowsToDailyLogs(rows: Cell[][]): ExcelImportPreview {
       // Numeric cells import as measurements. Checkbox glyphs remain unknown.
       calories: number(cell(row, caloriesCol)),
       proteinG: number(cell(row, proteinCol)),
+      carbsG: null,
+      fatG: null,
+      fiberG: null,
       steps: number(cell(row, stepsCol)),
       runKm: number(cell(row, runCol)),
       gymDone: checked(cell(row, gymCol)) ? true : null,

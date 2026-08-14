@@ -28,6 +28,7 @@ from .database import connect, get_settings, init_db, row_to_dict, upsert_settin
 from .schemas import (
     CoachNoteRequest,
     CoachChatRequest,
+    FoodParseRequest,
     DayLogUpdate,
     ExcelPlanImportRequest,
     GoogleLoginRequest,
@@ -53,6 +54,7 @@ from .services import (
     cached_coach_note_for_summary,
     coach_chat,
     create_run,
+    food_parse,
     get_or_create_day,
     get_state_document,
     get_state_version,
@@ -444,6 +446,20 @@ def chat_with_coach(payload: CoachChatRequest, token: str | None = Depends(beare
         with connect() as conn:
             require_user(conn, token)
     return coach_chat(payload.model_dump())
+
+
+@app.post("/api/food/parse")
+def parse_food(payload: FoodParseRequest, token: str | None = Depends(bearer_token)) -> dict:
+    if cloud_store.enabled():
+        if cloud_session_user(token) is None:
+            raise HTTPException(status_code=401, detail="Sign in required.")
+    else:
+        with connect() as conn:
+            require_user(conn, token)
+    try:
+        return food_parse(payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/api/onboarding/draft")

@@ -5,6 +5,7 @@ import type {
   BodyMeasurement,
   DailyLog,
   Exercise,
+  Meal,
   Phase,
   Run,
   Settings,
@@ -39,6 +40,7 @@ export class TrackerDb extends Dexie {
   settings!: EntityTable<Settings, 'id'>
   phases!: EntityTable<Phase, 'id'>
   dailyLogs!: EntityTable<DailyLog, 'date'>
+  meals!: EntityTable<Meal, 'id'>
   measurements!: EntityTable<BodyMeasurement, 'date'>
   exercises!: EntityTable<Exercise, 'id'>
   workouts!: EntityTable<Workout, 'id'>
@@ -117,6 +119,18 @@ export class TrackerDb extends Dexie {
           meta.accountUserId ??= null
         })
       })
+    // Per-meal food logging. The new `meals` table holds itemized meals; the
+    // extra macro columns on dailyLogs are the rolled-up daily totals so older
+    // single-number food entries keep working.
+    this.version(6)
+      .stores({ meals: 'id, date, slot' })
+      .upgrade(async (tx) => {
+        await tx.table<DailyLog, 'date'>('dailyLogs').toCollection().modify((log) => {
+          log.carbsG ??= null
+          log.fatG ??= null
+          log.fiberG ??= null
+        })
+      })
   }
 }
 
@@ -127,6 +141,7 @@ const SEEDED_TABLES = [
   db.settings,
   db.phases,
   db.dailyLogs,
+  db.meals,
   db.measurements,
   db.exercises,
   db.workouts,

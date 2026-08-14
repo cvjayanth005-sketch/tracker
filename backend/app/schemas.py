@@ -102,6 +102,15 @@ class OnboardingDraftRequest(BaseModel):
     file_base64: str | None = None
 
 
+class FoodParseRequest(BaseModel):
+    """A free-text meal description to estimate into structured meal drafts."""
+
+    text: str = Field(min_length=1, max_length=2000)
+    # The slot the user is logging into; used as the default when the text does
+    # not make the meal-of-day obvious.
+    defaultSlot: Literal["breakfast", "lunch", "dinner", "snack"] = "snack"
+
+
 class GoogleLoginRequest(BaseModel):
     credential: str
 

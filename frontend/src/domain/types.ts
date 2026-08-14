@@ -119,8 +119,17 @@ export type Rating = 1 | 2 | 3 | 4 | 5
 export interface DailyLog {
   date: LocalDate
   weightKg: number | null
+  /**
+   * Macro totals for the day. When the day has `Meal` rows these are rolled up
+   * from them (see `rollUpMealTotals`); otherwise they hold a manually entered
+   * daily figure. Either way the dashboard reads only these fields, so meal-level
+   * logging and the older single-number entry stay interchangeable.
+   */
   calories: number | null
   proteinG: number | null
+  carbsG: number | null
+  fatG: number | null
+  fiberG: number | null
   steps: number | null
   runKm: number | null
   /** Null = unknown whether a session happened; false = confirmed no session. */
@@ -131,6 +140,35 @@ export interface DailyLog {
   hunger: Rating | null
   soreness: Rating | null
   notes: string | null
+  createdAt: Instant
+  updatedAt: Instant
+}
+
+/** Which part of the day a meal belongs to. Drives the timeline ordering. */
+export type MealSlot = 'breakfast' | 'lunch' | 'dinner' | 'snack'
+
+/**
+ * One eaten meal. Many rows per date, unlike the single-row `DailyLog`. This is
+ * the detailed food record the AI coach reads to reason about physique: named
+ * dishes, per-meal macros, and how they were captured. Individual meals roll up
+ * into the day's `DailyLog` macro totals (see `rollUpMealTotals`).
+ */
+export interface Meal {
+  id: string
+  date: LocalDate
+  slot: MealSlot
+  /** Free-text description of the dish(es), e.g. "Chicken rice bowl + yogurt". */
+  name: string
+  /** Local clock time `HH:mm`, or null when not recorded. */
+  time: string | null
+  calories: number | null
+  proteinG: number | null
+  carbsG: number | null
+  fatG: number | null
+  fiberG: number | null
+  notes: string | null
+  /** How the macros were captured: hand-entered, or estimated by the AI parser. */
+  source: 'manual' | 'ai'
   createdAt: Instant
   updatedAt: Instant
 }

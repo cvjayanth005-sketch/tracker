@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { askCoach, type CoachChatMessage } from '@/ai/coachChat'
 import { db } from '@/db/database'
 import { buildCoachSummary } from '@/domain/rules'
+import { buildFoodContext } from '@/domain/foodContext'
+import { dayOfWeek } from '@/domain/date'
+import { evaluateProgression, sessionVolume } from '@/domain/progression'
 import { useDashboard } from '@/hooks/useDashboard'
 import { listenForCoachPrompt } from '@/components/coachEvents'
 
@@ -22,23 +25,30 @@ function sanitizeMessages(messages: CoachChatMessage[]): CoachChatMessage[] {
 export function CoachChatButton({
   placement = 'floating',
   starters = DEFAULT_STARTERS,
+  title,
+  subtitle,
 }: {
-  placement?: 'floating' | 'inline'
+  placement?: 'floating' | 'inline' | 'card'
   starters?: readonly string[]
+  /** Card-mode heading; defaults to the training-oriented copy. */
+  title?: string
+  subtitle?: ReactNode
 }) {
   const dash = useDashboard(30)
-  const [open, setOpen] = useState(false)
+  const cardMode = placement === 'card'
+  const [open, setOpen] = useState(cardMode)
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState<CoachChatMessage[]>([
     {
       role: 'assistant',
       content:
-        'Ask me anything about your food, workouts, recovery, or progress. I will answer normally and use your tracker data when it helps.',
+        'Tell me what you want to improve. I can use your split, recent sets, exercise progression, running, recovery, and nutrition to shape the next workout.',
     },
   ])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
+  const chatScrollRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     return listenForCoachPrompt((prompt) => {
@@ -49,7 +59,7 @@ export function CoachChatButton({
   }, [])
 
   const recentWorkouts = useLiveQuery(
-    () => db.workouts.orderBy('date').reverse().limit(5).toArray(),
+    () => db.workouts.orderBy('date').reverse().limit(16).toArray(),
     [],
     [],
   )
@@ -63,15 +73,27 @@ export function CoachChatButton({
     [],
   )
   const exercises = useLiveQuery(() => db.exercises.toArray(), [], [])
+  const profile = useLiveQuery(() => db.profile.get('me'), [], undefined)
+  const todayMeals = useLiveQuery(
+    () => db.meals.where('date').equals(dash.today).toArray(),
+    [dash.today],
+    [],
+  )
 
   const context = useMemo(() => {
     const exerciseById = new Map((exercises ?? []).map((exercise) => [exercise.id, exercise.name]))
-    const workouts = (recentWorkouts ?? []).map((workout) => {
-      const sets = (recentSets ?? []).filter((set) => set.workoutId === workout.id)
+    const history = (recentWorkouts ?? []).map((workout) => ({
+      workout,
+      sets: (recentSets ?? []).filter((set) => set.workoutId === workout.id),
+    }))
+    const workouts = history.slice(0, 8).map(({ workout, sets }) => {
       return {
         date: workout.date,
         sessionType: workout.sessionType,
+        finished: workout.finishedAt !== null,
         setCount: sets.length,
+        workingSetCount: sets.filter((set) => !set.isWarmup).length,
+        volumeKgReps: Math.round(sessionVolume(sets)),
         topSets: sets.slice(0, 8).map((set) => ({
           exercise: exerciseById.get(set.exerciseId) ?? 'Exercise',
           weightKg: set.weightKg,
@@ -82,14 +104,92 @@ export function CoachChatButton({
         notes: workout.notes,
       }
     })
+    const phase = dash.phase
+    const todaySchedule = phase?.schedule.find((day) => day.dow === dayOfWeek(dash.today))
+    const activeExercises = (exercises ?? []).filter((exercise) => !exercise.archived)
+    const exercisePlan = activeExercises.map((exercise) => {
+      const progression = evaluateProgression(exercise, history)
+      return {
+        name: exercise.name,
+        sessionType: exercise.sessionType,
+        targetSets: exercise.targetSets,
+        repRange: [exercise.repRangeMin, exercise.repRangeMax],
+        targetRir: exercise.targetRir,
+        loadIncrementKg: exercise.loadIncrementKg,
+        progression: {
+          code: progression.code,
+          headline: progression.headline,
+          suggestedWeightKg: progression.suggestedWeightKg,
+          suggestedRepTarget: progression.suggestedRepTarget,
+          lastWorkingWeightKg: progression.lastWorkingWeightKg,
+          lastReps: progression.lastReps,
+          lastSessionDate: progression.lastSessionDate,
+        },
+      }
+    })
+    const recoveryDays = dash.logs.slice(-7).map((log) => ({
+      date: log.date,
+      sleepHours: log.sleepHours,
+      energy: log.energy,
+      soreness: log.soreness,
+      calories: log.calories,
+      proteinG: log.proteinG,
+      gymDone: log.gymDone,
+      runKm: log.runKm,
+    }))
 
     return {
+      activity: phase
+        ? {
+            body: {
+              heightCm: profile?.heightCm ?? null,
+              birthYear: profile?.birthYear ?? null,
+              startWeightKg: profile?.startWeightKg ?? phase.startWeightKg,
+              currentTrendWeightKg:
+                dash.change?.current.averageKg ?? dash.todayLog?.weightKg ?? null,
+              goalWeightKg: profile?.goalWeightKg ?? phase.targetWeightKg,
+            },
+            today: {
+              date: dash.today,
+              schedule: todaySchedule ?? null,
+              completedGym: dash.todayLog?.gymDone ?? null,
+              loggedRunKm: dash.todayLog?.runKm ?? null,
+              sleepHours: dash.todayLog?.sleepHours ?? null,
+              energy: dash.todayLog?.energy ?? null,
+              soreness: dash.todayLog?.soreness ?? null,
+            },
+            weeklySplit: phase.schedule,
+            exercisePlan,
+            recentWorkouts: workouts,
+            recoveryDays,
+            recoveryConcern: dash.recommendation?.evidence.recoveryConcern ?? null,
+            compliance: dash.compliance
+              ? {
+                  gym: dash.compliance.metrics.gym,
+                  run: dash.compliance.metrics.run,
+                  steps: dash.compliance.metrics.steps,
+                  sleep: dash.compliance.metrics.sleep,
+                }
+              : null,
+            running: {
+              easyPace: dash.easyPace,
+              paceProgression: dash.paceProgression,
+              weeklyVolume: dash.weeklyRunVolume,
+              volumeRamp: dash.volumeRamp,
+              longRunProgression: dash.longRunProgression,
+              derivedTargetPaces: dash.derivedTargetPaces,
+            },
+          }
+        : null,
       dashboard:
         dash.phase && dash.recommendation && dash.review
           ? buildCoachSummary(dash.today, dash.phase, dash.recommendation, dash.review)
           : null,
       todayLog: dash.todayLog ?? null,
       weekAverages: dash.weekAverages ?? null,
+      food: dash.phase
+        ? buildFoodContext(dash.today, dash.phase, profile, dash.logs, todayMeals ?? [])
+        : null,
       phase: dash.phase
         ? {
             name: dash.phase.name,
@@ -105,6 +205,9 @@ export function CoachChatButton({
         weightKg: log.weightKg,
         calories: log.calories,
         proteinG: log.proteinG,
+        carbsG: log.carbsG,
+        fatG: log.fatG,
+        fiberG: log.fiberG,
         steps: log.steps,
         runKm: log.runKm,
         gymDone: log.gymDone,
@@ -125,7 +228,13 @@ export function CoachChatButton({
       })),
       recentWorkouts: workouts,
     }
-  }, [dash, exercises, recentSets, recentWorkouts])
+  }, [dash, exercises, recentSets, recentWorkouts, profile, todayMeals])
+
+  useEffect(() => {
+    if (messages.length === 1 && !busy) return
+    const scroller = chatScrollRef.current
+    scroller?.scrollTo({ top: scroller.scrollHeight, behavior: 'smooth' })
+  }, [messages, busy])
 
   const submit = async (question = input.trim()) => {
     if (!question || busy) return
@@ -146,6 +255,134 @@ export function CoachChatButton({
     }
   }
 
+  const coachPanel = (
+    <section
+      className={
+        cardMode
+          ? 'surface flex min-h-[28rem] flex-col rounded-3xl p-4 sm:p-5'
+          : 'fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+10rem)] z-50 mx-auto flex max-h-[70dvh] max-w-lg flex-col rounded-3xl border border-white/18 bg-[linear-gradient(180deg,rgba(20,24,34,0.94),rgba(6,8,16,0.88))] p-3 shadow-[0_28px_90px_-46px_rgba(0,240,255,0.9),inset_0_1px_1px_rgba(255,255,255,0.28),inset_0_0_0_1px_rgba(255,255,255,0.08)] backdrop-blur-2xl backdrop-saturate-150 lg:inset-x-auto lg:bottom-auto lg:right-6 lg:top-20 lg:w-[27rem]'
+      }
+    >
+      <div className="flex items-start justify-between gap-3 border-b border-white/12 px-1 pb-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-[10px] font-black text-ink-950">
+              AI
+            </span>
+            <div className="text-sm font-semibold text-ink-50">
+              {cardMode ? (title ?? 'Training Coach') : 'AI coach'}
+            </div>
+          </div>
+          <div className="mt-2 text-[11px] text-ink-400">
+            {subtitle ?? (
+              <>
+                {dash.phase?.name ?? 'Current plan'} · {recentWorkouts?.length ?? 0} sessions ·{' '}
+                {(exercises ?? []).filter((exercise) => !exercise.archived).length} exercises
+              </>
+            )}
+          </div>
+        </div>
+        {!cardMode ? (
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/8 text-lg text-ink-200 ring-1 ring-inset ring-white/10"
+            aria-label="Close AI coach chat"
+            title="Close"
+          >
+            x
+          </button>
+        ) : (
+          <span className="rounded-full bg-info/10 px-2.5 py-1 text-[10px] font-semibold text-info ring-1 ring-inset ring-info/20">
+            Live context
+          </span>
+        )}
+      </div>
+
+      <div
+        ref={chatScrollRef}
+        className={`min-h-0 flex-1 space-y-3 overflow-y-auto px-1 py-3 ${
+          cardMode ? 'max-h-72' : ''
+        }`}
+        role="log"
+        aria-live="polite"
+      >
+        {messages.map((message, index) => (
+          <div
+            key={`${message.role}-${index}`}
+            className={`max-w-[88%] rounded-2xl px-3 py-2 text-[13px] leading-relaxed shadow-[0_10px_28px_-20px_rgba(0,0,0,0.8)] ${
+              cardMode ? 'lg:max-w-3xl ' : ''
+            }${
+              message.role === 'user'
+                ? 'ml-auto bg-accent text-ink-950'
+                : 'bg-white/10 text-ink-100 ring-1 ring-inset ring-white/10'
+            }`}
+          >
+            {message.content}
+          </div>
+        ))}
+        {busy ? (
+          <div className="max-w-[70%] rounded-2xl bg-white/10 px-3 py-2 text-[13px] text-ink-300 ring-1 ring-inset ring-white/10">
+            Reading your training history...
+          </div>
+        ) : null}
+        {error ? (
+          <div className="rounded-2xl bg-alert/12 px-3 py-2 text-[12px] text-alert ring-1 ring-inset ring-alert/25">
+            {error}
+          </div>
+        ) : null}
+      </div>
+
+      {messages.length === 1 || cardMode ? (
+        <div className="mb-2 flex gap-2 overflow-x-auto px-1 pb-1">
+          {starters.map((starter) => (
+            <button
+              key={starter}
+              type="button"
+              onClick={() => void submit(starter)}
+              disabled={busy}
+              className="shrink-0 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-medium text-ink-100 ring-1 ring-inset ring-white/12 transition-colors hover:bg-white/15 active:bg-white/20 disabled:opacity-40"
+            >
+              {starter}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      <form
+        className="flex gap-2 border-t border-white/12 pt-3"
+        onSubmit={(event) => {
+          event.preventDefault()
+          void submit()
+        }}
+      >
+        <textarea
+          ref={inputRef}
+          value={input}
+          onChange={(event) => setInput(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.preventDefault()
+              void submit()
+            }
+          }}
+          rows={cardMode ? 2 : 1}
+          placeholder="Ask about your next workout, recovery, sets, or progression..."
+          className="min-h-11 flex-1 resize-none rounded-2xl bg-black/45 px-3 py-3 text-sm text-ink-50 outline-none ring-1 ring-inset ring-white/14 placeholder:text-ink-500 focus:ring-accent/60"
+        />
+        <button
+          type="submit"
+          disabled={busy || !input.trim()}
+          className="min-h-11 self-end rounded-2xl bg-accent px-4 text-sm font-semibold text-ink-950 transition-transform active:scale-[0.97] disabled:opacity-40"
+        >
+          Send
+        </button>
+      </form>
+    </section>
+  )
+
+  if (cardMode) return coachPanel
+
   return (
     <>
       <button
@@ -164,90 +401,7 @@ export function CoachChatButton({
           Coach
         </span>
       </button>
-
-      {open ? (
-        <section className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+10rem)] z-50 mx-auto flex max-h-[70dvh] max-w-lg flex-col rounded-3xl border border-white/18 bg-[linear-gradient(180deg,rgba(20,24,34,0.94),rgba(6,8,16,0.88))] p-3 shadow-[0_28px_90px_-46px_rgba(0,240,255,0.9),inset_0_1px_1px_rgba(255,255,255,0.28),inset_0_0_0_1px_rgba(255,255,255,0.08)] backdrop-blur-2xl backdrop-saturate-150 lg:inset-x-auto lg:bottom-auto lg:right-6 lg:top-20 lg:w-[27rem]">
-          <div className="flex items-center justify-between gap-3 border-b border-white/12 bg-white/[0.03] px-2 pb-3">
-            <div>
-              <div className="text-sm font-semibold text-ink-50">AI coach</div>
-              <div className="text-[11px] text-ink-400">Insights from your tracker data</div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/8 text-lg text-ink-200 ring-1 ring-inset ring-white/10"
-              aria-label="Close AI coach chat"
-              title="Close"
-            >
-              x
-            </button>
-          </div>
-
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-1 py-3">
-            {messages.map((message, index) => (
-              <div
-                key={`${message.role}-${index}`}
-                className={`max-w-[88%] rounded-2xl px-3 py-2 text-[13px] leading-relaxed shadow-[0_10px_28px_-20px_rgba(0,0,0,0.8)] ${
-                  message.role === 'user'
-                    ? 'ml-auto bg-accent text-ink-950'
-                    : 'bg-white/12 text-ink-100 ring-1 ring-inset ring-white/12'
-                }`}
-              >
-                {message.content}
-              </div>
-            ))}
-            {busy ? (
-              <div className="max-w-[70%] rounded-2xl bg-white/12 px-3 py-2 text-[13px] text-ink-300 ring-1 ring-inset ring-white/12">
-                Reading your logs...
-              </div>
-            ) : null}
-            {error ? (
-              <div className="rounded-2xl bg-alert/12 px-3 py-2 text-[12px] text-alert ring-1 ring-inset ring-alert/25">
-                {error}
-              </div>
-            ) : null}
-          </div>
-
-          {messages.length === 1 ? (
-            <div className="mb-2 flex gap-2 overflow-x-auto px-1">
-              {starters.map((starter) => (
-                <button
-                  key={starter}
-                  type="button"
-                  onClick={() => void submit(starter)}
-                  className="shrink-0 rounded-full bg-white/12 px-3 py-1.5 text-[12px] font-medium text-ink-100 ring-1 ring-inset ring-white/14"
-                >
-                  {starter}
-                </button>
-              ))}
-            </div>
-          ) : null}
-
-          <form
-            className="flex gap-2 border-t border-white/12 pt-3"
-            onSubmit={(event) => {
-              event.preventDefault()
-              void submit()
-            }}
-          >
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              rows={1}
-              placeholder="Ask about food, workout, weight, recovery..."
-              className="min-h-11 flex-1 resize-none rounded-2xl bg-black/45 px-3 py-3 text-sm text-ink-50 outline-none ring-1 ring-inset ring-white/14 placeholder:text-ink-500 focus:ring-accent/60"
-            />
-            <button
-              type="submit"
-              disabled={busy || !input.trim()}
-              className="min-h-11 rounded-2xl bg-accent px-4 text-sm font-semibold text-ink-950 disabled:opacity-40"
-            >
-              Send
-            </button>
-          </form>
-        </section>
-      ) : null}
+      {open ? coachPanel : null}
     </>
   )
 }

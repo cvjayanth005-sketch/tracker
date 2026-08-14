@@ -43,6 +43,7 @@ const TABLES = [
   'settings',
   'phases',
   'dailyLogs',
+  'meals',
   'measurements',
   'exercises',
   'workouts',

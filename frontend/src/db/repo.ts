@@ -6,6 +6,8 @@ import type {
   DailyLog,
   Exercise,
   LocalDate,
+  Meal,
+  MealSlot,
   Phase,
   Run,
   RunType,
@@ -34,6 +36,9 @@ function blankLog(date: LocalDate): DailyLog {
     weightKg: null,
     calories: null,
     proteinG: null,
+    carbsG: null,
+    fatG: null,
+    fiberG: null,
     steps: null,
     runKm: null,
     gymDone: null,
@@ -91,6 +96,152 @@ export async function logsBetween(from: LocalDate, to: LocalDate): Promise<Daily
 /** The window every dashboard read needs: enough history for a 4-week lookback. */
 export async function logsForAnalysis(endDate: LocalDate, days = 120): Promise<DailyLog[]> {
   return logsBetween(addDays(endDate, -(days - 1)), endDate)
+}
+
+// ---------------------------------------------------------------------------
+// Meals
+// ---------------------------------------------------------------------------
+
+const MEAL_SLOT_ORDER: Record<MealSlot, number> = {
+  breakfast: 0,
+  lunch: 1,
+  dinner: 2,
+  snack: 3,
+}
+
+/** Meals eaten on a date, ordered by clock time then slot then entry order. */
+export async function mealsForDate(date: LocalDate): Promise<Meal[]> {
+  const rows = await db.meals.where('date').equals(date).toArray()
+  return rows.sort(
+    (a, b) =>
+      (a.time ?? '').localeCompare(b.time ?? '') ||
+      MEAL_SLOT_ORDER[a.slot] - MEAL_SLOT_ORDER[b.slot] ||
+      a.createdAt.localeCompare(b.createdAt),
+  )
+}
+
+export async function mealsBetween(from: LocalDate, to: LocalDate): Promise<Meal[]> {
+  const rows = await db.meals.where('date').between(from, to, true, true).toArray()
+  return rows.sort(
+    (a, b) => compareDates(a.date, b.date) || a.createdAt.localeCompare(b.createdAt),
+  )
+}
+
+/**
+ * Fold the date's meals into its `DailyLog` macro totals. Mirrors
+ * `rollUpRunDistance`: a macro is the sum of the meals that recorded it, or
+ * null when none did, so an unlogged macro stays "unknown" rather than a fake 0.
+ * Only ever called from meal mutations, so purely-manual food days are untouched.
+ */
+async function rollUpMealTotals(date: LocalDate): Promise<void> {
+  const meals = await db.meals.where('date').equals(date).toArray()
+  const sum = (pick: (meal: Meal) => number | null): number | null => {
+    const known = meals.flatMap((meal) => {
+      const value = pick(meal)
+      return value === null ? [] : [value]
+    })
+    return known.length === 0 ? null : known.reduce((total, value) => total + value, 0)
+  }
+  const existing = await db.dailyLogs.get(date)
+  await db.dailyLogs.put({
+    ...(existing ?? blankLog(date)),
+    calories: sum((meal) => meal.calories),
+    proteinG: sum((meal) => meal.proteinG),
+    carbsG: sum((meal) => meal.carbsG),
+    fatG: sum((meal) => meal.fatG),
+    fiberG: sum((meal) => meal.fiberG),
+    mealsOnPlan: meals.length === 0 ? null : meals.length,
+    updatedAt: now(),
+  })
+}
+
+export async function addMeal(
+  date: LocalDate,
+  slot: MealSlot,
+  partial: Partial<Omit<Meal, 'id' | 'date' | 'slot' | 'createdAt' | 'updatedAt'>> = {},
+  source: Meal['source'] = 'manual',
+): Promise<Meal> {
+  const stamp = now()
+  const meal: Meal = {
+    id: uid(),
+    date,
+    slot,
+    name: '',
+    time: null,
+    calories: null,
+    proteinG: null,
+    carbsG: null,
+    fatG: null,
+    fiberG: null,
+    notes: null,
+    source,
+    createdAt: stamp,
+    updatedAt: stamp,
+    ...partial,
+  }
+  await db.transaction('rw', db.meals, db.dailyLogs, async () => {
+    await db.meals.put(meal)
+    await rollUpMealTotals(date)
+  })
+  await markDirty()
+  return meal
+}
+
+export async function updateMeal(
+  id: string,
+  patch: Partial<Omit<Meal, 'id' | 'createdAt'>>,
+): Promise<void> {
+  const existing = await db.meals.get(id)
+  if (!existing) return
+  const next: Meal = { ...existing, ...patch, id, updatedAt: now() }
+  await db.transaction('rw', db.meals, db.dailyLogs, async () => {
+    await db.meals.put(next)
+    await rollUpMealTotals(existing.date)
+    if (next.date !== existing.date) await rollUpMealTotals(next.date)
+  })
+  await markDirty()
+}
+
+export async function deleteMeal(id: string): Promise<void> {
+  const existing = await db.meals.get(id)
+  if (!existing) return
+  await db.transaction('rw', db.meals, db.dailyLogs, async () => {
+    await db.meals.delete(id)
+    await rollUpMealTotals(existing.date)
+  })
+  await markDirty()
+}
+
+/** Save a batch of AI-parsed meals for one date in a single version bump. */
+export async function addMeals(
+  date: LocalDate,
+  drafts: Array<Pick<Meal, 'slot'> & Partial<Omit<Meal, 'id' | 'date' | 'createdAt' | 'updatedAt'>>>,
+  source: Meal['source'] = 'ai',
+): Promise<Meal[]> {
+  if (drafts.length === 0) return []
+  const stamp = now()
+  const meals: Meal[] = drafts.map((draft) => ({
+    id: uid(),
+    date,
+    name: '',
+    time: null,
+    calories: null,
+    proteinG: null,
+    carbsG: null,
+    fatG: null,
+    fiberG: null,
+    notes: null,
+    source,
+    ...draft,
+    createdAt: stamp,
+    updatedAt: stamp,
+  }))
+  await db.transaction('rw', db.meals, db.dailyLogs, async () => {
+    await db.meals.bulkPut(meals)
+    await rollUpMealTotals(date)
+  })
+  await markDirty()
+  return meals
 }
 
 // ---------------------------------------------------------------------------

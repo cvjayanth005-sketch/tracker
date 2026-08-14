@@ -525,12 +525,30 @@ def request_groq_note(summary: dict[str, Any], api_key: str, model: str) -> str:
     return note.strip()[:900]
 
 
-def fallback_coach_chat(_question: str, context: dict[str, Any]) -> str:
+def fallback_coach_chat(question: str, context: dict[str, Any]) -> str:
     dashboard = context.get("dashboard") if isinstance(context, dict) else {}
     recommendation = dashboard.get("recommendation") if isinstance(dashboard, dict) else {}
     headline = recommendation.get("headline") if isinstance(recommendation, dict) else None
     week = context.get("weekAverages") if isinstance(context, dict) else {}
+    activity = context.get("activity") if isinstance(context, dict) else {}
     parts = []
+    training_question = any(
+        term in question.lower()
+        for term in ("workout", "training", "exercise", "strength", "muscle", "recovery", "run")
+    )
+    if training_question and isinstance(activity, dict):
+        today = activity.get("today")
+        schedule = today.get("schedule") if isinstance(today, dict) else None
+        if isinstance(schedule, dict):
+            strength = schedule.get("sessionType") if schedule.get("gym") else "rest"
+            run_km = schedule.get("runKm")
+            plan = f"Today's plan is {strength}"
+            if isinstance(run_km, (int, float)) and run_km > 0:
+                plan += f" plus {run_km:g} km {schedule.get('runType') or 'run'}"
+            parts.append(plan + ".")
+        recovery = activity.get("recoveryConcern")
+        if isinstance(recovery, dict) and recovery.get("reason"):
+            parts.append(f"Recovery flag: {str(recovery['reason']).replace('_', ' ')}.")
     if isinstance(headline, str) and headline:
         parts.append(f"Current priority: {headline}.")
     if isinstance(week, dict):
@@ -551,6 +569,16 @@ def fallback_coach_chat(_question: str, context: dict[str, Any]) -> str:
                 )
                 + "."
             )
+    food = context.get("food") if isinstance(context, dict) else None
+    if isinstance(food, dict):
+        observations = food.get("observations")
+        if isinstance(observations, list) and observations:
+            parts.append(str(observations[0]))
+        else:
+            today = food.get("today") if isinstance(food.get("today"), dict) else {}
+            remaining = today.get("proteinRemaining")
+            if isinstance(remaining, (int, float)) and remaining > 20:
+                parts.append(f"About {round(remaining)} g of protein left to hit today's target.")
     parts.append(
         "The AI coach is offline, so keep the deterministic plan as the source of truth. "
         "Ask again after the Groq connection is available for a deeper read."
@@ -589,6 +617,20 @@ def request_groq_chat(
                         "Use tracker data only when it helps the answer, and mention only the few numbers that matter. "
                         "Do not start with headings like 'What the tracker shows' unless the user asks for a summary. "
                         "Do not dump every calorie, protein, step, workout, sleep, and weight field in one answer. "
+                        "When the question is about food, eating, meals, macros, or physique, use the context.food block: "
+                        "it has today's meals, macro totals and split, grams remaining vs target, protein by meal slot, "
+                        "7-day macro averages, the physique goal direction, and ready-made observations. "
+                        "Give specific, actionable food suggestions grounded in those numbers and the user's goal "
+                        "(e.g. name a concrete protein-dense option and how much when protein is short), "
+                        "but never prescribe extreme restriction and never give medical or eating-disorder advice. "
+                        "When the question is about training, workouts, muscle gain, physique, running, or recovery, "
+                        "use context.activity before giving advice. It contains the user's body-goal direction, today's "
+                        "session, full weekly split, exercise prescriptions, per-exercise progression evidence, recent "
+                        "sets and volume, running progression, compliance, and seven days of recovery signals. "
+                        "Keep suggestions consistent with the current split and double-progression rules. Recommend "
+                        "specific exercises, sets, rep ranges, or load changes only when that context supports them; "
+                        "state when the data is incomplete. Balance stimulus and recovery, avoid stacking missed work, "
+                        "and never infer injuries, body composition, or physical limitations that were not logged. "
                         "Avoid markdown report formatting, bold section labels, and generic checklists. "
                         "For ordinary questions, use 2-4 natural sentences with no bullets. "
                         "Use bullets only when the user explicitly asks for a list or plan. "
@@ -597,7 +639,9 @@ def request_groq_chat(
                         "Do not tell the user to add an unplanned run or jog just to hit a number. "
                         "For running, refer to the existing plan target and suggest logging planned runs when they happen. "
                         "If the current day may be incomplete, say so before judging it. "
-                        "Do not change targets, phases, calories, or workouts; say those require the app controls. "
+                        "Never claim that you changed targets, phases, calories, or workouts. You may recommend a "
+                        "workout adjustment when the training evidence supports it, but make clear the user must "
+                        "review and apply that change through the app. "
                         "For injuries, medical limitations, chest pain, fainting, eating disorder signals, or severe symptoms, "
                         "recommend a qualified professional and avoid aggressive advice. "
                         "Keep the tone direct, warm, and human."
@@ -605,7 +649,7 @@ def request_groq_chat(
                 },
                 {
                     "role": "user",
-                    "content": "Tracker context JSON:\n" + json.dumps(context, sort_keys=True)[:12000],
+                    "content": "Tracker context JSON:\n" + json.dumps(context, sort_keys=True)[:20000],
                 },
                 *clipped_history,
                 {"role": "user", "content": question},
@@ -843,6 +887,152 @@ def onboarding_draft(payload: dict[str, Any]) -> dict[str, Any]:
             fallback = fallback_onboarding_draft(answers, source_text)
             return {**fallback, "fallback": True, "model": None}
     return fallback_onboarding_draft(answers, source_text)
+
+
+MEAL_SLOTS = ("breakfast", "lunch", "dinner", "snack")
+
+
+def _macro(value: Any, hi: float) -> float | None:
+    """Coerce an estimated macro to a sane number, or None when absent/invalid."""
+    if value is None:
+        return None
+    try:
+        parsed = float(str(value).replace("g", "").replace("kcal", "").strip())
+    except (TypeError, ValueError):
+        return None
+    if parsed != parsed or parsed < 0:  # reject NaN / negatives
+        return None
+    return round(min(parsed, hi), 1)
+
+
+def normalize_food_parse(raw: dict[str, Any], default_slot: str, provider: str) -> dict[str, Any]:
+    """Coerce the model's JSON into safe, clamped meal drafts the UI can render."""
+    slot = default_slot if default_slot in MEAL_SLOTS else "snack"
+    meals_raw = raw.get("meals") if isinstance(raw.get("meals"), list) else []
+    meals: list[dict[str, Any]] = []
+    for item in meals_raw[:12]:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name", "")).strip()[:160]
+        if not name:
+            continue
+        item_slot = item.get("slot")
+        time_raw = str(item.get("time", "") or "").strip()[:5] or None
+        meals.append(
+            {
+                "slot": item_slot if item_slot in MEAL_SLOTS else slot,
+                "name": name,
+                "time": time_raw,
+                "calories": _macro(item.get("calories"), 6000),
+                "proteinG": _macro(item.get("proteinG"), 500),
+                "carbsG": _macro(item.get("carbsG"), 900),
+                "fatG": _macro(item.get("fatG"), 500),
+                "fiberG": _macro(item.get("fiberG"), 200),
+                "notes": (str(item.get("notes", "")).strip()[:240] or None),
+            }
+        )
+    summary = str(raw.get("summary", "")).strip()[:400] or None
+    return {
+        "meals": meals,
+        "summary": summary,
+        "provider": provider,
+        # True when no meal carried any macro estimate — the UI then asks the
+        # user to fill numbers in by hand rather than trusting empty guesses.
+        "needsManual": not any(
+            meal[key] is not None
+            for meal in meals
+            for key in ("calories", "proteinG", "carbsG", "fatG", "fiberG")
+        ),
+    }
+
+
+def request_groq_food_parse(text: str, default_slot: str, api_key: str, model: str) -> dict[str, Any]:
+    response = httpx.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json={
+            "model": model,
+            "temperature": 0.2,
+            "max_completion_tokens": 900,
+            "response_format": {"type": "json_object"},
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "You estimate nutrition from a short free-text description of what someone ate. "
+                        "Return strict JSON only, no prose. Shape: "
+                        '{"meals":[{"slot","name","time","calories","proteinG","carbsG","fatG","fiberG","notes"}],"summary"}. '
+                        "One entry per distinct dish or item. slot is one of breakfast, lunch, dinner, snack; "
+                        f"infer it from wording or time, otherwise use \"{default_slot}\". "
+                        "time is 24h HH:mm or null. Macros are grams; calories are kcal; use realistic per-portion "
+                        "estimates for the quantity described and null when a food gives no basis to estimate. "
+                        "Keep name short and human (e.g. '2 scrambled eggs'). Put assumptions (portion size, cooking) in notes. "
+                        "summary is one short sentence on the whole entry. Estimates only; the user will review and edit."
+                    ),
+                },
+                {"role": "user", "content": text[:2000]},
+            ],
+        },
+        timeout=18.0,
+    )
+    response.raise_for_status()
+    raw = response.json()["choices"][0]["message"]["content"]
+    parsed = json.loads(raw)
+    if not isinstance(parsed, dict):
+        raise ValueError("Groq returned an invalid food parse.")
+    return parsed
+
+
+def fallback_food_parse(text: str, default_slot: str) -> dict[str, Any]:
+    """No-AI path: keep each described item as a named meal with blank macros.
+
+    Splits on newlines and commas so a quick "eggs, toast, coffee" becomes three
+    editable rows the user can fill in — the manual half of the intake flow.
+    """
+    slot = default_slot if default_slot in MEAL_SLOTS else "snack"
+    parts = [part.strip() for chunk in text.split("\n") for part in chunk.split(",")]
+    names = [part[:160] for part in parts if part]
+    meals = [
+        {
+            "slot": slot,
+            "name": name,
+            "time": None,
+            "calories": None,
+            "proteinG": None,
+            "carbsG": None,
+            "fatG": None,
+            "fiberG": None,
+            "notes": None,
+        }
+        for name in (names or [text.strip()[:160]])
+    ]
+    return {
+        "meals": meals,
+        "summary": None,
+        "provider": "rules",
+        "needsManual": True,
+    }
+
+
+def food_parse(payload: dict[str, Any]) -> dict[str, Any]:
+    text = str(payload.get("text", "")).strip()
+    default_slot = str(payload.get("defaultSlot", "snack"))
+    if not text:
+        raise ValueError("Describe what you ate first.")
+    groq_key = os.environ.get("GROQ_API_KEY")
+    groq_model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
+    if groq_key:
+        try:
+            raw = request_groq_food_parse(text, default_slot, groq_key, groq_model)
+            return {**normalize_food_parse(raw, default_slot, "groq"), "model": groq_model}
+        except (httpx.HTTPError, RuntimeError, ValueError, KeyError, IndexError, json.JSONDecodeError) as exc:
+            return {
+                **fallback_food_parse(text, default_slot),
+                "fallback": True,
+                "fallbackReason": f"{type(exc).__name__}: {str(exc)[:300]}",
+                "model": None,
+            }
+    return {**fallback_food_parse(text, default_slot), "model": None}
 
 
 def make_rule_based_note(state: dict[str, Any]) -> str:

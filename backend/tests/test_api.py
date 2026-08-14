@@ -373,6 +373,30 @@ def test_coach_chat_requires_auth_and_returns_rules_fallback(tmp_path, monkeypat
     assert "On target" in data["answer"]
 
 
+def test_coach_chat_fallback_uses_activity_context() -> None:
+    from app.services import fallback_coach_chat
+
+    answer = fallback_coach_chat(
+        "How should I approach today's workout and recovery?",
+        {
+            "activity": {
+                "today": {
+                    "schedule": {
+                        "gym": True,
+                        "sessionType": "upper",
+                        "runKm": 5,
+                        "runType": "easy",
+                    }
+                },
+                "recoveryConcern": {"reason": "short_sleep", "averageValue": 6.4},
+            }
+        },
+    )
+
+    assert "upper plus 5 km easy" in answer
+    assert "short sleep" in answer
+
+
 def test_frontend_coach_note_uses_groq_without_changing_rules(tmp_path, monkeypatch) -> None:
     client = make_client(tmp_path, monkeypatch)
     monkeypatch.setenv("GROQ_API_KEY", "test-key")

@@ -17,7 +17,6 @@ import { outcomeFor } from '@/domain/compliance'
 import { sessionVolume } from '@/domain/progression'
 import { useDashboard } from '@/hooks/useDashboard'
 import { CoachChatButton } from '@/components/CoachChatButton'
-import { openCoachWithPrompt } from '@/components/coachEvents'
 import { Card, EmptyState, Meter, PageHeader, Pill, SectionTitle, Stat } from '@/components/ui'
 import { statInt, statVal } from '@/components/format'
 import { lastSevenDates } from '@/components/SevenDayBars'
@@ -37,17 +36,10 @@ const TONE_GLOW = {
 } as const
 
 const ACTIVITY_COACH_PROMPTS = [
-  'Plan tomorrow around my current training split and recovery.',
-  'Adjust this week based on my completed and missed activity.',
-  'Check my recovery using sleep, soreness, energy, and recent training.',
-  'Help me recover from a missed workout without overloading the week.',
-] as const
-
-const ACTIVITY_COACH_ACTIONS = [
-  { label: 'Plan tomorrow', prompt: ACTIVITY_COACH_PROMPTS[0] },
-  { label: 'Adjust week', prompt: ACTIVITY_COACH_PROMPTS[1] },
-  { label: 'Recovery check', prompt: ACTIVITY_COACH_PROMPTS[2] },
-  { label: 'Missed workout', prompt: ACTIVITY_COACH_PROMPTS[3] },
+  'Build my next workout',
+  'Should I increase any lifts?',
+  'Check my recovery before training',
+  'Adjust this week after missed work',
 ] as const
 
 function scheduleLabel(day: DaySchedule): string {
@@ -695,11 +687,7 @@ export default function Activity() {
 
   return (
     <div className="pb-4">
-      <PageHeader
-        title="Activity"
-        eyebrow="Training · recovery · coach"
-        action={<CoachChatButton placement="inline" starters={ACTIVITY_COACH_PROMPTS} />}
-      />
+      <PageHeader title="Activity" eyebrow="Training · recovery · coach" />
 
       <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_30rem]">
         <Card className="overflow-hidden">
@@ -742,23 +730,6 @@ export default function Activity() {
             phase={phase}
           />
 
-          <div className="mt-5 border-t border-white/8 pt-4">
-            <div className="mb-2 text-[10px] font-semibold uppercase text-ink-500">
-              Coach this week
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {ACTIVITY_COACH_ACTIONS.map(({ label, prompt }) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => openCoachWithPrompt(prompt)}
-                  className="min-h-11 rounded-xl bg-white/[0.045] px-3 py-2 text-left text-[11px] font-semibold text-ink-200 ring-1 ring-inset ring-white/8 transition-colors hover:bg-white/[0.08] active:bg-white/[0.1]"
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
         </Card>
 
         <Card>
@@ -798,6 +769,9 @@ export default function Activity() {
 
         </Card>
       </div>
+
+      <SectionTitle>Training Coach</SectionTitle>
+      <CoachChatButton placement="card" starters={ACTIVITY_COACH_PROMPTS} />
 
       <SectionTitle>Progress</SectionTitle>
       <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
