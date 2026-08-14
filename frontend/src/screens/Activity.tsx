@@ -1,6 +1,16 @@
 import { Link } from 'react-router-dom'
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import { recentSessions } from '@/db/repo'
 import { dayOfWeek, daysBetween, formatShort, weekdayName } from '@/domain/date'
 import { outcomeFor } from '@/domain/compliance'
@@ -17,6 +27,12 @@ const TONE_COLOR = {
   accent: '#39ff14',
   info: '#00f0ff',
   warn: '#ffe100',
+} as const
+
+const TONE_GLOW = {
+  accent: 'rgb(57 255 20 / 0.28)',
+  info: 'rgb(0 240 255 / 0.25)',
+  warn: 'rgb(255 225 0 / 0.23)',
 } as const
 
 function scheduleLabel(day: DaySchedule): string {
@@ -90,6 +106,14 @@ function formatMetricValue(value: number | null, unit: string): string {
   return `${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)} ${unit}`
 }
 
+function formatAxisValue(value: number, unit: string): string {
+  if (unit === 'steps') {
+    if (value >= 1000) return `${Number((value / 1000).toFixed(1))}k`
+    return Math.round(value).toLocaleString()
+  }
+  return Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)
+}
+
 function MetricChart({
   title,
   unit,
@@ -109,100 +133,139 @@ function MetricChart({
       ? null
       : known.reduce((sum, point) => sum + (point.value ?? 0), 0) / known.length
   const hits = values.filter((point) => point.value !== null && point.value >= target).length
-  const maxValue = Math.max(1, target, ...values.map((point) => point.value ?? 0))
-  const width = 420
-  const height = 164
-  const chartTop = 18
-  const chartBottom = 126
-  const chartHeight = chartBottom - chartTop
-  const slot = width / values.length
-  const barWidth = Math.min(34, slot * 0.42)
+  const best = known.length === 0 ? null : Math.max(...known.map((point) => point.value ?? 0))
   const color = TONE_COLOR[tone]
-  const targetY = chartBottom - (target / maxValue) * chartHeight
-  const path = known
-    .map((point) => {
-      const index = values.findIndex((value) => value.date === point.date)
-      const x = slot * index + slot / 2
-      const y = chartBottom - ((point.value ?? 0) / maxValue) * chartHeight
-      return `${index === values.findIndex((value) => value.value !== null) ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`
-    })
-    .join(' ')
+  const gradientId = `activity-${tone}-${title.toLowerCase()}`
+  const chartData = values.map((point) => ({
+    date: point.date,
+    day: formatShort(point.date),
+    value: point.value,
+  }))
+  const maxValue = Math.max(1, target, ...known.map((point) => point.value ?? 0))
+  const domainMax = Math.ceil(maxValue * 1.18)
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden !p-0">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="text-sm font-semibold text-ink-50">{title}</div>
-          <div className="mt-1 text-[11px] text-ink-500">
+        <div className="px-5 pt-5 sm:px-6 sm:pt-6">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color, boxShadow: `0 0 14px ${TONE_GLOW[tone]}` }} />
+            <div className="text-sm font-semibold text-ink-50">{title}</div>
+          </div>
+          <div className="mt-1.5 text-[11px] text-ink-400">
             {known.length}/7 logged · target {target.toLocaleString()} {unit}
           </div>
         </div>
-        <div className="text-right">
-          <div className="tabular text-xl font-semibold text-ink-50">
+        <div className="px-5 pt-5 text-right sm:px-6 sm:pt-6">
+          <div className="tabular text-2xl font-semibold leading-none text-ink-50">
             {formatMetricValue(average, unit)}
           </div>
-          <div className="text-[11px] text-ink-500">avg</div>
+          <div className="mt-1.5 text-[10px] font-semibold uppercase text-ink-500">7-day avg</div>
         </div>
       </div>
 
-      <svg viewBox={`0 0 ${width} ${height}`} className="mt-4 h-44 w-full" role="img">
-        <line
-          x1="0"
-          x2={width}
-          y1={targetY}
-          y2={targetY}
-          stroke="rgb(255 255 255 / 0.24)"
-          strokeDasharray="5 7"
-        />
-        {values.map((point, index) => {
-          const x = slot * index + slot / 2
-          const value = point.value ?? 0
-          const barHeight = point.value === null ? 8 : Math.max(8, (value / maxValue) * chartHeight)
-          const y = chartBottom - barHeight
-          return (
-            <g key={point.date}>
-              <rect
-                x={x - barWidth / 2}
-                y={y}
-                width={barWidth}
-                height={barHeight}
-                rx="8"
-                fill={point.value === null ? 'rgb(255 255 255 / 0.08)' : color}
-                opacity={point.value === null ? 1 : 0.86}
+      <div className="relative mt-3 h-56 w-full px-2 sm:h-60 sm:px-4">
+        {known.length === 0 ? (
+          <div className="absolute inset-4 flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.025] text-center">
+            <div className="text-sm font-semibold text-ink-200">No {title.toLowerCase()} logged</div>
+            <div className="mt-1 text-[11px] text-ink-500">Your seven-day trend will appear here.</div>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartData} margin={{ top: 12, right: 12, bottom: 2, left: -10 }}>
+              <defs>
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+                  <stop offset="72%" stopColor={color} stopOpacity={0.06} />
+                  <stop offset="100%" stopColor={color} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                vertical={false}
+                stroke="rgb(255 255 255 / 0.07)"
+                strokeDasharray="2 7"
               />
-              {point.value === null ? (
-                <circle cx={x} cy={chartBottom - 4} r="3" fill="rgb(255 255 255 / 0.18)" />
-              ) : null}
-              <text
-                x={x}
-                y="150"
-                textAnchor="middle"
-                fontSize="11"
-                fontWeight="600"
-                fill="rgb(136 136 170 / 0.9)"
-              >
-                {formatShort(point.date).slice(0, 2)}
-              </text>
-            </g>
-          )
-        })}
-        {path ? (
-          <path
-            d={path}
-            fill="none"
-            stroke={color}
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            opacity="0.92"
-          />
-        ) : null}
-      </svg>
+              <XAxis
+                dataKey="day"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: '#8888aa', fontSize: 10, fontWeight: 600 }}
+                tickMargin={12}
+                minTickGap={2}
+              />
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: '#5a5a80', fontSize: 10 }}
+                tickFormatter={(value: number) => formatAxisValue(value, unit)}
+                width={44}
+                domain={[0, domainMax]}
+                tickCount={4}
+              />
+              <ReferenceLine
+                y={target}
+                stroke="rgb(240 240 255 / 0.4)"
+                strokeDasharray="5 6"
+                label={{
+                  value: 'GOAL',
+                  position: 'insideTopRight',
+                  fill: '#8888aa',
+                  fontSize: 9,
+                  fontWeight: 700,
+                }}
+              />
+              <Tooltip
+                cursor={{ stroke: 'rgb(255 255 255 / 0.18)', strokeWidth: 1 }}
+                content={({ active, payload }) => {
+                  const item = payload?.[0]?.payload as
+                    | { date: LocalDate; value: number | null }
+                    | undefined
+                  if (!active || !item) return null
+                  return (
+                    <div className="rounded-xl border border-white/12 bg-ink-900/95 px-3 py-2 shadow-2xl backdrop-blur-xl">
+                      <div className="text-[10px] font-semibold uppercase text-ink-400">
+                        {weekdayName(item.date)} · {formatShort(item.date)}
+                      </div>
+                      <div className="mt-1 tabular text-sm font-semibold text-ink-50">
+                        {formatMetricValue(item.value, unit)}
+                      </div>
+                      <div className="mt-0.5 text-[10px]" style={{ color }}>
+                        {item.value === null
+                          ? 'Not logged'
+                          : item.value >= target
+                            ? 'Goal reached'
+                            : `${formatMetricValue(target - item.value, unit)} to goal`}
+                      </div>
+                    </div>
+                  )
+                }}
+              />
+              <Area
+                type="monotone"
+                dataKey="value"
+                connectNulls={false}
+                stroke={color}
+                strokeWidth={3}
+                fill={`url(#${gradientId})`}
+                dot={{ r: 3.5, fill: '#08080d', stroke: color, strokeWidth: 2 }}
+                activeDot={{ r: 5, fill: color, stroke: '#08080d', strokeWidth: 3 }}
+                animationDuration={500}
+                animationEasing="ease-out"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </div>
 
-      <div className="mt-4">
-        <div className="mb-1 flex justify-between text-[11px] text-ink-400">
-          <span>Consistency</span>
-          <span>{hits}/7</span>
+      <div className="border-t border-white/8 px-5 py-4 sm:px-6">
+        <div className="mb-2 flex items-center justify-between gap-4 text-[11px]">
+          <div className="flex items-center gap-4">
+            <span className="text-ink-400">Consistency</span>
+            <span className="text-ink-500">
+              Best <strong className="font-semibold text-ink-200">{formatMetricValue(best, unit)}</strong>
+            </span>
+          </div>
+          <span className="tabular font-semibold text-ink-200">{hits}/7</span>
         </div>
         <Meter value={(hits / 7) * 100} tone={hits >= 5 ? 'accent' : tone} />
       </div>
