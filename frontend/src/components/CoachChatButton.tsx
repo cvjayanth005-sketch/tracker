@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { askCoach, type CoachChatMessage } from '@/ai/coachChat'
 import { db } from '@/db/database'
-import { startWorkout, upsertLog } from '@/db/repo'
+import { getWeeklyCheckIn, startWorkout, upsertLog } from '@/db/repo'
 import { buildAdaptiveSession } from '@/domain/adaptiveTraining'
 import { buildCoachSummary } from '@/domain/rules'
 import { buildFoodContext } from '@/domain/foodContext'
-import { dayOfWeek } from '@/domain/date'
+import { addDays, dayOfWeek } from '@/domain/date'
 import { evaluateProgression, sessionVolume } from '@/domain/progression'
 import type { DailyLog, Rating, WorkoutPrescription } from '@/domain/types'
 import { useDashboard } from '@/hooks/useDashboard'
@@ -92,6 +92,14 @@ export function CoachChatButton({
     0,
   )
   const profile = useLiveQuery(() => db.profile.get('me'), [], undefined)
+  const checkInWeekStart = useMemo(
+    () => addDays(dash.today, -dayOfWeek(dash.today)),
+    [dash.today],
+  )
+  const weeklyCheckIn = useLiveQuery(
+    () => getWeeklyCheckIn(checkInWeekStart),
+    [checkInWeekStart],
+  )
   const todayMeals = useLiveQuery(
     () => db.meals.where('date').equals(dash.today).toArray(),
     [dash.today],
@@ -202,6 +210,7 @@ export function CoachChatButton({
               trainingConstraints: dash.todayLog?.trainingConstraints ?? null,
             },
             adaptiveRecommendation: adaptiveSession,
+            weeklyCheckIn: weeklyCheckIn ?? null,
             weeklySplit: phase.schedule,
             exercisePlan,
             recentWorkouts: workouts,
@@ -275,7 +284,7 @@ export function CoachChatButton({
       })),
       recentWorkouts: workouts,
     }
-  }, [adaptiveSession, dash, exercises, history, profile, todayMeals, todaySchedule])
+  }, [adaptiveSession, dash, exercises, history, profile, todayMeals, todaySchedule, weeklyCheckIn])
 
   const applyAdaptiveSession = async () => {
     if (!adaptiveSession) return
@@ -315,7 +324,7 @@ export function CoachChatButton({
     <section
       className={
         cardMode
-          ? 'surface flex min-h-[22rem] flex-col rounded-3xl p-4 sm:p-5'
+          ? 'surface flex min-h-[26rem] flex-col rounded-3xl p-4 sm:p-5'
           : 'fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+10rem)] z-50 mx-auto flex max-h-[70dvh] max-w-lg flex-col rounded-3xl border border-white/18 bg-[linear-gradient(180deg,rgba(20,24,34,0.94),rgba(6,8,16,0.88))] p-3 shadow-[0_28px_90px_-46px_rgba(0,240,255,0.9),inset_0_1px_1px_rgba(255,255,255,0.28),inset_0_0_0_1px_rgba(255,255,255,0.08)] backdrop-blur-2xl backdrop-saturate-150 lg:inset-x-auto lg:bottom-auto lg:right-6 lg:top-20 lg:w-[27rem]'
       }
     >
@@ -371,7 +380,7 @@ export function CoachChatButton({
       <div
         ref={chatScrollRef}
         className={`min-h-0 flex-1 space-y-3 overflow-y-auto px-1 py-3 ${
-          cardMode ? 'max-h-72' : ''
+          cardMode ? 'max-h-36' : ''
         }`}
         role="log"
         aria-live="polite"
@@ -600,6 +609,7 @@ function AdaptiveReadinessPanel({
   onSave: (patch: Partial<DailyLog>) => void
   onApply: () => void
 }) {
+  const [expanded, setExpanded] = useState(false)
   const tone =
     prescription?.readinessBand === 'ready'
       ? 'good'
@@ -613,9 +623,7 @@ function AdaptiveReadinessPanel({
     <div className="border-b border-white/12 py-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="text-[10px] font-semibold uppercase text-ink-400">
-            Readiness check
-          </div>
+          <div className="text-[10px] font-semibold uppercase text-ink-400">Readiness</div>
           <div className="mt-1 text-base font-semibold text-ink-50">
             {prescription?.headline ?? (scheduled ? 'Complete today\'s check-in' : 'Recovery day')}
           </div>
@@ -627,103 +635,120 @@ function AdaptiveReadinessPanel({
           <span className="text-[10px] uppercase text-ink-500">
             {prescription?.confidence ?? 'low'} confidence
           </span>
+          <button
+            type="button"
+            onClick={() => setExpanded((value) => !value)}
+            aria-expanded={expanded}
+            aria-controls="coach-readiness-details"
+            className="rounded-lg bg-white/8 px-2.5 py-1 text-[10px] font-semibold text-ink-200 ring-1 ring-inset ring-white/12 transition-colors hover:bg-white/12"
+          >
+            {expanded ? 'Done' : 'Update'}
+          </button>
         </div>
-      </div>
-
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <CompactSleepField
-          value={log?.sleepHours ?? null}
-          target={targetSleepHours}
-          onCommit={(sleepHours) => onSave({ sleepHours })}
-        />
-        <CompactRating
-          label="Energy"
-          value={log?.energy ?? null}
-          onChange={(energy) => onSave({ energy })}
-        />
-        <CompactRating
-          label="Soreness"
-          value={log?.soreness ?? null}
-          onChange={(soreness) => onSave({ soreness })}
-        />
-        <CompactRating
-          label="Stress"
-          value={log?.stress ?? null}
-          onChange={(stress) => onSave({ stress })}
-        />
-      </div>
-
-      <div className="mt-3 grid items-end gap-3 sm:grid-cols-[auto_minmax(0,1fr)]">
-        <div>
-          <div className="mb-1.5 text-[10px] font-semibold uppercase text-ink-400">Time</div>
-          <div className="flex gap-1" role="group" aria-label="Minutes available">
-            {TIME_OPTIONS.map((minutes) => (
-              <button
-                key={minutes}
-                type="button"
-                onClick={() =>
-                  onSave({
-                    trainingMinutesAvailable:
-                      log?.trainingMinutesAvailable === minutes ? null : minutes,
-                  })
-                }
-                className={`h-9 rounded-lg px-2.5 text-[11px] font-semibold transition-colors ${
-                  log?.trainingMinutesAvailable === minutes
-                    ? 'bg-accent text-ink-950'
-                    : 'bg-black/25 text-ink-400 ring-1 ring-inset ring-white/10'
-                }`}
-              >
-                {minutes}m
-              </button>
-            ))}
-          </div>
-        </div>
-        <ConstraintField
-          value={log?.trainingConstraints ?? null}
-          onCommit={(trainingConstraints) => onSave({ trainingConstraints })}
-        />
       </div>
 
       {prescription ? (
-        <div className="mt-4 border-t border-white/8 pt-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white/5 px-3 py-2.5 ring-1 ring-inset ring-white/8">
+          <div className="min-w-0">
+            <div className="text-[10px] font-semibold uppercase text-ink-400">
+              Adaptive session · {prescription.exercises.length} exercises
+            </div>
+            <div className="mt-1 truncate text-[11px] text-ink-300">
+              {prescription.adjustments[0] ?? 'Current plan and progression retained'}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onApply}
+            className="min-h-9 shrink-0 rounded-xl bg-accent px-3 text-[11px] font-semibold text-ink-950 transition-transform active:scale-[0.97]"
+          >
+            {workoutFinished
+              ? 'Open completed workout'
+              : workoutStarted
+                ? 'Open active workout'
+                : 'Apply session'}
+          </button>
+        </div>
+      ) : null}
+
+      {expanded ? (
+        <div id="coach-readiness-details" className="mt-4 border-t border-white/8 pt-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <CompactSleepField
+              value={log?.sleepHours ?? null}
+              target={targetSleepHours}
+              onCommit={(sleepHours) => onSave({ sleepHours })}
+            />
+            <CompactRating
+              label="Energy"
+              value={log?.energy ?? null}
+              onChange={(energy) => onSave({ energy })}
+            />
+            <CompactRating
+              label="Soreness"
+              value={log?.soreness ?? null}
+              onChange={(soreness) => onSave({ soreness })}
+            />
+            <CompactRating
+              label="Stress"
+              value={log?.stress ?? null}
+              onChange={(stress) => onSave({ stress })}
+            />
+          </div>
+
+          <div className="mt-3 grid items-end gap-3 sm:grid-cols-[auto_minmax(0,1fr)]">
             <div>
-              <div className="text-[10px] font-semibold uppercase text-ink-400">
-                Adaptive session · {prescription.exercises.length} exercises
-              </div>
-              <div className="mt-1 text-[11px] text-ink-500">
-                {prescription.adjustments[0] ?? 'Current plan and progression retained'}
+              <div className="mb-1.5 text-[10px] font-semibold uppercase text-ink-400">Time</div>
+              <div className="flex gap-1" role="group" aria-label="Minutes available">
+                {TIME_OPTIONS.map((minutes) => (
+                  <button
+                    key={minutes}
+                    type="button"
+                    onClick={() =>
+                      onSave({
+                        trainingMinutesAvailable:
+                          log?.trainingMinutesAvailable === minutes ? null : minutes,
+                      })
+                    }
+                    className={`h-9 rounded-lg px-2.5 text-[11px] font-semibold transition-colors ${
+                      log?.trainingMinutesAvailable === minutes
+                        ? 'bg-accent text-ink-950'
+                        : 'bg-black/25 text-ink-400 ring-1 ring-inset ring-white/10'
+                    }`}
+                  >
+                    {minutes}m
+                  </button>
+                ))}
               </div>
             </div>
-            <button
-              type="button"
-              onClick={onApply}
-              className="min-h-10 rounded-xl bg-accent px-4 text-[12px] font-semibold text-ink-950 transition-transform active:scale-[0.97]"
-            >
-              {workoutFinished
-                ? 'Open completed workout'
-                : workoutStarted
-                  ? 'Open active workout'
-                  : 'Apply session'}
-            </button>
+            <ConstraintField
+              value={log?.trainingConstraints ?? null}
+              onCommit={(trainingConstraints) => onSave({ trainingConstraints })}
+            />
           </div>
-          <div className="mt-3 divide-y divide-white/8 border-y border-white/8">
-            {prescription.exercises.slice(0, 4).map((exercise) => (
-              <div
-                key={exercise.exerciseId}
-                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-2 text-[11px]"
-              >
-                <div className="min-w-0">
-                  <div className="truncate font-semibold text-ink-200">{exercise.exerciseName}</div>
-                  <div className="truncate text-ink-500">{exercise.reason}</div>
-                </div>
-                <div className="tabular text-right text-ink-300">
-                  {exercise.targetSets} × {exercise.repRangeMin}-{exercise.repRangeMax}
-                  <span className="ml-2 text-ink-500">RIR {exercise.targetRir}</span>
-                </div>
+
+          {prescription ? (
+            <div className="mt-4 border-t border-white/8 pt-3">
+              <div className="text-[10px] font-semibold uppercase text-ink-400">Session detail</div>
+              <div className="mt-3 divide-y divide-white/8 border-y border-white/8">
+                {prescription.exercises.slice(0, 4).map((exercise) => (
+                  <div
+                    key={exercise.exerciseId}
+                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-2 text-[11px]"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate font-semibold text-ink-200">{exercise.exerciseName}</div>
+                      <div className="truncate text-ink-500">{exercise.reason}</div>
+                    </div>
+                    <div className="tabular text-right text-ink-300">
+                      {exercise.targetSets} × {exercise.repRangeMin}-{exercise.repRangeMax}
+                      <span className="ml-2 text-ink-500">RIR {exercise.targetRir}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

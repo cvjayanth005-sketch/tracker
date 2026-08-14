@@ -8,8 +8,10 @@ import type {
   Meal,
   Phase,
   Run,
+  SavedFood,
   Settings,
   UserProfile,
+  WeeklyCheckIn,
   Workout,
   WorkoutSet,
 } from '@/domain/types'
@@ -41,11 +43,13 @@ export class TrackerDb extends Dexie {
   phases!: EntityTable<Phase, 'id'>
   dailyLogs!: EntityTable<DailyLog, 'date'>
   meals!: EntityTable<Meal, 'id'>
+  foods!: EntityTable<SavedFood, 'id'>
   measurements!: EntityTable<BodyMeasurement, 'date'>
   exercises!: EntityTable<Exercise, 'id'>
   workouts!: EntityTable<Workout, 'id'>
   workoutSets!: EntityTable<WorkoutSet, 'id'>
   runs!: EntityTable<Run, 'id'>
+  weeklyCheckIns!: EntityTable<WeeklyCheckIn, 'id'>
   aiNotes!: EntityTable<AiNote, 'hash'>
   syncMeta!: EntityTable<SyncMeta, 'id'>
 
@@ -157,6 +161,10 @@ export class TrackerDb extends Dexie {
         log.caffeineMg ??= null
       })
     })
+    this.version(9).stores({ weeklyCheckIns: 'id, weekStart' })
+    // Saved-food library: reusable dishes logged with one tap so repeats read
+    // identically. Indexed by name and recency for the recent/favourite lists.
+    this.version(10).stores({ foods: 'id, name, lastUsedAt' })
   }
 }
 
@@ -168,11 +176,13 @@ const SEEDED_TABLES = [
   db.phases,
   db.dailyLogs,
   db.meals,
+  db.foods,
   db.measurements,
   db.exercises,
   db.workouts,
   db.workoutSets,
   db.runs,
+  db.weeklyCheckIns,
   db.aiNotes,
   db.syncMeta,
 ] as const

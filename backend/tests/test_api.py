@@ -401,6 +401,11 @@ def test_coach_chat_fallback_uses_activity_context() -> None:
                         }
                     ],
                 },
+                "weeklyCheckIn": {
+                    "win": "Morning sessions felt consistent",
+                    "friction": "A late meeting limited training time",
+                    "intent": "maintain",
+                },
             }
         },
     )
@@ -409,6 +414,8 @@ def test_coach_chat_fallback_uses_activity_context() -> None:
     assert "short sleep" in answer
     assert "63/100 readiness" in answer
     assert "Bench Press: 3 sets of 6-10 reps" in answer
+    assert "intent for next week is to maintain" in answer
+    assert "late meeting limited training time" in answer
 
 
 def test_frontend_coach_note_uses_groq_without_changing_rules(tmp_path, monkeypatch) -> None:

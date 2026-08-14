@@ -44,11 +44,13 @@ const TABLES = [
   'phases',
   'dailyLogs',
   'meals',
+  'foods',
   'measurements',
   'exercises',
   'workouts',
   'workoutSets',
   'runs',
+  'weeklyCheckIns',
 ] as const
 
 export async function exportState(): Promise<StateDocument> {

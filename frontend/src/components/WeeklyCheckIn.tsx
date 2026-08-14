@@ -1,0 +1,98 @@
+import { useEffect, useState } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { getWeeklyCheckIn, upsertWeeklyCheckIn } from '@/db/repo'
+import type { LocalDate, WeeklyIntent } from '@/domain/types'
+import { Button, Card, Pill } from '@/components/ui'
+
+const INTENTS: Array<{ value: WeeklyIntent; label: string }> = [
+  { value: 'build', label: 'Build' },
+  { value: 'maintain', label: 'Maintain' },
+  { value: 'recover', label: 'Recover' },
+]
+
+export function WeeklyCheckIn({ weekStart }: { weekStart: LocalDate }) {
+  const saved = useLiveQuery(() => getWeeklyCheckIn(weekStart), [weekStart])
+  const [win, setWin] = useState('')
+  const [friction, setFriction] = useState('')
+  const [intent, setIntent] = useState<WeeklyIntent | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setWin(saved?.win ?? '')
+    setFriction(saved?.friction ?? '')
+    setIntent(saved?.intent ?? null)
+  }, [saved?.friction, saved?.intent, saved?.win])
+
+  const save = async () => {
+    setSaving(true)
+    try {
+      await upsertWeeklyCheckIn(weekStart, {
+        win: win.trim() || null,
+        friction: friction.trim() || null,
+        intent,
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Card className="flex min-h-[26rem] flex-col">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-semibold uppercase text-ink-400">Weekly check-in</div>
+          <div className="mt-1 text-base font-semibold text-ink-50">Shape the next week</div>
+        </div>
+        <Pill tone={saved?.updatedAt ? 'good' : 'neutral'}>{saved?.updatedAt ? 'saved' : 'open'}</Pill>
+      </div>
+
+      <label className="mt-5 block">
+        <span className="mb-1.5 block text-[11px] font-semibold text-ink-200">What felt strong?</span>
+        <textarea
+          value={win}
+          onChange={(event) => setWin(event.target.value)}
+          rows={3}
+          placeholder="A lift, run, habit, or routine that worked"
+          className="w-full resize-none rounded-xl bg-black/25 px-3 py-2.5 text-[13px] leading-relaxed text-ink-100 outline-none ring-1 ring-inset ring-white/10 placeholder:text-ink-600 focus:ring-accent/60"
+        />
+      </label>
+
+      <label className="mt-3 block">
+        <span className="mb-1.5 block text-[11px] font-semibold text-ink-200">What got in the way?</span>
+        <textarea
+          value={friction}
+          onChange={(event) => setFriction(event.target.value)}
+          rows={3}
+          placeholder="Schedule, recovery, equipment, or anything else"
+          className="w-full resize-none rounded-xl bg-black/25 px-3 py-2.5 text-[13px] leading-relaxed text-ink-100 outline-none ring-1 ring-inset ring-white/10 placeholder:text-ink-600 focus:ring-alert/60"
+        />
+      </label>
+
+      <div className="mt-3">
+        <div className="mb-1.5 text-[11px] font-semibold text-ink-200">Next week</div>
+        <div className="grid grid-cols-3 gap-2" role="group" aria-label="Next week intent">
+          {INTENTS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setIntent((current) => (current === option.value ? null : option.value))}
+              className={`min-h-10 rounded-xl text-[12px] font-semibold transition-colors ${
+                intent === option.value
+                  ? 'bg-accent text-ink-950'
+                  : 'bg-white/8 text-ink-300 ring-1 ring-inset ring-white/10'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-auto border-t border-white/8 pt-3">
+        <Button variant="primary" onClick={() => void save()} disabled={saving} className="w-full">
+          {saving ? 'Saving...' : 'Save check-in'}
+        </Button>
+      </div>
+    </Card>
+  )
+}

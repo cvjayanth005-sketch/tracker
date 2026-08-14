@@ -14,6 +14,7 @@ import { MacroTrends } from '@/components/food/MacroTrends'
 import { MealHistory } from '@/components/food/MealHistory'
 import { MealLogger } from '@/components/food/MealLogger'
 import { MealTimeline } from '@/components/food/MealTimeline'
+import { QuickAddFoods } from '@/components/food/QuickAddFoods'
 import { NutritionCoachCard } from '@/components/food/NutritionCoachCard'
 
 export default function Food() {
@@ -73,7 +74,10 @@ export default function Food() {
       </div>
 
       <SectionTitle>Log a meal</SectionTitle>
-      <MealLogger date={today} />
+      <div className="space-y-3">
+        <QuickAddFoods date={today} />
+        <MealLogger date={today} />
+      </div>
 
       <SectionTitle action={<span className="text-xs text-ink-400">{food.today.mealCount} today</span>}>
         Today&apos;s meals

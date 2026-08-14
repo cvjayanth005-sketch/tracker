@@ -567,6 +567,17 @@ def fallback_coach_chat(question: str, context: dict[str, Any]) -> str:
                 rep_max = first.get("repRangeMax")
                 if isinstance(name, str) and isinstance(sets, int):
                     parts.append(f"Start with {name}: {sets} sets of {rep_min}-{rep_max} reps.")
+        weekly_check_in = activity.get("weeklyCheckIn")
+        if isinstance(weekly_check_in, dict):
+            intent = weekly_check_in.get("intent")
+            friction = weekly_check_in.get("friction")
+            win = weekly_check_in.get("win")
+            if isinstance(intent, str) and intent:
+                parts.append(f"Your stated intent for next week is to {intent}.")
+            if isinstance(friction, str) and friction.strip():
+                parts.append(f"Plan around this constraint: {friction.strip()[:180]}.")
+            if isinstance(win, str) and win.strip():
+                parts.append(f"Keep building on what worked: {win.strip()[:180]}.")
     if isinstance(headline, str) and headline:
         parts.append(f"Current priority: {headline}.")
     if isinstance(week, dict):
@@ -645,6 +656,9 @@ def request_groq_chat(
                         "use context.activity before giving advice. It contains the user's body-goal direction, today's "
                         "session, full weekly split, exercise prescriptions, per-exercise progression evidence, recent "
                         "sets and volume, running progression, compliance, and seven days of recovery signals. "
+                        "The optional activity.weeklyCheckIn block captures the user's own reflection on what worked, "
+                        "what got in the way, and their next-week intent. Treat it as direct context for practical "
+                        "suggestions, but do not infer facts that they did not state. "
                         "The activity.adaptiveRecommendation block is the app's executable session proposal, calculated "
                         "from today's sleep, energy, soreness, stress, available time, constraints, and progression data. "
                         "Use its readiness score, confidence, exercise targets, and reasons as the primary source when "

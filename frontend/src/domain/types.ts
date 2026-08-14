@@ -185,6 +185,29 @@ export interface Meal {
   updatedAt: Instant
 }
 
+/**
+ * A reusable food the user has saved to their library. Logging from a saved
+ * food copies these macros verbatim into a `Meal`, so the same dish reads the
+ * same every time — which is what makes repeated days comparable and the coach's
+ * averages trustworthy. `useCount`/`lastUsedAt` drive the "recent"/"favourite"
+ * ordering.
+ */
+export interface SavedFood {
+  id: string
+  name: string
+  /** Remembered default slot, so a saved breakfast lands in breakfast. */
+  defaultSlot: MealSlot | null
+  calories: number | null
+  proteinG: number | null
+  carbsG: number | null
+  fatG: number | null
+  fiberG: number | null
+  useCount: number
+  lastUsedAt: Instant | null
+  createdAt: Instant
+  updatedAt: Instant
+}
+
 export interface BodyMeasurement {
   date: LocalDate
   waistCm: number | null
@@ -192,6 +215,22 @@ export interface BodyMeasurement {
   hipsCm: number | null
   thighCm: number | null
   armCm: number | null
+  updatedAt: Instant
+}
+
+/**
+ * The human context behind a week of training. These signals are intentionally
+ * separate from daily metrics so the coach can distinguish a data trend from
+ * the reason training felt easy or difficult.
+ */
+export type WeeklyIntent = 'build' | 'maintain' | 'recover'
+
+export interface WeeklyCheckIn {
+  id: string
+  weekStart: LocalDate
+  win: string | null
+  friction: string | null
+  intent: WeeklyIntent | null
   updatedAt: Instant
 }
 

@@ -11,7 +11,9 @@ import type {
   Phase,
   Run,
   RunType,
+  SavedFood,
   Settings,
+  WeeklyCheckIn,
   Workout,
   WorkoutPrescription,
   WorkoutSet,
@@ -111,6 +113,34 @@ export async function logsBetween(from: LocalDate, to: LocalDate): Promise<Daily
 /** The window every dashboard read needs: enough history for a 4-week lookback. */
 export async function logsForAnalysis(endDate: LocalDate, days = 120): Promise<DailyLog[]> {
   return logsBetween(addDays(endDate, -(days - 1)), endDate)
+}
+
+// ---------------------------------------------------------------------------
+// Weekly check-ins
+// ---------------------------------------------------------------------------
+
+export async function getWeeklyCheckIn(weekStart: LocalDate): Promise<WeeklyCheckIn | undefined> {
+  return db.weeklyCheckIns.where('weekStart').equals(weekStart).first()
+}
+
+export async function upsertWeeklyCheckIn(
+  weekStart: LocalDate,
+  patch: Partial<Pick<WeeklyCheckIn, 'win' | 'friction' | 'intent'>>,
+): Promise<WeeklyCheckIn> {
+  const existing = await getWeeklyCheckIn(weekStart)
+  const checkIn: WeeklyCheckIn = {
+    id: existing?.id ?? `week-${weekStart}`,
+    weekStart,
+    win: null,
+    friction: null,
+    intent: null,
+    ...existing,
+    ...patch,
+    updatedAt: now(),
+  }
+  await db.weeklyCheckIns.put(checkIn)
+  await markDirty()
+  return checkIn
 }
 
 // ---------------------------------------------------------------------------
@@ -257,6 +287,145 @@ export async function addMeals(
   })
   await markDirty()
   return meals
+}
+
+// ---------------------------------------------------------------------------
+// Saved foods (reusable library)
+// ---------------------------------------------------------------------------
+
+/** Favourites first (most-used, then most-recent), for the quick-add row. */
+export async function favouriteFoods(limit = 12): Promise<SavedFood[]> {
+  const rows = await db.foods.toArray()
+  return rows
+    .sort(
+      (a, b) =>
+        b.useCount - a.useCount || (b.lastUsedAt ?? b.createdAt).localeCompare(a.lastUsedAt ?? a.createdAt),
+    )
+    .slice(0, limit)
+}
+
+/**
+ * Distinct recently-eaten dishes derived from the meal log itself — a zero-setup
+ * "recent" list. Dedupes by lower-cased name, keeping the newest macros, and
+ * skips anything already saved so Recent and Saved don't show duplicates.
+ */
+export async function recentMealTemplates(limit = 12): Promise<
+  Array<Pick<Meal, 'name' | 'slot' | 'calories' | 'proteinG' | 'carbsG' | 'fatG' | 'fiberG'>>
+> {
+  const [meals, saved] = await Promise.all([
+    db.meals.orderBy('date').reverse().limit(200).toArray(),
+    db.foods.toArray(),
+  ])
+  const savedNames = new Set(saved.map((food) => food.name.trim().toLowerCase()))
+  const seen = new Set<string>()
+  const out: Array<Pick<Meal, 'name' | 'slot' | 'calories' | 'proteinG' | 'carbsG' | 'fatG' | 'fiberG'>> = []
+  for (const meal of meals) {
+    const key = meal.name.trim().toLowerCase()
+    if (!key || seen.has(key) || savedNames.has(key)) continue
+    seen.add(key)
+    out.push({
+      name: meal.name,
+      slot: meal.slot,
+      calories: meal.calories,
+      proteinG: meal.proteinG,
+      carbsG: meal.carbsG,
+      fatG: meal.fatG,
+      fiberG: meal.fiberG,
+    })
+    if (out.length >= limit) break
+  }
+  return out
+}
+
+/** Save (or update by name) a reusable food. Returns the stored row. */
+export async function saveFood(
+  input: Pick<SavedFood, 'name'> & Partial<Omit<SavedFood, 'id' | 'name' | 'createdAt' | 'updatedAt'>>,
+): Promise<SavedFood> {
+  const name = input.name.trim()
+  const stamp = now()
+  const existing = (await db.foods.toArray()).find(
+    (food) => food.name.trim().toLowerCase() === name.toLowerCase(),
+  )
+  const food: SavedFood = {
+    id: existing?.id ?? uid(),
+    defaultSlot: null,
+    calories: null,
+    proteinG: null,
+    carbsG: null,
+    fatG: null,
+    fiberG: null,
+    useCount: existing?.useCount ?? 0,
+    lastUsedAt: existing?.lastUsedAt ?? null,
+    createdAt: existing?.createdAt ?? stamp,
+    ...(existing ?? {}),
+    ...input,
+    name,
+    updatedAt: stamp,
+  }
+  await db.foods.put(food)
+  await markDirty()
+  return food
+}
+
+export async function deleteFood(id: string): Promise<void> {
+  await db.foods.delete(id)
+  await markDirty()
+}
+
+/** Log a saved food as a meal today and bump its usage so it floats up. */
+export async function logSavedFood(
+  date: LocalDate,
+  food: SavedFood,
+  slot: MealSlot = food.defaultSlot ?? 'snack',
+): Promise<void> {
+  await addMeal(
+    date,
+    slot,
+    {
+      name: food.name,
+      calories: food.calories,
+      proteinG: food.proteinG,
+      carbsG: food.carbsG,
+      fatG: food.fatG,
+      fiberG: food.fiberG,
+    },
+    'manual',
+  )
+  await db.foods.update(food.id, { useCount: food.useCount + 1, lastUsedAt: now() })
+  await markDirty()
+}
+
+/** Log a recent meal template (not yet saved) straight into today. */
+export async function logMealTemplate(
+  date: LocalDate,
+  template: Pick<Meal, 'name' | 'slot' | 'calories' | 'proteinG' | 'carbsG' | 'fatG' | 'fiberG'>,
+): Promise<void> {
+  await addMeal(
+    date,
+    template.slot,
+    {
+      name: template.name,
+      calories: template.calories,
+      proteinG: template.proteinG,
+      carbsG: template.carbsG,
+      fatG: template.fatG,
+      fiberG: template.fiberG,
+    },
+    'manual',
+  )
+}
+
+/** Save an existing meal into the library so it can be one-tap re-logged. */
+export async function saveMealAsFood(meal: Meal): Promise<SavedFood> {
+  return saveFood({
+    name: meal.name,
+    defaultSlot: meal.slot,
+    calories: meal.calories,
+    proteinG: meal.proteinG,
+    carbsG: meal.carbsG,
+    fatG: meal.fatG,
+    fiberG: meal.fiberG,
+  })
 }
 
 // ---------------------------------------------------------------------------

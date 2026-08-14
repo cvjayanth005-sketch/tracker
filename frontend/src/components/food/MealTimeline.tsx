@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { deleteMeal, updateMeal } from '@/db/repo'
+import { deleteMeal, saveMealAsFood, updateMeal } from '@/db/repo'
 import { Card } from '@/components/ui'
 import type { Meal } from '@/domain/types'
 import { MACRO, SLOT_META, SLOT_ORDER } from './palette'
@@ -19,6 +19,7 @@ function num(raw: string): number | null {
 }
 
 function MealEditor({ meal, onClose }: { meal: Meal; onClose: () => void }) {
+  const [saved, setSaved] = useState(false)
   return (
     <div className="mt-2 space-y-2 rounded-2xl bg-black/25 p-3 ring-1 ring-inset ring-white/10">
       <input
@@ -57,9 +58,27 @@ function MealEditor({ meal, onClose }: { meal: Meal; onClose: () => void }) {
         >
           Delete meal
         </button>
-        <button type="button" onClick={onClose} className="text-[12px] font-medium text-ink-300 hover:text-ink-100">
-          Done
-        </button>
+        <div className="flex items-center gap-3">
+          {saved ? (
+            <span className="text-[12px] font-medium text-accent">★ Saved</span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                void saveMealAsFood(meal)
+                setSaved(true)
+              }}
+              disabled={!meal.name.trim()}
+              className="text-[12px] font-medium text-ink-300 hover:text-accent disabled:opacity-40"
+              title="Save to your quick-add library"
+            >
+              ☆ Save food
+            </button>
+          )}
+          <button type="button" onClick={onClose} className="text-[12px] font-medium text-ink-300 hover:text-ink-100">
+            Done
+          </button>
+        </div>
       </div>
     </div>
   )
