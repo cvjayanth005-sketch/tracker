@@ -60,7 +60,7 @@ export default function Food() {
 
       <SectionTitle>Today</SectionTitle>
       <div className="grid gap-3 lg:grid-cols-2 lg:items-stretch">
-        <MacroSummary food={food} consistency={consistency ?? undefined} />
+        <MacroSummary food={food} {...(consistency ? { consistency } : {})} />
         <IntakeExtras
           date={today}
           waterMl={food.today.hydration.waterMl}
