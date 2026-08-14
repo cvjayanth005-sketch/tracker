@@ -11,6 +11,8 @@ import type { MealSlot } from '@/domain/types'
  */
 
 /** A parsed meal the user reviews before saving. All macros may be null. */
+export type EstimateConfidence = 'low' | 'medium' | 'high'
+
 export interface MealDraft {
   slot: MealSlot
   name: string
@@ -18,6 +20,10 @@ export interface MealDraft {
   quantity: number | null
   unit: string | null
   calories: number | null
+  /** Model's self-reported certainty and a plausible calorie band, review-only. */
+  confidence: EstimateConfidence | null
+  caloriesLow: number | null
+  caloriesHigh: number | null
   proteinG: number | null
   carbsG: number | null
   fatG: number | null

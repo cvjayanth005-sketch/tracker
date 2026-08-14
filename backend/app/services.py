@@ -955,6 +955,8 @@ def normalize_food_parse(raw: dict[str, Any], default_slot: str, provider: str) 
         item_slot = item.get("slot")
         time_raw = str(item.get("time", "") or "").strip()[:5] or None
         unit_raw = str(item.get("unit", "") or "").strip()[:16] or None
+        confidence = item.get("confidence")
+        calories = _macro(item.get("calories"), 6000)
         meals.append(
             {
                 "slot": item_slot if item_slot in MEAL_SLOTS else slot,
@@ -962,7 +964,11 @@ def normalize_food_parse(raw: dict[str, Any], default_slot: str, provider: str) 
                 "time": time_raw,
                 "quantity": _macro(item.get("quantity"), 100000),
                 "unit": unit_raw,
-                "calories": _macro(item.get("calories"), 6000),
+                "calories": calories,
+                # Uncertainty the model reports, so the UI can flag shaky items.
+                "confidence": confidence if confidence in ("low", "medium", "high") else None,
+                "caloriesLow": _macro(item.get("caloriesLow"), 6000),
+                "caloriesHigh": _macro(item.get("caloriesHigh"), 6000),
                 "proteinG": _macro(item.get("proteinG"), 500),
                 "carbsG": _macro(item.get("carbsG"), 900),
                 "fatG": _macro(item.get("fatG"), 500),
@@ -1000,14 +1006,17 @@ def request_groq_food_parse(text: str, default_slot: str, api_key: str, model: s
                     "content": (
                         "You estimate nutrition from a short free-text description of what someone ate. "
                         "Return strict JSON only, no prose. Shape: "
-                        '{"meals":[{"slot","name","time","quantity","unit","calories","proteinG","carbsG","fatG","fiberG","notes"}],"summary"}. '
+                        '{"meals":[{"slot","name","time","quantity","unit","calories","caloriesLow","caloriesHigh",'
+                        '"confidence","proteinG","carbsG","fatG","fiberG","notes"}],"summary"}. '
                         "One entry per distinct dish or item. slot is one of breakfast, lunch, dinner, snack; "
                         f"infer it from wording or time, otherwise use \"{default_slot}\". "
                         "time is 24h HH:mm or null. quantity is the numeric portion and unit its measure "
                         "(g, ml, piece, cup, tbsp, serving); estimate a sensible portion when unstated and put it there. "
                         "Macros are grams; calories are kcal; use realistic estimates for that portion and null when a "
-                        "food gives no basis to estimate. IMPORTANT: include cooking fats — oil, butter, dressing, sauce — "
-                        "in the calorie and fat estimate even when the user forgets to mention them, and note the assumption. "
+                        "food gives no basis to estimate. caloriesLow/caloriesHigh bound a plausible calorie range for "
+                        "the item; confidence is high, medium, or low reflecting how sure the estimate is (vague or "
+                        "restaurant/homemade dishes are lower). IMPORTANT: include cooking fats — oil, butter, dressing, "
+                        "sauce — in the calorie and fat estimate even when the user forgets to mention them, and note it. "
                         "Keep name short and human (e.g. '2 scrambled eggs'). Put assumptions (portion, cooking fat) in notes. "
                         "summary is one short sentence on the whole entry. Estimates only; the user will review and edit."
                     ),
@@ -1042,6 +1051,9 @@ def fallback_food_parse(text: str, default_slot: str) -> dict[str, Any]:
             "quantity": None,
             "unit": None,
             "calories": None,
+            "confidence": None,
+            "caloriesLow": None,
+            "caloriesHigh": None,
             "proteinG": None,
             "carbsG": None,
             "fatG": None,

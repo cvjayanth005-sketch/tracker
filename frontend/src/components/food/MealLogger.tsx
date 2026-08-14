@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { parseMeals, type MealDraft } from '@/ai/foodParse'
+import { parseMeals, type EstimateConfidence, type MealDraft } from '@/ai/foodParse'
 import { addMeals } from '@/db/repo'
 import { Button, Card } from '@/components/ui'
 import type { LocalDate, MealSlot } from '@/domain/types'
@@ -21,6 +21,9 @@ function blankDraft(slot: MealSlot): MealDraft {
     quantity: null,
     unit: null,
     calories: null,
+    confidence: null,
+    caloriesLow: null,
+    caloriesHigh: null,
     proteinG: null,
     carbsG: null,
     fatG: null,
@@ -130,7 +133,34 @@ function DraftRow({
           </label>
         ))}
       </div>
+      {draft.confidence || draft.caloriesLow !== null || draft.caloriesHigh !== null ? (
+        <div className="mt-2 flex items-center gap-2 text-[11px]">
+          {draft.confidence ? <ConfidenceBadge confidence={draft.confidence} /> : null}
+          {draft.caloriesLow !== null && draft.caloriesHigh !== null ? (
+            <span className="tabular text-ink-500">
+              range {Math.round(draft.caloriesLow)}–{Math.round(draft.caloriesHigh)} kcal
+            </span>
+          ) : null}
+          {draft.confidence === 'low' ? (
+            <span className="text-warn">· worth a quick check</span>
+          ) : null}
+        </div>
+      ) : null}
     </div>
+  )
+}
+
+function ConfidenceBadge({ confidence }: { confidence: EstimateConfidence }) {
+  const tone =
+    confidence === 'high'
+      ? 'bg-accent/12 text-accent'
+      : confidence === 'medium'
+        ? 'bg-info/12 text-info'
+        : 'bg-warn/15 text-warn'
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${tone}`}>
+      {confidence} confidence
+    </span>
   )
 }
 
@@ -195,7 +225,20 @@ export function MealLogger({ date }: { date: LocalDate }) {
     try {
       await addMeals(
         date,
-        valid.map((draft) => ({ ...draft, name: draft.name.trim() })),
+        // Persist only Meal fields — confidence/range are review-only signals.
+        valid.map((draft) => ({
+          slot: draft.slot,
+          name: draft.name.trim(),
+          time: draft.time,
+          quantity: draft.quantity,
+          unit: draft.unit,
+          calories: draft.calories,
+          proteinG: draft.proteinG,
+          carbsG: draft.carbsG,
+          fatG: draft.fatG,
+          fiberG: draft.fiberG,
+          notes: draft.notes,
+        })),
         aiParsed ? 'ai' : 'manual',
       )
       setDrafts(null)
@@ -246,6 +289,11 @@ export function MealLogger({ date }: { date: LocalDate }) {
             </span>
           </div>
           {notice ? <p className="text-[12px] leading-relaxed text-ink-400">{notice}</p> : null}
+          {drafts.some((draft) => draft.confidence === 'low') ? (
+            <p className="rounded-xl bg-warn/10 px-3 py-2 text-[12px] text-warn ring-1 ring-inset ring-warn/20">
+              Some estimates are rough — double-check the ones marked low confidence before saving.
+            </p>
+          ) : null}
           <div className="space-y-2">
             {drafts.map((draft, index) => (
               <DraftRow
