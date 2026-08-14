@@ -517,6 +517,123 @@ function TrainingChecklist({
   )
 }
 
+function averageKnown(values: Array<number | null>): number | null {
+  const known = values.filter((value): value is number => value != null)
+  return known.length > 0 ? known.reduce((sum, value) => sum + value, 0) / known.length : null
+}
+
+function WeeklySignal({
+  logs,
+  stepHits,
+  sleepHits,
+  gymDoneDays,
+  plannedGymDays,
+  runTotal,
+  weeklyRunTarget,
+  nextAction,
+}: {
+  logs: DailyLog[]
+  stepHits: number
+  sleepHits: number
+  gymDoneDays: number
+  plannedGymDays: number
+  runTotal: number
+  weeklyRunTarget: number
+  nextAction: string
+}) {
+  const averageSleep = averageKnown(logs.map((log) => log.sleepHours))
+  const averageEnergy = averageKnown(logs.map((log) => log.energy))
+  const averageSoreness = averageKnown(logs.map((log) => log.soreness))
+  const gymPct = plannedGymDays > 0 ? (gymDoneDays / plannedGymDays) * 100 : null
+  const runPct = weeklyRunTarget > 0 ? (runTotal / weeklyRunTarget) * 100 : null
+
+  return (
+    <Card>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-semibold uppercase text-ink-400">Weekly signal</div>
+          <div className="mt-1 text-base font-semibold text-ink-50">Your week at a glance</div>
+        </div>
+        <Pill tone={stepHits >= 5 && sleepHits >= 5 ? 'good' : 'info'}>7-day pulse</Pill>
+      </div>
+
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        <Stat
+          label="Sleep"
+          value={averageSleep == null ? null : averageSleep.toFixed(1)}
+          unit="h"
+          sub={`${sleepHits}/7 target hits`}
+        />
+        <Stat
+          label="Energy"
+          value={averageEnergy == null ? null : averageEnergy.toFixed(1)}
+          unit="/5"
+          sub="logged days"
+        />
+        <Stat
+          label="Soreness"
+          value={averageSoreness == null ? null : averageSoreness.toFixed(1)}
+          unit="/5"
+          sub="lower is better"
+          tone={averageSoreness != null && averageSoreness >= 4 ? 'warn' : 'default'}
+        />
+      </div>
+
+      <div className="mt-4 space-y-3 border-t border-white/8 pt-4">
+        <SignalMeter
+          label="Gym consistency"
+          detail={`${gymDoneDays}/${plannedGymDays || 0}`}
+          value={gymPct}
+          tone="accent"
+        />
+        <SignalMeter
+          label="Steps consistency"
+          detail={`${stepHits}/7`}
+          value={(stepHits / 7) * 100}
+          tone="info"
+        />
+        <SignalMeter
+          label="Run volume"
+          detail={
+            weeklyRunTarget > 0
+              ? `${runTotal.toFixed(1)}/${weeklyRunTarget} km`
+              : `${runTotal.toFixed(1)} km`
+          }
+          value={runPct}
+          tone="warn"
+        />
+      </div>
+
+      <div className="mt-4 border-t border-white/8 pt-3">
+        <div className="text-[10px] font-semibold uppercase text-ink-400">Next focus</div>
+        <div className="mt-1 text-[13px] leading-relaxed text-ink-200">{nextAction}</div>
+      </div>
+    </Card>
+  )
+}
+
+function SignalMeter({
+  label,
+  detail,
+  value,
+  tone,
+}: {
+  label: string
+  detail: string
+  value: number | null
+  tone: 'accent' | 'warn' | 'info'
+}) {
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center justify-between gap-3 text-[11px]">
+        <span className="text-ink-400">{label}</span>
+        <span className="tabular text-ink-200">{detail}</span>
+      </div>
+      <Meter value={value} tone={tone} />
+    </div>
+  )
+}
+
 function MoveRing({
   walkingKcal,
   runningKcal,
@@ -735,42 +852,54 @@ export default function Activity() {
           <CoachChatButton placement="card" starters={ACTIVITY_COACH_PROMPTS} />
         </div>
 
-        <Card>
-          <div className="mb-3 flex items-baseline justify-between">
-            <div>
-              <div className="text-sm font-semibold text-ink-50">Full Week Split</div>
-              <div className="mt-1 text-[11px] text-ink-500">{phase.name}</div>
+        <div className="min-w-0 space-y-4">
+          <Card>
+            <div className="mb-3 flex items-baseline justify-between">
+              <div>
+                <div className="text-sm font-semibold text-ink-50">Full Week Split</div>
+                <div className="mt-1 text-[11px] text-ink-500">{phase.name}</div>
+              </div>
+              <Pill tone="info">
+                {weeklyRunTarget > 0 ? `${weeklyRunTarget} km` : 'run optional'}
+              </Pill>
             </div>
-            <Pill tone="info">
-              {weeklyRunTarget > 0 ? `${weeklyRunTarget} km` : 'run optional'}
-            </Pill>
-          </div>
-          <WeekSplit
-            phase={phase}
-            today={today}
-            dates={dates}
-            index={index}
-            selectedDate={selectedDate}
-            onSelectDate={setSelectedDate}
-          />
-          <SelectedDayPanel
-            date={selectedDate}
-            today={today}
-            phase={phase}
-            log={index.get(selectedDate)}
-            exercises={exercises ?? []}
-          />
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <Stat label="Gym" value={`${gymDoneDays}/${plannedGymDays}`} sub="done / planned" />
-            <Stat
-              label="Run"
-              value={runTotal.toFixed(1)}
-              unit="km"
-              sub={`${plannedRunKm} km planned`}
+            <WeekSplit
+              phase={phase}
+              today={today}
+              dates={dates}
+              index={index}
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
             />
-          </div>
+            <SelectedDayPanel
+              date={selectedDate}
+              today={today}
+              phase={phase}
+              log={index.get(selectedDate)}
+              exercises={exercises ?? []}
+            />
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Stat label="Gym" value={`${gymDoneDays}/${plannedGymDays}`} sub="done / planned" />
+              <Stat
+                label="Run"
+                value={runTotal.toFixed(1)}
+                unit="km"
+                sub={`${plannedRunKm} km planned`}
+              />
+            </div>
+          </Card>
 
-        </Card>
+          <WeeklySignal
+            logs={dates.map((date) => index.get(date)).filter((log): log is DailyLog => Boolean(log))}
+            stepHits={stepHits}
+            sleepHits={sleepHits}
+            gymDoneDays={gymDoneDays}
+            plannedGymDays={plannedGymDays}
+            runTotal={runTotal}
+            weeklyRunTarget={weeklyRunTarget}
+            nextAction={nextAction}
+          />
+        </div>
       </div>
 
       <SectionTitle>Progress</SectionTitle>
