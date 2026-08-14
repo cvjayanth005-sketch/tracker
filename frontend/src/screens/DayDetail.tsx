@@ -7,6 +7,7 @@ import {
   getLog,
   getMeasurement,
   getSettings,
+  mealsForDate,
   resolvePhaseForDate,
   runsForDate,
   updateRun,
@@ -18,6 +19,7 @@ import { planDayLabel } from '@/domain/plan'
 import type { LocalDate, Rating, RunType } from '@/domain/types'
 import { NumberField, RatingField, TextArea, TriToggle } from '@/components/fields'
 import { Card, EmptyState, PageHeader, Pill, SectionTitle } from '@/components/ui'
+import { DayFoodSection } from '@/components/food/DayFoodSection'
 
 const RUN_TYPES: RunType[] = ['recovery', 'easy', 'long', 'tempo', 'intervals']
 
@@ -36,6 +38,7 @@ export default function DayDetail() {
     [date],
   )
   const runs = useLiveQuery(() => (date ? runsForDate(date) : Promise.resolve([])), [date], [])
+  const meals = useLiveQuery(() => (date ? mealsForDate(date) : Promise.resolve([])), [date], [])
 
   if (!date) {
     return <EmptyState title="Invalid day" body="That calendar day could not be opened." />
@@ -79,14 +82,14 @@ export default function DayDetail() {
 
       <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
         <section>
+          <SectionTitle>Food</SectionTitle>
+          <DayFoodSection date={date} meals={meals} log={log} phase={phase} />
+
           <SectionTitle>Daily log</SectionTitle>
           <div className="space-y-3">
             <NumberField label="Weight" value={log?.weightKg ?? null} unit="kg" onCommit={(weightKg) => save({ weightKg })} />
-            <NumberField label="Calories" value={log?.calories ?? null} unit="kcal" {...targetProp(phase ? `Target ${phase.calories}` : undefined)} inputMode="numeric" onCommit={(calories) => save({ calories })} />
-            <NumberField label="Protein" value={log?.proteinG ?? null} unit="g" {...targetProp(phase ? `Target ${phase.proteinG}` : undefined)} onCommit={(proteinG) => save({ proteinG })} />
             <NumberField label="Steps" value={log?.steps ?? null} {...targetProp(phase ? `Target ${phase.steps.toLocaleString()}` : undefined)} inputMode="numeric" onCommit={(steps) => save({ steps })} />
             <NumberField label="Sleep" value={log?.sleepHours ?? null} unit="h" {...targetProp(phase ? `Target ${phase.sleepHours}` : undefined)} onCommit={(sleepHours) => save({ sleepHours })} />
-            <NumberField label="Meals on plan" value={log?.mealsOnPlan ?? null} {...targetProp(phase ? `Out of ${phase.mealsPerDay}` : undefined)} inputMode="numeric" onCommit={(mealsOnPlan) => save({ mealsOnPlan })} />
             <TriToggle label="Gym" value={log?.gymDone ?? null} onChange={(gymDone) => save({ gymDone })} />
             <div className="grid gap-3 sm:grid-cols-3">
               <RatingField label="Energy" value={log?.energy ?? null} onChange={(energy) => save({ energy: energy as Rating | null })} lowLabel="low" highLabel="high" />
