@@ -30,6 +30,7 @@ export interface MealDraft {
   fiberG: number | null
   sugarG: number | null
   satFatG: number | null
+  micros: Record<string, number> | null
   notes: string | null
 }
 

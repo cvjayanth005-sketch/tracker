@@ -3,6 +3,7 @@ import { deleteMeal, saveMealAsFood, updateMeal } from '@/db/repo'
 import { Card } from '@/components/ui'
 import type { Meal } from '@/domain/types'
 import { MACRO, SLOT_META, SLOT_ORDER, SUBMACRO, type SubMacroKey } from './palette'
+import { MicroFields, setMicro } from './micros'
 
 const MACRO_CHIPS = [
   { key: 'calories', ...MACRO.calories },
@@ -94,6 +95,7 @@ function MealEditor({ meal, onClose }: { meal: Meal; onClose: () => void }) {
           </label>
         ))}
       </div>
+      <MicroFields value={meal.micros} onSet={(key, next) => void updateMeal(meal.id, { micros: setMicro(meal.micros, key, next) })} />
       <div className="flex justify-between pt-0.5">
         <button
           type="button"

@@ -4,6 +4,7 @@ import { addMeals } from '@/db/repo'
 import { Button, Card } from '@/components/ui'
 import type { LocalDate, MealSlot } from '@/domain/types'
 import { MACRO, SLOT_META, SLOT_ORDER, SUBMACRO, type SubMacroKey } from './palette'
+import { MicroFields, setMicro } from './micros'
 
 function guessSlot(): MealSlot {
   const hour = new Date().getHours()
@@ -30,6 +31,7 @@ function blankDraft(slot: MealSlot): MealDraft {
     fiberG: null,
     sugarG: null,
     satFatG: null,
+    micros: null,
     notes: null,
   }
 }
@@ -153,6 +155,9 @@ function DraftRow({
           </label>
         ))}
       </div>
+      <div className="mt-1.5">
+        <MicroFields value={draft.micros} onSet={(key, next) => onChange({ micros: setMicro(draft.micros, key, next) })} />
+      </div>
       {draft.confidence || draft.caloriesLow !== null || draft.caloriesHigh !== null ? (
         <div className="mt-2 flex items-center gap-2 text-[11px]">
           {draft.confidence ? <ConfidenceBadge confidence={draft.confidence} /> : null}
@@ -259,6 +264,7 @@ export function MealLogger({ date }: { date: LocalDate }) {
           fiberG: draft.fiberG,
           sugarG: draft.sugarG,
           satFatG: draft.satFatG,
+          micros: draft.micros,
           notes: draft.notes,
         })),
         aiParsed ? 'ai' : 'manual',

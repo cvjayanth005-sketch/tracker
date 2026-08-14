@@ -1,5 +1,6 @@
 import { addDays, compareDates } from '@/domain/date'
 import { outcomeFor } from '@/domain/compliance'
+import { estimateTdee, targetVsMaintenance, type TdeeConfidence } from '@/domain/metabolism'
 import type { DailyLog, LocalDate, Meal, MealSlot, Phase, UserProfile } from '@/domain/types'
 
 /**
@@ -77,6 +78,8 @@ export interface FoodContext {
     fiberG: number | null
     sugarG: number | null
     satFatG: number | null
+    /** Micronutrient totals rolled up from today's meals. */
+    micros: Record<string, number> | null
     caloriesRemaining: number | null
     proteinRemaining: number | null
     /** Energy share of each macro, from grams. Null until macros are logged. */
@@ -102,6 +105,16 @@ export interface FoodContext {
     carbsG: number | null
     fatG: number | null
   }
+  /** Measured maintenance from intake + weight trend. Null until enough data. */
+  metabolism: {
+    tdeeKcal: number
+    confidence: TdeeConfidence
+    avgIntakeKcal: number
+    weightChangePerWeekKg: number
+    /** Daily target minus maintenance (negative = deficit). */
+    targetDeltaKcal: number
+    impliedWeeklyChangeKg: number
+  } | null
   observations: string[]
 }
 
@@ -254,6 +267,21 @@ export function buildFoodContext(
   const waterTargetMl = waterTargetForWeight(currentWeight)
   const eatingWindow = computeEatingWindow(todayMeals)
 
+  const tdee = estimateTdee(today, logs)
+  const metabolism =
+    tdee.status === 'ok'
+      ? {
+          tdeeKcal: tdee.estimate.tdeeKcal,
+          confidence: tdee.estimate.confidence,
+          avgIntakeKcal: tdee.estimate.avgIntakeKcal,
+          weightChangePerWeekKg: tdee.estimate.weightChangePerWeekKg,
+          ...(() => {
+            const vs = targetVsMaintenance(phase.calories, tdee.estimate.tdeeKcal)
+            return { targetDeltaKcal: vs.dailyDeltaKcal, impliedWeeklyChangeKg: vs.weeklyChangeKg }
+          })(),
+        }
+      : null
+
   const goalDirection = ((): 'lose' | 'gain' | 'maintain' | null => {
     const start = profile?.startWeightKg ?? null
     const goal = profile?.goalWeightKg ?? null
@@ -293,6 +321,7 @@ export function buildFoodContext(
       fiberG: todayLog?.fiberG ?? null,
       sugarG: todayLog?.sugarG ?? null,
       satFatG: todayLog?.satFatG ?? null,
+      micros: todayLog?.micros ?? null,
       caloriesRemaining: calories === null ? null : round(phase.calories - calories),
       proteinRemaining: proteinG === null ? null : round(phase.proteinG - proteinG),
       macroSplitPct: macroSplit(proteinG, carbsG, fatG),
@@ -323,6 +352,7 @@ export function buildFoodContext(
       carbsG: meanOf(weekLogs.map((log) => log.carbsG)),
       fatG: meanOf(weekLogs.map((log) => log.fatG)),
     },
+    metabolism,
     observations: [],
   }
 
@@ -355,6 +385,16 @@ function deriveObservations(ctx: FoodContext): string[] {
   if (ctx.weekAverages.days >= 3 && ctx.weekAverages.proteinG !== null && ctx.weekAverages.proteinG < targets.proteinG * 0.85) {
     notes.push(
       `7-day protein averages ${ctx.weekAverages.proteinG}g vs the ${targets.proteinG}g target — a consistent gap.`,
+    )
+  }
+
+  const metabolism = ctx.metabolism
+  if (metabolism && metabolism.confidence !== 'low') {
+    const dir = metabolism.targetDeltaKcal < -50 ? 'below' : metabolism.targetDeltaKcal > 50 ? 'above' : 'at'
+    notes.push(
+      `Measured maintenance is about ${metabolism.tdeeKcal} kcal (from intake and weight trend); the ${targets.calories} target sits ${Math.abs(metabolism.targetDeltaKcal)} kcal/day ${dir} it${
+        dir === 'at' ? '' : `, roughly ${Math.abs(metabolism.impliedWeeklyChangeKg)} kg/week`
+      }.`,
     )
   }
 

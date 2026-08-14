@@ -15,6 +15,7 @@ import { MacroTrends } from '@/components/food/MacroTrends'
 import { MealHistory } from '@/components/food/MealHistory'
 import { MealLogger } from '@/components/food/MealLogger'
 import { MealTimeline } from '@/components/food/MealTimeline'
+import { MicroDaySummary } from '@/components/food/micros'
 import { QuickAddFoods } from '@/components/food/QuickAddFoods'
 import { DayCompleteToggle } from '@/components/food/DayCompleteToggle'
 import { NutritionCoachCard } from '@/components/food/NutritionCoachCard'
@@ -95,6 +96,11 @@ export default function Food() {
 
       <SectionTitle>Daily history</SectionTitle>
       <MealHistory today={today} logs={dash.logs} meals={historyMeals ?? []} targets={food.macroTargets} />
+
+      <SectionTitle>Micronutrients</SectionTitle>
+      <Card>
+        <MicroDaySummary micros={food.today.micros} />
+      </Card>
 
       <SectionTitle>Metabolism</SectionTitle>
       <AdaptiveTDEE today={today} logs={dash.logs} targetKcal={phase.calories} />

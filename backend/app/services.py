@@ -680,6 +680,9 @@ def request_groq_chat(
                         "review and apply that change through the app. "
                         "For injuries, medical limitations, chest pain, fainting, eating disorder signals, or severe symptoms, "
                         "recommend a qualified professional and avoid aggressive advice. "
+                        "If food.metabolism is present, you may cite measured maintenance calories (TDEE) and what "
+                        "the target implies, but treat it as an estimate from logged data with its stated confidence, "
+                        "not a fixed truth, and never push intake below a sensible floor. "
                         "Keep the tone direct, warm, and human."
                     ),
                 },
@@ -927,6 +930,10 @@ def onboarding_draft(payload: dict[str, Any]) -> dict[str, Any]:
 
 MEAL_SLOTS = ("breakfast", "lunch", "dinner", "snack")
 
+# Micronutrients the parser may return, keyed by `<name><Unit>`. Kept to a
+# curated set so junk keys never reach the client.
+MICRO_KEYS = ("potassiumMg", "cholesterolMg", "calciumMg", "ironMg", "vitaminCMg", "vitaminDMcg")
+
 
 def _macro(value: Any, hi: float) -> float | None:
     """Coerce an estimated macro to a sane number, or None when absent/invalid."""
@@ -939,6 +946,18 @@ def _macro(value: Any, hi: float) -> float | None:
     if parsed != parsed or parsed < 0:  # reject NaN / negatives
         return None
     return round(min(parsed, hi), 1)
+
+
+def _micros(value: Any) -> dict[str, float] | None:
+    """Keep only known micronutrient keys with sane numeric values."""
+    if not isinstance(value, dict):
+        return None
+    out: dict[str, float] = {}
+    for key in MICRO_KEYS:
+        coerced = _macro(value.get(key), 100000)
+        if coerced is not None:
+            out[key] = coerced
+    return out or None
 
 
 def normalize_food_parse(raw: dict[str, Any], default_slot: str, provider: str) -> dict[str, Any]:
@@ -975,6 +994,7 @@ def normalize_food_parse(raw: dict[str, Any], default_slot: str, provider: str) 
                 "fiberG": _macro(item.get("fiberG"), 200),
                 "sugarG": _macro(item.get("sugarG"), 900),
                 "satFatG": _macro(item.get("satFatG"), 500),
+                "micros": _micros(item.get("micros")),
                 "notes": (str(item.get("notes", "")).strip()[:240] or None),
             }
         )
@@ -1009,14 +1029,16 @@ def request_groq_food_parse(text: str, default_slot: str, api_key: str, model: s
                         "You estimate nutrition from a short free-text description of what someone ate. "
                         "Return strict JSON only, no prose. Shape: "
                         '{"meals":[{"slot","name","time","quantity","unit","calories","caloriesLow","caloriesHigh",'
-                        '"confidence","proteinG","carbsG","fatG","fiberG","sugarG","satFatG","notes"}],"summary"}. '
+                        '"confidence","proteinG","carbsG","fatG","fiberG","sugarG","satFatG","micros","notes"}],"summary"}. '
                         "One entry per distinct dish or item. slot is one of breakfast, lunch, dinner, snack; "
                         f"infer it from wording or time, otherwise use \"{default_slot}\". "
                         "time is 24h HH:mm or null. quantity is the numeric portion and unit its measure "
                         "(g, ml, piece, cup, tbsp, serving); estimate a sensible portion when unstated and put it there. "
                         "Macros are grams; calories are kcal; use realistic estimates for that portion and null when a "
                         "food gives no basis to estimate. sugarG is the sugar within carbsG and satFatG the saturated "
-                        "fat within fatG (each <= its parent). caloriesLow/caloriesHigh bound a plausible calorie range for "
+                        "fat within fatG (each <= its parent). micros is an object with any of potassiumMg, cholesterolMg, "
+                        "calciumMg, ironMg, vitaminCMg, vitaminDMcg (numbers in the unit named by the suffix); include the "
+                        "ones you can reasonably estimate and omit the rest. caloriesLow/caloriesHigh bound a plausible calorie range for "
                         "the item; confidence is high, medium, or low reflecting how sure the estimate is (vague or "
                         "restaurant/homemade dishes are lower). IMPORTANT: include cooking fats — oil, butter, dressing, "
                         "sauce — in the calorie and fat estimate even when the user forgets to mention them, and note it. "
@@ -1063,6 +1085,7 @@ def fallback_food_parse(text: str, default_slot: str) -> dict[str, Any]:
             "fiberG": None,
             "sugarG": None,
             "satFatG": None,
+            "micros": None,
             "notes": None,
         }
         for name in (names or [text.strip()[:160]])

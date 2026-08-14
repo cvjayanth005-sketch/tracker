@@ -194,6 +194,18 @@ export class TrackerDb extends Dexie {
         food.satFatG ??= null
       })
     })
+    // Flexible micronutrient map on meals, their rollup, and saved foods.
+    this.version(14).upgrade(async (tx) => {
+      await tx.table<Meal, 'id'>('meals').toCollection().modify((meal) => {
+        meal.micros ??= null
+      })
+      await tx.table<DailyLog, 'date'>('dailyLogs').toCollection().modify((log) => {
+        log.micros ??= null
+      })
+      await tx.table<SavedFood, 'id'>('foods').toCollection().modify((food) => {
+        food.micros ??= null
+      })
+    })
   }
 }
 
