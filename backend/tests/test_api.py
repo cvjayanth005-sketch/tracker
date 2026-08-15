@@ -448,3 +448,66 @@ def test_frontend_coach_note_falls_back_when_groq_fails(tmp_path, monkeypatch) -
     assert response.json()["note"] == "Hold"
     assert response.json()["provider"] == "rules"
     assert response.json()["fallback"] is True
+
+
+def test_food_parse_requires_auth_and_falls_back_without_groq(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    payload = {"text": "eggs, toast", "defaultSlot": "breakfast"}
+
+    assert client.post("/api/food/parse", json=payload).status_code == 401
+
+    login = client.post(
+        "/api/auth/google",
+        json={"credential": fake_google_credential("food-user", "food@example.com")},
+    ).json()
+    response = client.post(
+        "/api/food/parse",
+        json=payload,
+        headers={"Authorization": f"Bearer {login['session']['token']}"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["provider"] == "rules"
+    assert data["needsManual"] is True
+    assert [meal["name"] for meal in data["meals"]] == ["eggs", "toast"]
+
+
+def test_food_parse_endpoint_returns_groq_estimate(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+    monkeypatch.setenv("GROQ_MODEL", "openai/gpt-oss-20b")
+    monkeypatch.setattr(
+        "app.services.request_groq_food_parse",
+        lambda text, slot, api_key, model: {
+            "meals": [
+                {
+                    "name": "roti",
+                    "slot": slot,
+                    "calories": 80,
+                    "proteinG": 3,
+                    "carbsG": 15,
+                    "fatG": 1,
+                }
+            ],
+            "summary": "One roti.",
+        },
+    )
+    login = client.post(
+        "/api/auth/google",
+        json={"credential": fake_google_credential("food-ai", "food-ai@example.com")},
+    ).json()
+
+    response = client.post(
+        "/api/food/parse",
+        json={"text": "1 roti", "defaultSlot": "lunch"},
+        headers={"Authorization": f"Bearer {login['session']['token']}"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["provider"] == "groq"
+    assert data["model"] == "openai/gpt-oss-20b"
+    assert data["meals"][0]["calories"] == 80
+    assert data["needsManual"] is False

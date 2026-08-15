@@ -5,7 +5,9 @@ import base64
 import hashlib
 import io
 import json
+import logging
 import os
+import re
 import sqlite3
 from datetime import date, datetime, timedelta
 from typing import Any, Mapping
@@ -28,6 +30,8 @@ from .rules import (
     weekly_average_change,
     weight_trend_series,
 )
+
+logger = logging.getLogger(__name__)
 
 
 DAY_FIELDS = [
@@ -930,6 +934,65 @@ MEAL_SLOTS = ("breakfast", "lunch", "dinner", "snack")
 # curated set so junk keys never reach the client.
 MICRO_KEYS = ("potassiumMg", "cholesterolMg", "calciumMg", "ironMg", "vitaminCMg", "vitaminDMcg")
 
+# gpt-oss JSON mode often 400s; llama JSON-object mode is the reliability retry.
+FOOD_PARSE_RETRY_MODEL = "llama-3.1-8b-instant"
+FOOD_PARSE_MAX_COMPLETION_TOKENS = 4096
+_JSON_FENCE = re.compile(r"```(?:json)?\s*([\s\S]*?)```", re.IGNORECASE)
+
+_NULL_NUMBER = {"type": ["number", "null"]}
+_NULL_STRING = {"type": ["string", "null"]}
+_MEAL_ITEM_PROPERTIES: dict[str, Any] = {
+    "slot": {"type": "string", "enum": list(MEAL_SLOTS)},
+    "name": {"type": "string"},
+    "time": _NULL_STRING,
+    "quantity": _NULL_NUMBER,
+    "unit": _NULL_STRING,
+    "calories": _NULL_NUMBER,
+    "caloriesLow": _NULL_NUMBER,
+    "caloriesHigh": _NULL_NUMBER,
+    "confidence": {
+        "anyOf": [
+            {"type": "string", "enum": ["low", "medium", "high"]},
+            {"type": "null"},
+        ]
+    },
+    "proteinG": _NULL_NUMBER,
+    "carbsG": _NULL_NUMBER,
+    "fatG": _NULL_NUMBER,
+    "fiberG": _NULL_NUMBER,
+    "sugarG": _NULL_NUMBER,
+    "satFatG": _NULL_NUMBER,
+    "micros": {
+        "anyOf": [
+            {
+                "type": "object",
+                "properties": {key: _NULL_NUMBER for key in MICRO_KEYS},
+                "required": list(MICRO_KEYS),
+                "additionalProperties": False,
+            },
+            {"type": "null"},
+        ]
+    },
+    "notes": _NULL_STRING,
+}
+FOOD_PARSE_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "meals": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": _MEAL_ITEM_PROPERTIES,
+                "required": list(_MEAL_ITEM_PROPERTIES),
+                "additionalProperties": False,
+            },
+        },
+        "summary": _NULL_STRING,
+    },
+    "required": ["meals", "summary"],
+    "additionalProperties": False,
+}
+
 
 def _macro(value: Any, hi: float) -> float | None:
     """Coerce an estimated macro to a sane number, or None when absent/invalid."""
@@ -1009,50 +1072,111 @@ def normalize_food_parse(raw: dict[str, Any], default_slot: str, provider: str) 
     }
 
 
-def request_groq_food_parse(text: str, default_slot: str, api_key: str, model: str) -> dict[str, Any]:
-    response = httpx.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={
-            "model": model,
-            "temperature": 0.2,
-            "max_completion_tokens": 900,
-            "response_format": {"type": "json_object"},
-            "messages": [
-                {
-                    "role": "system",
-                    "content": (
-                        "You estimate nutrition from a short free-text description of what someone ate. "
-                        "Return strict JSON only, no prose. Shape: "
-                        '{"meals":[{"slot","name","time","quantity","unit","calories","caloriesLow","caloriesHigh",'
-                        '"confidence","proteinG","carbsG","fatG","fiberG","sugarG","satFatG","micros","notes"}],"summary"}. '
-                        "One entry per distinct dish or item. slot is one of breakfast, lunch, dinner, snack; "
-                        f"infer it from wording or time, otherwise use \"{default_slot}\". "
-                        "time is 24h HH:mm or null. quantity is the numeric portion and unit its measure "
-                        "(g, ml, piece, cup, tbsp, serving); estimate a sensible portion when unstated and put it there. "
-                        "Macros are grams; calories are kcal; use realistic estimates for that portion and null when a "
-                        "food gives no basis to estimate. sugarG is the sugar within carbsG and satFatG the saturated "
-                        "fat within fatG (each <= its parent). micros is an object with any of potassiumMg, cholesterolMg, "
-                        "calciumMg, ironMg, vitaminCMg, vitaminDMcg (numbers in the unit named by the suffix); include the "
-                        "ones you can reasonably estimate and omit the rest. caloriesLow/caloriesHigh bound a plausible calorie range for "
-                        "the item; confidence is high, medium, or low reflecting how sure the estimate is (vague or "
-                        "restaurant/homemade dishes are lower). IMPORTANT: include cooking fats — oil, butter, dressing, "
-                        "sauce — in the calorie and fat estimate even when the user forgets to mention them, and note it. "
-                        "Keep name short and human (e.g. '2 scrambled eggs'). Put assumptions (portion, cooking fat) in notes. "
-                        "summary is one short sentence on the whole entry. Estimates only; the user will review and edit."
-                    ),
-                },
-                {"role": "user", "content": text[:2000]},
-            ],
-        },
-        timeout=18.0,
-    )
-    response.raise_for_status()
-    raw = response.json()["choices"][0]["message"]["content"]
-    parsed = json.loads(raw)
+def extract_json_object(raw: Any) -> dict[str, Any]:
+    """Pull a JSON object out of a chat completion, including fenced or padded text."""
+    if isinstance(raw, dict):
+        return raw
+    if isinstance(raw, list):
+        parts = [part.get("text", "") if isinstance(part, dict) else str(part) for part in raw]
+        raw = "".join(parts)
+    if not isinstance(raw, str) or not raw.strip():
+        raise ValueError("Groq returned empty food-parse content.")
+    text = raw.strip()
+    fenced = _JSON_FENCE.search(text)
+    if fenced:
+        text = fenced.group(1).strip()
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end <= start:
+        raise ValueError("Groq returned a food parse without a JSON object.")
+    parsed = json.loads(text[start : end + 1])
     if not isinstance(parsed, dict):
         raise ValueError("Groq returned an invalid food parse.")
     return parsed
+
+
+def _is_gpt_oss(model: str) -> bool:
+    return "gpt-oss" in model
+
+
+def _food_parse_models(primary: str) -> list[str]:
+    models = [primary]
+    if primary != FOOD_PARSE_RETRY_MODEL:
+        models.append(FOOD_PARSE_RETRY_MODEL)
+    return models
+
+
+def _groq_http_error(exc: httpx.HTTPStatusError) -> str:
+    status = exc.response.status_code
+    try:
+        payload = exc.response.json()
+        err = payload.get("error") if isinstance(payload, dict) else None
+        if isinstance(err, dict):
+            code = str(err.get("code") or err.get("type") or "error")
+            message = str(err.get("message") or "").strip()[:180]
+            failed = err.get("failed_generation")
+            if failed:
+                logger.warning("Groq food parse failed_generation: %s", str(failed)[:500])
+            logger.warning("Groq food parse HTTP %s %s: %s", status, code, message)
+            return f"Groq {code}: {message}" if message else f"Groq HTTP {status} ({code})"
+    except Exception:
+        pass
+    logger.warning("Groq food parse HTTP %s", status)
+    return f"Groq HTTP {status}"
+
+
+def request_groq_food_parse(text: str, default_slot: str, api_key: str, model: str) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "model": model,
+        "temperature": 0.2,
+        "max_completion_tokens": FOOD_PARSE_MAX_COMPLETION_TOKENS,
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "You estimate nutrition from a short free-text description of what someone ate. "
+                    "Return JSON only. One entry per distinct dish or item. "
+                    f"slot is breakfast, lunch, dinner, or snack; infer it from wording or time, otherwise use \"{default_slot}\". "
+                    "time is 24h HH:mm or null. quantity is the numeric portion and unit its measure "
+                    "(g, ml, piece, cup, tbsp, serving); estimate a sensible portion when unstated. "
+                    "Macros are grams; calories are kcal; use realistic estimates for that portion and null when a "
+                    "food gives no basis to estimate. sugarG is the sugar within carbsG and satFatG the saturated "
+                    "fat within fatG (each <= its parent). micros may include potassiumMg, cholesterolMg, "
+                    "calciumMg, ironMg, vitaminCMg, vitaminDMcg; use null for unknowns. "
+                    "caloriesLow/caloriesHigh bound a plausible calorie range. confidence is high, medium, or low "
+                    "(vague or restaurant/homemade dishes are lower). "
+                    "Include cooking fats — oil, butter, dressing, sauce — in calories and fat even when unstated, and note it. "
+                    "Keep name short and human (e.g. '2 scrambled eggs'). Put assumptions in notes. "
+                    "summary is one short sentence on the whole entry. Estimates only; the user will review and edit."
+                ),
+            },
+            {"role": "user", "content": text[:2000]},
+        ],
+    }
+    if _is_gpt_oss(model):
+        payload["reasoning_effort"] = "low"
+        payload["response_format"] = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "food_parse",
+                "strict": True,
+                "schema": FOOD_PARSE_JSON_SCHEMA,
+            },
+        }
+    else:
+        payload["response_format"] = {"type": "json_object"}
+    try:
+        response = httpx.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json=payload,
+            timeout=30.0,
+        )
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        raise ValueError(_groq_http_error(exc)) from exc
+    message = response.json()["choices"][0]["message"]
+    return extract_json_object(message.get("content"))
 
 
 def fallback_food_parse(text: str, default_slot: str) -> dict[str, Any]:
@@ -1101,18 +1225,25 @@ def food_parse(payload: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("Describe what you ate first.")
     groq_key = os.environ.get("GROQ_API_KEY")
     groq_model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
-    if groq_key:
+    if not groq_key:
+        return {**fallback_food_parse(text, default_slot), "model": None}
+
+    last_error: Exception | None = None
+    for model in _food_parse_models(groq_model):
         try:
-            raw = request_groq_food_parse(text, default_slot, groq_key, groq_model)
-            return {**normalize_food_parse(raw, default_slot, "groq"), "model": groq_model}
+            raw = request_groq_food_parse(text, default_slot, groq_key, model)
+            return {**normalize_food_parse(raw, default_slot, "groq"), "model": model}
         except (httpx.HTTPError, RuntimeError, ValueError, KeyError, IndexError, json.JSONDecodeError) as exc:
-            return {
-                **fallback_food_parse(text, default_slot),
-                "fallback": True,
-                "fallbackReason": f"{type(exc).__name__}: {str(exc)[:300]}",
-                "model": None,
-            }
-    return {**fallback_food_parse(text, default_slot), "model": None}
+            last_error = exc
+            logger.warning("Food parse with %s failed: %s: %s", model, type(exc).__name__, str(exc)[:300])
+
+    reason = f"{type(last_error).__name__}: {str(last_error)[:300]}" if last_error else "Groq unavailable"
+    return {
+        **fallback_food_parse(text, default_slot),
+        "fallback": True,
+        "fallbackReason": reason,
+        "model": None,
+    }
 
 
 def make_rule_based_note(state: dict[str, Any]) -> str:

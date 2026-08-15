@@ -14,6 +14,18 @@ function guessSlot(): MealSlot {
   return 'snack'
 }
 
+function draftsHaveMacros(drafts: MealDraft[]): boolean {
+  return drafts.some((draft) =>
+    [draft.calories, draft.proteinG, draft.carbsG, draft.fatG, draft.fiberG].some((value) => value != null),
+  )
+}
+
+function fallbackNotice(reason?: string): string {
+  if (!reason) return 'AI estimate failed — fill in the macros for each item and save.'
+  const cleaned = reason.replace(/^(HTTPStatusError|ValueError|TimeoutException|ConnectError):\s*/u, '').slice(0, 140)
+  return `AI estimate failed (${cleaned}) — fill in the macros for each item and save.`
+}
+
 function blankDraft(slot: MealSlot): MealDraft {
   return {
     slot,
@@ -210,9 +222,13 @@ export function MealLogger({ date }: { date: LocalDate }) {
       setDrafts(result.meals.length > 0 ? result.meals : [blankDraft(slot)])
       setAiParsed(result.provider === 'groq')
       if (result.provider !== 'groq') {
-        setNotice('AI estimation is offline — fill in the macros for each item and save.')
+        setNotice(
+          result.fallback
+            ? fallbackNotice(result.fallbackReason)
+            : 'AI estimation is offline — fill in the macros for each item and save.',
+        )
       } else if (result.needsManual) {
-        setNotice('Saved your items — add the macros you know and save.')
+        setNotice('Could not estimate macros — add the numbers you know and save.')
       } else if (result.summary) {
         setNotice(result.summary)
       }
@@ -317,6 +333,11 @@ export function MealLogger({ date }: { date: LocalDate }) {
             </span>
           </div>
           {notice ? <p className="text-[12px] leading-relaxed text-ink-400">{notice}</p> : null}
+          {!draftsHaveMacros(drafts) ? (
+            <p className="rounded-xl bg-warn/10 px-3 py-2 text-[12px] text-warn ring-1 ring-inset ring-warn/20">
+              Empty macros will not update today's calorie or protein totals. Add numbers before saving if you want them counted.
+            </p>
+          ) : null}
           {drafts.some((draft) => draft.confidence === 'low') ? (
             <p className="rounded-xl bg-warn/10 px-3 py-2 text-[12px] text-warn ring-1 ring-inset ring-warn/20">
               Some estimates are rough — double-check the ones marked low confidence before saving.
