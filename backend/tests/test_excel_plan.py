@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 from io import BytesIO
+import json
 
 from fastapi.testclient import TestClient
 from openpyxl import Workbook
@@ -10,13 +11,27 @@ from openpyxl import Workbook
 def make_client(tmp_path, monkeypatch) -> TestClient:
     monkeypatch.setenv("TRACKER_DB_PATH", str(tmp_path / "test.sqlite3"))
     monkeypatch.setenv("TRACKER_ALLOW_UNVERIFIED_GOOGLE", "1")
+    monkeypatch.setenv("AUTH_RATE_LIMIT", "0")
     monkeypatch.delenv("SUPABASE_DATABASE_URL", raising=False)
     monkeypatch.delenv("DATABASE_URL", raising=False)
+    from app import main
     from app.database import init_db
-    from app.main import app
 
+    monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
+    main.AUTH_RATE_LIMIT = 0
     init_db()
-    return TestClient(app)
+    return TestClient(main.app)
+
+
+def auth_headers(client: TestClient) -> dict[str, str]:
+    header = base64.urlsafe_b64encode(json.dumps({"alg": "none"}).encode()).decode().rstrip("=")
+    payload = base64.urlsafe_b64encode(
+        json.dumps(
+            {"sub": "excel-user", "email": "excel@example.com", "name": "excel", "exp": 4102444800}
+        ).encode()
+    ).decode().rstrip("=")
+    login = client.post("/api/auth/google", json={"credential": f"{header}.{payload}."}).json()
+    return {"Authorization": f"Bearer {login['session']['token']}"}
 
 
 def workbook_payload(include_history: bool = False) -> dict[str, str]:
@@ -80,7 +95,11 @@ def workbook_payload(include_history: bool = False) -> dict[str, str]:
 def test_excel_plan_preview_understands_ranges_and_cycle(tmp_path, monkeypatch) -> None:
     client = make_client(tmp_path, monkeypatch)
 
-    response = client.post("/api/plan/import/excel/preview", json=workbook_payload())
+    response = client.post(
+        "/api/plan/import/excel/preview",
+        json=workbook_payload(),
+        headers=auth_headers(client),
+    )
 
     assert response.status_code == 200
     data = response.json()
@@ -100,10 +119,11 @@ def test_excel_plan_preview_understands_ranges_and_cycle(tmp_path, monkeypatch) 
 
 def test_excel_plan_apply_is_idempotent_and_effective_dated(tmp_path, monkeypatch) -> None:
     client = make_client(tmp_path, monkeypatch)
+    headers = auth_headers(client)
     payload = workbook_payload()
 
-    first = client.post("/api/plan/import/excel", json=payload)
-    second = client.post("/api/plan/import/excel", json=payload)
+    first = client.post("/api/plan/import/excel", json=payload, headers=headers)
+    second = client.post("/api/plan/import/excel", json=payload, headers=headers)
 
     assert first.status_code == 200
     assert first.json()["applied"] is True
@@ -116,8 +136,8 @@ def test_excel_plan_apply_is_idempotent_and_effective_dated(tmp_path, monkeypatc
         conn.execute("UPDATE user_profile SET current_phase_id = ? WHERE id = 1", (phase_five["id"],))
         conn.commit()
 
-    before = client.get("/api/plan/timeline?date=2026-08-02").json()
-    after = client.get("/api/plan/timeline?date=2026-08-03").json()
+    before = client.get("/api/plan/timeline?date=2026-08-02", headers=headers).json()
+    after = client.get("/api/plan/timeline?date=2026-08-03", headers=headers).json()
     assert before["current_phase"]["workout_days_per_week"] == 4
     assert after["current_phase"]["workout_days_per_week"] == 6
     assert after["cycle"]["current_week"] == 1
@@ -125,12 +145,17 @@ def test_excel_plan_apply_is_idempotent_and_effective_dated(tmp_path, monkeypatc
 
 def test_excel_history_keeps_empty_checkboxes_unknown(tmp_path, monkeypatch) -> None:
     client = make_client(tmp_path, monkeypatch)
+    headers = auth_headers(client)
 
-    result = client.post("/api/plan/import/excel", json=workbook_payload(include_history=True)).json()
+    result = client.post(
+        "/api/plan/import/excel",
+        json=workbook_payload(include_history=True),
+        headers=headers,
+    ).json()
 
     assert result["daily_logs_imported"] == 2
-    first = client.get("/api/day/2026-08-03").json()
-    second = client.get("/api/day/2026-08-04").json()
+    first = client.get("/api/day/2026-08-03", headers=headers).json()
+    second = client.get("/api/day/2026-08-04", headers=headers).json()
     assert first["weight_kg"] == 88.0
     assert first["run_completed"] is None
     assert second["run_completed"] is True
@@ -144,6 +169,7 @@ def test_invalid_excel_payload_returns_clear_400(tmp_path, monkeypatch) -> None:
     response = client.post(
         "/api/plan/import/excel/preview",
         json={"filename": "bad.xlsx", "file_base64": "not-base64", "start_date": "2026-08-03"},
+        headers=auth_headers(client),
     )
 
     assert response.status_code == 400

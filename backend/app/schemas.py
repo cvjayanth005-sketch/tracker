@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from datetime import date
+import json
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class DayLogUpdate(BaseModel):
@@ -31,13 +32,13 @@ class DayLog(DayLogUpdate):
 
 
 class ImportRequest(BaseModel):
-    csv_text: str | None = None
-    rows: list[dict[str, Any]] | None = None
+    csv_text: str | None = Field(default=None, max_length=1_000_000)
+    rows: list[dict[str, Any]] | None = Field(default=None, max_length=5_000)
 
 
 class ExcelPlanImportRequest(BaseModel):
-    filename: str = "Phase_1_to_5_Fat_Loss_Tracker.xlsx"
-    file_base64: str
+    filename: str = Field(default="Phase_1_to_5_Fat_Loss_Tracker.xlsx", max_length=255)
+    file_base64: str = Field(max_length=2_000_000)
     start_date: date
 
 
@@ -83,6 +84,15 @@ class CoachNoteRequest(BaseModel):
     promptVersion: str | None = None
     rulesVersion: str | None = None
 
+    @field_validator("summary")
+    @classmethod
+    def summary_not_huge(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
+        if value is None:
+            return value
+        if len(json.dumps(value, separators=(",", ":"))) > 50_000:
+            raise ValueError("summary is too large")
+        return value
+
 
 class CoachChatMessage(BaseModel):
     role: Literal["user", "assistant"]
@@ -97,9 +107,9 @@ class CoachChatRequest(BaseModel):
 
 class OnboardingDraftRequest(BaseModel):
     answers: dict[str, Any]
-    pasted_text: str | None = None
-    file_name: str | None = None
-    file_base64: str | None = None
+    pasted_text: str | None = Field(default=None, max_length=100_000)
+    file_name: str | None = Field(default=None, max_length=255)
+    file_base64: str | None = Field(default=None, max_length=2_000_000)
 
 
 class FoodParseRequest(BaseModel):
@@ -119,6 +129,7 @@ class StateDocument(BaseModel):
     version: int
     updatedAt: str
     tables: dict[str, list[Any]]
+    tombstones: list[dict[str, Any]] = Field(default_factory=list)
     baseVersion: int | None = None
 
 

@@ -149,10 +149,13 @@ def init_db() -> None:
             );
 
             CREATE TABLE IF NOT EXISTS ai_note_cache (
-                state_hash TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                state_hash TEXT NOT NULL,
                 note TEXT NOT NULL,
                 state_summary_json TEXT NOT NULL,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, state_hash),
+                FOREIGN KEY (user_id) REFERENCES app_users(id) ON DELETE CASCADE
             );
 
             CREATE TABLE IF NOT EXISTS plan_imports (
@@ -221,6 +224,7 @@ def init_db() -> None:
         )
         migrate_phase_targets(conn)
         migrate_app_state(conn)
+        migrate_ai_note_cache(conn)
         conn.execute(
             """
             CREATE UNIQUE INDEX IF NOT EXISTS app_state_global_once
@@ -242,6 +246,26 @@ def migrate_phase_targets(conn: sqlite3.Connection) -> None:
         UPDATE phases SET
             calorie_min = COALESCE(calorie_min, calorie_target),
             calorie_max = COALESCE(calorie_max, calorie_target)
+        """
+    )
+
+
+def migrate_ai_note_cache(conn: sqlite3.Connection) -> None:
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(ai_note_cache)").fetchall()}
+    if not columns or "user_id" in columns:
+        return
+    conn.executescript(
+        """
+        DROP TABLE ai_note_cache;
+        CREATE TABLE ai_note_cache (
+            user_id INTEGER NOT NULL,
+            state_hash TEXT NOT NULL,
+            note TEXT NOT NULL,
+            state_summary_json TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, state_hash),
+            FOREIGN KEY (user_id) REFERENCES app_users(id) ON DELETE CASCADE
+        );
         """
     )
 

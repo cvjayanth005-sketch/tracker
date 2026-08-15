@@ -15,6 +15,7 @@ from typing import Any, Mapping
 import httpx
 from pypdf import PdfReader
 
+from . import cloud_store
 from .database import get_settings, row_to_dict
 from .excel_plan import resolve_phase_targets
 from .rules import (
@@ -416,33 +417,88 @@ def create_run(conn: sqlite3.Connection, payload: dict[str, Any]) -> dict[str, A
     return row_to_dict(conn.execute("SELECT * FROM runs ORDER BY id DESC LIMIT 1").fetchone())
 
 
-def cached_coach_note(conn: sqlite3.Connection, force: bool = False) -> dict[str, Any]:
+def cached_coach_note(conn: sqlite3.Connection, user_id: int, force: bool = False) -> dict[str, Any]:
     state = build_progress(conn)
     summary = json.dumps(state, sort_keys=True)
     state_hash = hashlib.sha256(summary.encode("utf-8")).hexdigest()
-    cached = conn.execute("SELECT * FROM ai_note_cache WHERE state_hash = ?", (state_hash,)).fetchone()
+    cached = conn.execute(
+        "SELECT * FROM ai_note_cache WHERE user_id = ? AND state_hash = ?",
+        (user_id, state_hash),
+    ).fetchone()
     if cached is not None and not force:
         return row_to_dict(cached)
     note = make_rule_based_note(state)
     conn.execute(
         """
-        INSERT INTO ai_note_cache (state_hash, note, state_summary_json)
-        VALUES (?, ?, ?)
-        ON CONFLICT(state_hash) DO UPDATE SET note = excluded.note, state_summary_json = excluded.state_summary_json
+        INSERT INTO ai_note_cache (user_id, state_hash, note, state_summary_json)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(user_id, state_hash) DO UPDATE SET note = excluded.note, state_summary_json = excluded.state_summary_json
         """,
-        (state_hash, note, summary),
+        (user_id, state_hash, note, summary),
     )
     conn.commit()
-    return row_to_dict(conn.execute("SELECT * FROM ai_note_cache WHERE state_hash = ?", (state_hash,)).fetchone())
+    return row_to_dict(
+        conn.execute(
+            "SELECT * FROM ai_note_cache WHERE user_id = ? AND state_hash = ?",
+            (user_id, state_hash),
+        ).fetchone()
+    )
+
+
+def _read_cached_note(state_hash: str, user_id: int, conn: sqlite3.Connection | None) -> dict[str, Any] | None:
+    if cloud_store.enabled():
+        return cloud_store.get_cached_note(state_hash, user_id)
+    if conn is None:
+        return None
+    return row_to_dict(
+        conn.execute(
+            "SELECT * FROM ai_note_cache WHERE user_id = ? AND state_hash = ?",
+            (user_id, state_hash),
+        ).fetchone()
+    )
+
+
+def _write_cached_note(
+    state_hash: str,
+    note: str,
+    payload: str,
+    user_id: int,
+    conn: sqlite3.Connection | None,
+) -> dict[str, Any]:
+    if cloud_store.enabled():
+        return cloud_store.put_cached_note(state_hash, note, payload, user_id)
+    if conn is None:
+        raise RuntimeError("SQLite connection is required when cloud storage is off.")
+    conn.execute(
+        """
+        INSERT INTO ai_note_cache (user_id, state_hash, note, state_summary_json)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(user_id, state_hash) DO UPDATE SET note = excluded.note, state_summary_json = excluded.state_summary_json
+        """,
+        (user_id, state_hash, note, payload),
+    )
+    conn.commit()
+    stored = row_to_dict(
+        conn.execute(
+            "SELECT * FROM ai_note_cache WHERE user_id = ? AND state_hash = ?",
+            (user_id, state_hash),
+        ).fetchone()
+    )
+    if stored is None:
+        raise RuntimeError("Coach note cache upsert did not return a row.")
+    return stored
 
 
 def cached_coach_note_for_summary(
-    conn: sqlite3.Connection,
     summary: dict[str, Any],
     prompt_version: str | None,
     rules_version: str | None,
     force: bool = False,
+    user_id: int | None = None,
+    conn: sqlite3.Connection | None = None,
 ) -> dict[str, Any]:
+    if user_id is None:
+        raise ValueError("user_id is required for coach notes.")
     groq_key = os.environ.get("GROQ_API_KEY")
     groq_model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
     narrator = "groq" if groq_key else "rules"
@@ -455,9 +511,9 @@ def cached_coach_note_for_summary(
     }
     payload = json.dumps(state, sort_keys=True)
     state_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
-    cached = conn.execute("SELECT * FROM ai_note_cache WHERE state_hash = ?", (state_hash,)).fetchone()
+    cached = _read_cached_note(state_hash, user_id, conn)
     if cached is not None and not force:
-        return {**row_to_dict(cached), "provider": narrator, "model": groq_model if groq_key else None}
+        return {**cached, "provider": narrator, "model": groq_model if groq_key else None}
 
     fallback = make_frontend_summary_note(summary)
     provider = "rules"
@@ -481,16 +537,7 @@ def cached_coach_note_for_summary(
             }
     else:
         note = fallback
-    conn.execute(
-        """
-        INSERT INTO ai_note_cache (state_hash, note, state_summary_json)
-        VALUES (?, ?, ?)
-        ON CONFLICT(state_hash) DO UPDATE SET note = excluded.note, state_summary_json = excluded.state_summary_json
-        """,
-        (state_hash, note, payload),
-    )
-    conn.commit()
-    stored = row_to_dict(conn.execute("SELECT * FROM ai_note_cache WHERE state_hash = ?", (state_hash,)).fetchone())
+    stored = _write_cached_note(state_hash, note, payload, user_id, conn)
     return {**stored, "provider": provider, "model": model}
 
 
@@ -1311,6 +1358,7 @@ def put_state_document(conn: sqlite3.Connection, doc: dict[str, Any], user_id: i
         "version": int(doc["version"]),
         "updatedAt": doc["updatedAt"],
         "tables": doc["tables"],
+        "tombstones": list(doc.get("tombstones") or []),
     }
     if user_id is None:
         existing = conn.execute("SELECT id FROM app_state WHERE user_id IS NULL").fetchone()

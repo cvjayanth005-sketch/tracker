@@ -14,7 +14,13 @@ uvicorn app.main:app --reload
 Without `SUPABASE_DATABASE_URL`, the API creates and seeds
 `backend/tracker.sqlite3` on startup. With `SUPABASE_DATABASE_URL`, Google
 users, sessions, synced tracker documents, and AI note cache use Supabase
-Postgres while the older local SQLite endpoints remain available.
+Postgres. The leftover SQLite diary routes (`/api/today`, `/api/day`, and
+similar) are then hidden. Set `TRACKER_ENABLE_DOCS=1` only if you need the
+OpenAPI UI locally. AI endpoints are rate-limited per signed-in user
+(`AI_RATE_LIMIT`); cloud sync documents larger than `STATE_BODY_MAX_BYTES`
+are rejected. Session tokens are stored as SHA-256 hashes. Re-run
+`docs/supabase-cloud-state.sql` in Supabase so AI notes are cached per user
+instead of on a global hash.
 
 For local frontend sync, set the frontend env var:
 

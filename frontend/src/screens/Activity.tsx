@@ -280,13 +280,18 @@ function SelectedDayPanel({
   )
 }
 
-function formatMetricValue(value: number | null, unit: string): string {
-  if (value === null) return '—'
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
+function formatMetricValue(value: number | null | undefined, unit: string): string {
+  if (!isFiniteNumber(value)) return '—'
   if (unit === 'steps') return Math.round(value).toLocaleString()
   return `${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)} ${unit}`
 }
 
-function formatAxisValue(value: number, unit: string): string {
+function formatAxisValue(value: number | null | undefined, unit: string): string {
+  if (!isFiniteNumber(value)) return ''
   if (unit === 'steps') {
     if (value >= 1000) return `${Number((value / 1000).toFixed(1))}k`
     return Math.round(value).toLocaleString()
@@ -304,24 +309,28 @@ function MetricChart({
   title: string
   unit: string
   values: Array<{ date: LocalDate; value: number | null }>
-  target: number
+  target: number | null
   tone: 'accent' | 'info' | 'warn'
 }) {
-  const known = values.filter((point) => point.value !== null)
+  const targetValue = isFiniteNumber(target) && target > 0 ? target : null
+  const known = values.filter((point) => isFiniteNumber(point.value))
   const average =
     known.length === 0
       ? null
       : known.reduce((sum, point) => sum + (point.value ?? 0), 0) / known.length
-  const hits = values.filter((point) => point.value !== null && point.value >= target).length
+  const hits =
+    targetValue === null
+      ? null
+      : values.filter((point) => isFiniteNumber(point.value) && point.value >= targetValue).length
   const best = known.length === 0 ? null : Math.max(...known.map((point) => point.value ?? 0))
   const color = TONE_COLOR[tone]
   const gradientId = `activity-${tone}-${title.toLowerCase()}`
   const chartData = values.map((point) => ({
     date: point.date,
     day: formatShort(point.date),
-    value: point.value,
+    value: isFiniteNumber(point.value) ? point.value : undefined,
   }))
-  const maxValue = Math.max(1, target, ...known.map((point) => point.value ?? 0))
+  const maxValue = Math.max(1, targetValue ?? 0, ...known.map((point) => point.value ?? 0))
   const domainMax = Math.ceil(maxValue * 1.18)
 
   return (
@@ -333,7 +342,8 @@ function MetricChart({
             <div className="text-sm font-semibold text-ink-50">{title}</div>
           </div>
           <div className="mt-1.5 text-[11px] text-ink-400">
-            {known.length}/7 logged · target {target.toLocaleString()} {unit}
+            {known.length}/7 logged · target{' '}
+            {targetValue === null ? 'not set' : `${targetValue.toLocaleString()} ${unit}`}
           </div>
         </div>
         <div className="px-5 pt-5 text-right sm:px-6 sm:pt-6">
@@ -383,39 +393,44 @@ function MetricChart({
                 domain={[0, domainMax]}
                 tickCount={4}
               />
-              <ReferenceLine
-                y={target}
-                stroke="rgb(240 240 255 / 0.4)"
-                strokeDasharray="5 6"
-                label={{
-                  value: 'GOAL',
-                  position: 'insideTopRight',
-                  fill: '#8888aa',
-                  fontSize: 9,
-                  fontWeight: 700,
-                }}
-              />
+              {targetValue === null ? null : (
+                <ReferenceLine
+                  y={targetValue}
+                  stroke="rgb(240 240 255 / 0.4)"
+                  strokeDasharray="5 6"
+                  label={{
+                    value: 'GOAL',
+                    position: 'insideTopRight',
+                    fill: '#8888aa',
+                    fontSize: 9,
+                    fontWeight: 700,
+                  }}
+                />
+              )}
               <Tooltip
                 cursor={{ stroke: 'rgb(255 255 255 / 0.18)', strokeWidth: 1 }}
                 content={({ active, payload }) => {
                   const item = payload?.[0]?.payload as
-                    | { date: LocalDate; value: number | null }
+                    | { date: LocalDate; value: number | undefined }
                     | undefined
                   if (!active || !item) return null
+                  const pointValue = isFiniteNumber(item.value) ? item.value : null
                   return (
                     <div className="rounded-xl border border-white/12 bg-ink-900/95 px-3 py-2 shadow-2xl backdrop-blur-xl">
                       <div className="text-[10px] font-semibold uppercase text-ink-400">
                         {weekdayName(item.date)} · {formatShort(item.date)}
                       </div>
                       <div className="mt-1 tabular text-sm font-semibold text-ink-50">
-                        {formatMetricValue(item.value, unit)}
+                        {formatMetricValue(pointValue, unit)}
                       </div>
                       <div className="mt-0.5 text-[10px]" style={{ color }}>
-                        {item.value === null
+                        {pointValue === null
                           ? 'Not logged'
-                          : item.value >= target
+                          : targetValue === null
+                            ? 'Target not set'
+                            : pointValue >= targetValue
                             ? 'Goal reached'
-                            : `${formatMetricValue(target - item.value, unit)} to goal`}
+                            : `${formatMetricValue(targetValue - pointValue, unit)} to goal`}
                       </div>
                     </div>
                   )
@@ -446,9 +461,14 @@ function MetricChart({
               Best <strong className="font-semibold text-ink-200">{formatMetricValue(best, unit)}</strong>
             </span>
           </div>
-          <span className="tabular font-semibold text-ink-200">{hits}/7</span>
+          <span className="tabular font-semibold text-ink-200">
+            {hits === null ? '—' : `${hits}/7`}
+          </span>
         </div>
-        <Meter value={(hits / 7) * 100} tone={hits >= 5 ? 'accent' : tone} />
+        <Meter
+          value={hits === null ? null : (hits / 7) * 100}
+          tone={hits !== null && hits >= 5 ? 'accent' : tone}
+        />
       </div>
     </Card>
   )
@@ -484,10 +504,16 @@ function TrainingChecklist({
       label: 'Steps',
       detail:
         todayLog?.steps == null
-          ? `Target ${phase.steps.toLocaleString()}`
-          : `${todayLog.steps.toLocaleString()} / ${phase.steps.toLocaleString()}`,
-      state: todayLog?.steps != null && todayLog.steps >= phase.steps ? 'Done' : 'Open',
-      tone: todayLog?.steps != null && todayLog.steps >= phase.steps ? 'good' : 'neutral',
+          ? `Target ${formatMetricValue(phase.steps, 'steps')}`
+          : `${formatMetricValue(todayLog.steps, 'steps')} / ${formatMetricValue(phase.steps, 'steps')}`,
+      state:
+        todayLog?.steps != null && isFiniteNumber(phase.steps) && todayLog.steps >= phase.steps
+          ? 'Done'
+          : 'Open',
+      tone:
+        todayLog?.steps != null && isFiniteNumber(phase.steps) && todayLog.steps >= phase.steps
+          ? 'good'
+          : 'neutral',
     },
     {
       label: 'Recovery',
@@ -671,7 +697,9 @@ export default function Activity() {
   const todayGymOutcome = outcomeFor('gym', todayLog, phase, today)
   const todayRunOutcome = outcomeFor('run', todayLog, phase, today)
   const remainingSteps =
-    todayLog?.steps == null ? null : Math.max(0, phase.steps - todayLog.steps)
+    todayLog?.steps == null || !isFiniteNumber(phase.steps)
+      ? null
+      : Math.max(0, phase.steps - todayLog.steps)
   const nextAction =
     scheduled?.gym && todayGymOutcome !== 'hit'
       ? `Start your ${scheduled.sessionType} session`

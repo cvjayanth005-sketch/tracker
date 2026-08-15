@@ -1,33 +1,25 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { resolvePhaseForDate, upsertLog } from '@/db/repo'
 import { outcomeFor, type MetricKey } from '@/domain/compliance'
 import { asLocalDate, dateRange, dayOfWeek, formatShort, weekdayName } from '@/domain/date'
 import { planWeek } from '@/domain/plan'
 import { paceMinPerKm } from '@/domain/running'
-import { resolvePhaseForDate } from '@/db/repo'
-import { upsertLog } from '@/db/repo'
 import { useDashboard } from '@/hooks/useDashboard'
 import { NumberField, RatingField, TextArea, TriToggle } from '@/components/fields'
 import { HeroWeight } from '@/components/HeroWeight'
 import { SleepCheckIn } from '@/components/SleepCheckIn'
 import { RecommendationCard } from '@/components/RecommendationCard'
 import { TrendChart } from '@/components/TrendChart'
-import { Card, EmptyState, Meter, Pill, Stat } from '@/components/ui'
+import { TodayFocusCard } from '@/components/today/TodayFocusCard'
+import { targetSegmentsForDay } from '@/components/today/dayTargetRingModel'
+import { attentionMetricsForToday, buildTodayFocus } from '@/components/today/todayFocusModel'
+import { Card, EmptyState, Pill, Stat } from '@/components/ui'
 import { statInt, statVal } from '@/components/format'
 import type { DailyLog, LocalDate, Phase, Run } from '@/domain/types'
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-
-const METRIC_LABEL: Record<MetricKey, string> = {
-  calories: 'Calories',
-  protein: 'Protein',
-  steps: 'Steps',
-  sleep: 'Sleep',
-  meals: 'Meals on plan',
-  gym: 'Gym',
-  run: 'Run',
-}
 
 function displayPace(value: number | null): string | null {
   if (value === null) return null
@@ -140,79 +132,6 @@ function TodayCalendar({
   )
 }
 
-function metricProgress(
-  metric: MetricKey,
-  log: DailyLog | undefined,
-  phase: Phase,
-  plannedRunKm: number | null,
-): { value: string; target: string; pct: number | null; action: 'log' | 'workout' | 'completeMeals' | 'doneGym' | null } {
-  switch (metric) {
-    case 'calories': {
-      const value = log?.calories ?? null
-      return {
-        value: value === null ? 'Not logged' : `${Math.round(value).toLocaleString()} kcal`,
-        target: `${phase.calories} kcal`,
-        pct: value === null ? null : Math.min(100, (value / phase.calories) * 100),
-        action: 'log',
-      }
-    }
-    case 'protein': {
-      const value = log?.proteinG ?? null
-      return {
-        value: value === null ? 'Not logged' : `${Math.round(value)} g`,
-        target: `${phase.proteinG} g`,
-        pct: value === null ? null : Math.min(100, (value / phase.proteinG) * 100),
-        action: 'log',
-      }
-    }
-    case 'steps': {
-      const value = log?.steps ?? null
-      return {
-        value: value === null ? 'Not logged' : value.toLocaleString(),
-        target: phase.steps.toLocaleString(),
-        pct: value === null ? null : Math.min(100, (value / phase.steps) * 100),
-        action: 'log',
-      }
-    }
-    case 'run': {
-      const value = log?.runKm ?? null
-      return {
-        value: value === null ? 'Not logged' : `${value.toFixed(1)} km`,
-        target: plannedRunKm ? `${plannedRunKm} km` : 'No run',
-        pct: value === null || !plannedRunKm ? null : Math.min(100, (value / plannedRunKm) * 100),
-        action: 'workout',
-      }
-    }
-    case 'gym': {
-      const done = log?.gymDone ?? null
-      return {
-        value: done === null ? 'Not logged' : done ? 'Done' : 'Skipped',
-        target: 'session',
-        pct: done === null ? null : done ? 100 : 0,
-        action: done ? null : 'doneGym',
-      }
-    }
-    case 'sleep': {
-      const value = log?.sleepHours ?? null
-      return {
-        value: value === null ? 'Not logged' : `${value} h`,
-        target: `${phase.sleepHours} h`,
-        pct: value === null ? null : Math.min(100, (value / phase.sleepHours) * 100),
-        action: 'log',
-      }
-    }
-    case 'meals': {
-      const value = log?.mealsOnPlan ?? null
-      return {
-        value: value === null ? 'Not logged' : `${value} meals`,
-        target: `${phase.mealsPerDay} meals`,
-        pct: value === null ? null : Math.min(100, (value / phase.mealsPerDay) * 100),
-        action: value !== phase.mealsPerDay ? 'completeMeals' : null,
-      }
-    }
-  }
-}
-
 export default function Today() {
   const dash = useDashboard(30)
   const { today, phase, settings, phases, todayLog, index, change, review } = dash
@@ -228,34 +147,23 @@ export default function Today() {
 
   const save = (patch: Partial<DailyLog>) => void upsertLog(today, patch)
   const focusLogField = (metric: MetricKey) => {
-    const id = `today-log-${metric}`
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    window.setTimeout(() => document.getElementById(id)?.focus(), 250)
+    const element = document.getElementById(`today-log-${metric}`)
+    element?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    window.setTimeout(() => {
+      const focusable = element?.matches('input, a, button')
+        ? element
+        : element?.querySelector<HTMLElement>('input, a, button')
+      focusable?.focus()
+    }, 250)
   }
 
   const checklist: MetricKey[] = ['calories', 'protein', 'steps', 'run', 'gym', 'sleep', 'meals']
-  const applicable = checklist.filter(
-    (m) => outcomeFor(m, todayLog, phase, today) !== 'notScheduled',
-  )
-  const doneCount = applicable.filter(
-    (m) => outcomeFor(m, todayLog, phase, today) === 'hit',
-  ).length
-  const completionPct = applicable.length === 0 ? 0 : (doneCount / applicable.length) * 100
+  const targetSegments = targetSegmentsForDay(checklist, todayLog, phase, today)
+  const todayFocus = buildTodayFocus(phase, todaySchedule, todayLog, targetSegments)
+  const attentionMetrics = attentionMetricsForToday(targetSegments, todayFocus)
   const todayRuns = dash.runs.filter((run) => run.date === today)
   const todayRunSummary = runSummary(todayRuns)
-  const hitRate = Math.round(dash.compliance?.overallHitRatePct ?? completionPct)
   const coverage = Math.round(dash.compliance?.overallCoveragePct ?? 0)
-  const stabilityScore = Math.round((hitRate * 0.68 + coverage * 0.32) || completionPct)
-  const planTargets = [
-    { label: 'Calories', value: phase.calories.toLocaleString(), unit: 'kcal' },
-    { label: 'Protein', value: phase.proteinG.toLocaleString(), unit: 'g' },
-    { label: 'Steps', value: phase.steps.toLocaleString(), unit: null },
-    {
-      label: 'Weight trend',
-      value: change?.current.averageKg == null ? '—' : change.current.averageKg.toFixed(1),
-      unit: 'kg',
-    },
-  ]
 
   /*
    * The weigh-in card appears at the very top on a phone and at the head of the
@@ -281,7 +189,7 @@ export default function Today() {
           <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink-400">
             {weekdayName(today)} · {formatShort(today)}
           </div>
-          <h1 className="mt-1 text-3xl font-semibold sm:text-5xl">Today</h1>
+          <h1 className="mt-1 text-3xl font-semibold">Today</h1>
         </div>
         <div className="flex flex-col items-end gap-3">
           <Pill tone={review?.code === 'ready_for_review' ? 'good' : 'neutral'}>
@@ -303,208 +211,73 @@ export default function Today() {
       <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(21rem,.74fr)] lg:items-start lg:gap-5">
         {/* ---------------- Dashboard column ---------------- */}
         <div className="space-y-4">
-          <Card className="overflow-hidden">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="max-w-2xl">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
-                  Generated plan targets
-                </div>
-                <h2 className="mt-2 text-2xl font-semibold text-ink-50 sm:text-3xl">
-                  Today is about hitting the basics.
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-ink-300">
-                  {dash.recommendation?.detail ??
-                    'Log calories, protein, steps, training, and recovery. The plan changes only when the trend earns it.'}
-                </p>
-              </div>
-              <div className="grid min-w-0 gap-2 sm:grid-cols-2 lg:w-[28rem]">
-                {planTargets.map((target) => (
-                  <div key={target.label} className="glass-inset rounded-2xl p-3">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-400">
-                      {target.label}
-                    </div>
-                    <div className="tabular mt-1 text-2xl font-semibold leading-none text-ink-50">
-                      {target.value}
-                      {target.unit ? (
-                        <span className="ml-1 text-xs font-normal text-ink-400">{target.unit}</span>
-                      ) : null}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="mt-4 grid gap-2 sm:grid-cols-3">
-              <div className="glass-tile rounded-2xl px-3 py-2.5">
-                <div className="text-[10px] uppercase tracking-[0.12em] text-ink-500">Gym</div>
-                <div className="mt-1 truncate text-sm font-semibold text-ink-100">
-                  {todaySchedule?.gym ? `${todaySchedule.sessionType} session` : 'Not scheduled'}
-                </div>
-              </div>
-              <div className="glass-tile rounded-2xl px-3 py-2.5">
-                <div className="text-[10px] uppercase tracking-[0.12em] text-ink-500">Run</div>
-                <div className="mt-1 truncate text-sm font-semibold text-ink-100">
-                  {todaySchedule?.runKm ? `${todaySchedule.runKm} km ${todaySchedule.runType}` : 'Not scheduled'}
-                </div>
-              </div>
-              <div className="glass-tile rounded-2xl px-3 py-2.5">
-                <div className="text-[10px] uppercase tracking-[0.12em] text-ink-500">Score</div>
-                <div className="mt-1 text-sm font-semibold text-ink-100">
-                  {stabilityScore} · {coverage}% logged
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          {/* Desktop has the room for the trend line; the phone does not. */}
-          <Card className="hidden lg:block">
-            <div className="mb-1 flex items-baseline justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">
-                Last 30 days
-              </span>
-              <Link to="/progress" className="text-[11px] text-accent">
-                Full progress →
-              </Link>
-            </div>
-            <TrendChart series={dash.series} targetKg={phase.targetWeightKg} />
-          </Card>
-
-          {dash.recommendation ? (
-            <RecommendationCard recommendation={dash.recommendation} review={review} />
-          ) : null}
+          <TodayFocusCard
+            focus={todayFocus}
+            segments={targetSegments}
+            attentionMetrics={attentionMetrics}
+            recommendation={dash.recommendation ?? null}
+            onActivate={focusLogField}
+          />
 
           <div className="grid items-start gap-4 xl:grid-cols-[1fr_1.05fr]">
-            <Card>
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">
-                    Today&apos;s plan
+            <details className="group">
+              <summary className="surface flex min-h-20 cursor-pointer list-none items-center justify-between gap-4 rounded-3xl px-4 py-4 sm:px-5">
+                <span>
+                  <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">
+                    More insights
+                  </span>
+                  <span className="mt-1 block text-[12px] text-ink-500">
+                    Plan signal, trend, and weekly averages
+                  </span>
+                </span>
+                <span className="text-lg text-ink-400 transition-transform group-open:rotate-45">+</span>
+              </summary>
+              <div className="mt-4 space-y-4">
+                {dash.recommendation ? (
+                  <RecommendationCard recommendation={dash.recommendation} review={review} />
+                ) : null}
+                <Card className="hidden lg:block">
+                  <div className="mb-1 flex items-baseline justify-between">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">
+                      Last 30 days
+                    </span>
+                    <Link to="/progress" className="text-[11px] text-accent">
+                      Full progress →
+                    </Link>
                   </div>
-                  <div className="mt-1 text-2xl font-semibold text-ink-50">
-                    {doneCount}/{applicable.length} complete
+                  <TrendChart series={dash.series} targetKg={phase.targetWeightKg} />
+                </Card>
+                <Card>
+                  <div className="mb-3 flex items-baseline justify-between px-1">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">
+                      Last 7 days
+                    </div>
+                    <span className="text-[11px] text-ink-500">{coverage}% coverage</span>
                   </div>
-                </div>
-                <Pill tone={completionPct === 100 ? 'good' : 'info'}>{Math.round(completionPct)}%</Pill>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Stat label="Avg calories" value={statInt(dash.weekAverages?.calories)} unit="kcal" />
+                    <Stat label="Avg protein" value={statInt(dash.weekAverages?.protein)} unit="g" />
+                    <Stat label="Avg steps" value={statInt(dash.weekAverages?.steps)} />
+                    <Stat label="Run volume" value={statVal(dash.weekAverages?.runKmTotal, 1)} unit="km" />
+                  </div>
+                </Card>
               </div>
-              <Meter value={completionPct} tone={completionPct === 100 ? 'accent' : 'info'} />
-              <ul className="mt-4 space-y-2">
-                {applicable.map((metric) => {
-                  const outcome = outcomeFor(metric, todayLog, phase, today)
-                  const progress = metricProgress(metric, todayLog, phase, todaySchedule?.runKm ?? null)
-                  return (
-                    <li
-                      key={metric}
-                      className="glass-tile rounded-3xl px-3 py-2.5 text-[13px]"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span
-                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[13px] font-bold ${
-                            outcome === 'hit'
-                              ? 'bg-ink-50 text-ink-950'
-                              : outcome === 'missed'
-                                ? 'bg-alert/20 text-alert ring-1 ring-inset ring-alert/30'
-                                : 'bg-white/6 text-ink-500 ring-1 ring-inset ring-white/8'
-                          }`}
-                        >
-                          {outcome === 'hit' ? '✓' : outcome === 'missed' ? '!' : '•'}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className={outcome === 'unknown' ? 'text-ink-400' : 'text-ink-100'}>
-                            {METRIC_LABEL[metric]}
-                          </span>
-                          <span className="block truncate text-[11px] text-ink-500">
-                            {metric === 'run' && todayRunSummary
-                              ? todayRunSummary
-                              : `${progress.value} / ${progress.target}`}
-                          </span>
-                        </span>
-                        {progress.action === 'workout' ? (
-                          <Link
-                            to="/workout"
-                            className="glass-tile rounded-full px-3 py-1.5 text-[11px] font-semibold text-accent"
-                          >
-                            Open
-                          </Link>
-                        ) : progress.action === 'log' ? (
-                          <button
-                            type="button"
-                            onClick={() => focusLogField(metric)}
-                            className="glass-tile rounded-full px-3 py-1.5 text-[11px] font-semibold text-ink-200"
-                          >
-                            Log
-                          </button>
-                        ) : progress.action === 'doneGym' ? (
-                          <button
-                            type="button"
-                            onClick={() => save({ gymDone: true })}
-                            className="rounded-full bg-accent/15 px-3 py-1.5 text-[11px] font-semibold text-accent ring-1 ring-inset ring-accent/25"
-                          >
-                            Done
-                          </button>
-                        ) : progress.action === 'completeMeals' ? (
-                          <button
-                            type="button"
-                            onClick={() => save({ mealsOnPlan: phase.mealsPerDay })}
-                            className="rounded-full bg-accent/15 px-3 py-1.5 text-[11px] font-semibold text-accent ring-1 ring-inset ring-accent/25"
-                          >
-                            Fill
-                          </button>
-                        ) : null}
-                      </div>
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/6">
-                        <div
-                          className={`h-full rounded-full ${
-                            outcome === 'missed' ? 'bg-alert' : 'bg-accent'
-                          }`}
-                          style={{ width: `${progress.pct ?? 0}%` }}
-                        />
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
-              <div className="mt-5 border-t border-white/8 pt-4">
-                <div className="mb-3 flex items-baseline justify-between px-1">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">
-                    Last 7 days
-                  </div>
-                  <span className="text-[11px] text-ink-500">{coverage}% coverage</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <Stat
-                    label="Avg calories"
-                    value={statInt(dash.weekAverages?.calories)}
-                    unit="kcal"
-                  />
-                  <Stat label="Avg protein" value={statInt(dash.weekAverages?.protein)} unit="g" />
-                  <Stat label="Avg steps" value={statInt(dash.weekAverages?.steps)} />
-                  <Stat
-                    label="Run volume"
-                    value={statVal(dash.weekAverages?.runKmTotal, 1)}
-                    unit="km"
-                  />
-                </div>
-              </div>
-            </Card>
+            </details>
 
-            <div className="space-y-4">
-              <div>
-                <div className="mb-2.5 flex items-baseline justify-between px-1">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">
-                    Calendar
-                  </div>
-                  <span className="text-[11px] text-ink-500">This month</span>
+            <div>
+              <div className="mb-2.5 flex items-baseline justify-between px-1">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">
+                  Calendar
                 </div>
-                <TodayCalendar
-                  today={today}
-                  phases={phases}
-                  planStartDate={settings.planStartDate}
-                  index={index}
-                  metrics={checklist}
-                />
+                <span className="text-[11px] text-ink-500">This month</span>
               </div>
-
-              <div id="today-log" className="scroll-mt-6">
-              </div>
+              <TodayCalendar
+                today={today}
+                phases={phases}
+                planStartDate={settings.planStartDate}
+                index={index}
+                metrics={checklist}
+              />
             </div>
           </div>
         </div>
@@ -515,9 +288,7 @@ export default function Today() {
 
           <Card className="overflow-hidden">
             <div className="mb-3 flex items-baseline justify-between px-1">
-              <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">
-                Log
-              </h2>
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">Log</h2>
               <span className="text-[11px] text-ink-500">Today</span>
             </div>
             <div className="space-y-2.5">
@@ -548,27 +319,33 @@ export default function Today() {
                 target={`Target ${phase.steps.toLocaleString()}`}
               />
               <Link
+                id="today-log-run"
                 to="/workout"
-                className="glass-tile flex items-center justify-between gap-3 rounded-3xl px-4 py-3.5 transition-colors active:bg-white/8"
+                className="glass-tile flex scroll-mt-6 items-center justify-between gap-3 rounded-3xl px-4 py-3.5 transition-colors active:bg-white/8"
               >
                 <span className="min-w-0">
                   <span className="block text-[13px] font-medium text-ink-200">Run</span>
                   <span className="block truncate text-[11px] text-ink-400">
-                    {todayRunSummary ?? (todaySchedule?.runKm ? `Planned ${todaySchedule.runKm} km` : 'Nothing planned today')}
+                    {todayRunSummary ??
+                      (todaySchedule?.runKm
+                        ? `Planned ${todaySchedule.runKm} km`
+                        : 'Nothing planned today')}
                   </span>
                 </span>
                 <span className="shrink-0 text-[12px] font-medium text-accent">Log details →</span>
               </Link>
-              <TriToggle
-                label="Gym session"
-                sub={
-                  todaySchedule?.gym
-                    ? `${todaySchedule.sessionType} day`
-                    : 'Not scheduled — logging it is optional'
-                }
-                value={todayLog?.gymDone ?? null}
-                onChange={(gymDone) => save({ gymDone })}
-              />
+              <div id="today-log-gym" className="scroll-mt-6">
+                <TriToggle
+                  label="Gym session"
+                  sub={
+                    todaySchedule?.gym
+                      ? `${todaySchedule.sessionType} day`
+                      : 'Not scheduled — logging it is optional'
+                  }
+                  value={todayLog?.gymDone ?? null}
+                  onChange={(gymDone) => save({ gymDone })}
+                />
+              </div>
               <NumberField
                 id="today-log-meals"
                 label="Meals on plan"
@@ -597,33 +374,33 @@ export default function Today() {
                 </span>
               </summary>
               <div className="mt-4 space-y-2.5">
-              <RatingField
-                label="Energy"
-                value={todayLog?.energy ?? null}
-                onChange={(energy) => save({ energy })}
-                lowLabel="Flat"
-                highLabel="Sharp"
-              />
-              <RatingField
-                label="Hunger"
-                value={todayLog?.hunger ?? null}
-                onChange={(hunger) => save({ hunger })}
-                lowLabel="Satisfied"
-                highLabel="Ravenous"
-              />
-              <RatingField
-                label="Soreness"
-                value={todayLog?.soreness ?? null}
-                onChange={(soreness) => save({ soreness })}
-                lowLabel="Fresh"
-                highLabel="Wrecked"
-              />
-              <TextArea
-                label="Notes"
-                value={todayLog?.notes ?? null}
-                onCommit={(notes) => save({ notes })}
-                placeholder="Anything worth remembering about today"
-              />
+                <RatingField
+                  label="Energy"
+                  value={todayLog?.energy ?? null}
+                  onChange={(energy) => save({ energy })}
+                  lowLabel="Flat"
+                  highLabel="Sharp"
+                />
+                <RatingField
+                  label="Hunger"
+                  value={todayLog?.hunger ?? null}
+                  onChange={(hunger) => save({ hunger })}
+                  lowLabel="Satisfied"
+                  highLabel="Ravenous"
+                />
+                <RatingField
+                  label="Soreness"
+                  value={todayLog?.soreness ?? null}
+                  onChange={(soreness) => save({ soreness })}
+                  lowLabel="Fresh"
+                  highLabel="Wrecked"
+                />
+                <TextArea
+                  label="Notes"
+                  value={todayLog?.notes ?? null}
+                  onCommit={(notes) => save({ notes })}
+                  placeholder="Anything worth remembering about today"
+                />
               </div>
             </details>
           </Card>

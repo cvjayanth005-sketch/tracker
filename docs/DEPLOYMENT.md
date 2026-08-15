@@ -31,7 +31,12 @@ AUTH_RATE_LIMIT=20
 AUTH_RATE_WINDOW_SECONDS=900
 GROQ_API_KEY=optional
 GROQ_MODEL=openai/gpt-oss-20b
+SESSION_DAYS=30
 ```
+
+Do **not** set `TRACKER_ALLOW_UNVERIFIED_GOOGLE` on Render. If `GOOGLE_CLIENT_ID` is set, that flag is ignored.
+
+If a Groq key was ever pasted into chat, a screenshot, or logs, rotate it in the Groq console and update `GROQ_API_KEY` on Render.
 
 Use the Supabase project `tracker` connection string for
 `SUPABASE_DATABASE_URL`. Keep it on Render only; the frontend never receives

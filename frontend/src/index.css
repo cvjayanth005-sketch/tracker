@@ -1,5 +1,45 @@
 @import 'tailwindcss';
 
+@font-face {
+  font-family: 'Archivo';
+  src: url('./assets/fonts/archivo-latin.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 600 800;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'DM Sans';
+  src: url('./assets/fonts/dm-sans-latin.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('./assets/fonts/ibm-plex-mono-400-latin.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('./assets/fonts/ibm-plex-mono-500-latin.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('./assets/fonts/ibm-plex-mono-600-latin.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+
 @theme {
   --color-ink-950: #030304;
   --color-ink-900: #06060a;
@@ -19,8 +59,9 @@
   --color-info: #00f0ff;
   --color-violet: #bf5af2;
 
-  --font-sans: 'Inter var', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  --font-sans: 'DM Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-heading: 'Archivo', 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
 
   --glass-fill: rgb(255 255 255 / 0.06);
   --glass-fill-strong: rgb(255 255 255 / 0.09);
@@ -49,6 +90,13 @@
     color: var(--color-ink-50);
     font-family: var(--font-sans);
     overscroll-behavior-y: none;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-heading);
+    font-optical-sizing: auto;
   }
 
   input[type='number']::-webkit-inner-spin-button,
@@ -639,7 +687,9 @@
 }
 
 @utility tabular {
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
 }
 
 @utility safe-bottom {

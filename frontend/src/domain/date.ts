@@ -37,6 +37,21 @@ export function todayIn(timezone: string, now: Date = new Date()): LocalDate {
   return asLocalDate(parts)
 }
 
+/**
+ * Minutes since local midnight in the given timezone. Advice that depends on
+ * how much of the day is left needs the user's clock, not the browser's.
+ */
+export function minutesOfDayIn(timezone: string, now: Date = new Date()): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(now)
+  const [hours, minutes] = parts.split(':').map(Number) as [number, number]
+  return hours * 60 + minutes
+}
+
 /** Day-of-week for a local date, 0 = Sunday. Timezone-independent by design. */
 export function dayOfWeek(date: LocalDate): DayOfWeek {
   const [y, m, d] = date.split('-').map(Number) as [number, number, number]

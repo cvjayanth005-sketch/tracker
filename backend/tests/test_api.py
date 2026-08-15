@@ -9,13 +9,18 @@ from fastapi.testclient import TestClient
 def make_client(tmp_path, monkeypatch) -> TestClient:
     monkeypatch.setenv("TRACKER_DB_PATH", str(tmp_path / "test.sqlite3"))
     monkeypatch.setenv("TRACKER_ALLOW_UNVERIFIED_GOOGLE", "1")
+    monkeypatch.setenv("AUTH_RATE_LIMIT", "0")
+    monkeypatch.setenv("AI_RATE_LIMIT", "0")
     monkeypatch.delenv("SUPABASE_DATABASE_URL", raising=False)
     monkeypatch.delenv("DATABASE_URL", raising=False)
+    from app import main
     from app.database import init_db
-    from app.main import app
 
+    monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
+    main.AUTH_RATE_LIMIT = 0
+    main.AI_RATE_LIMIT = 0
     init_db()
-    return TestClient(app)
+    return TestClient(main.app)
 
 
 def fake_google_credential(sub: str, email: str) -> str:
@@ -26,16 +31,22 @@ def fake_google_credential(sub: str, email: str) -> str:
     return f"{header}.{payload}."
 
 
+def auth_headers(client: TestClient, sub: str = "test-user", email: str = "test@example.com") -> dict[str, str]:
+    login = client.post("/api/auth/google", json={"credential": fake_google_credential(sub, email)}).json()
+    return {"Authorization": f"Bearer {login['session']['token']}"}
+
+
 def test_health_and_seeded_phase(tmp_path, monkeypatch) -> None:
     client = make_client(tmp_path, monkeypatch)
+    headers = auth_headers(client)
 
     assert client.get("/api/health").json() == {"ok": True}
-    assert client.get("/api/phase").json()["name"] == "Phase 1"
+    assert client.get("/api/phase", headers=headers).json()["name"] == "Phase 1"
 
 
 def test_public_config_exposes_backend_google_client_id(tmp_path, monkeypatch) -> None:
-    monkeypatch.setenv("GOOGLE_CLIENT_ID", "backend-client-id.apps.googleusercontent.com")
     client = make_client(tmp_path, monkeypatch)
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "backend-client-id.apps.googleusercontent.com")
 
     assert client.get("/api/config").json() == {
         "googleClientId": "backend-client-id.apps.googleusercontent.com"
@@ -44,15 +55,16 @@ def test_public_config_exposes_backend_google_client_id(tmp_path, monkeypatch) -
 
 def test_daily_log_upsert_preserves_nullable_values(tmp_path, monkeypatch) -> None:
     client = make_client(tmp_path, monkeypatch)
+    headers = auth_headers(client)
 
-    response = client.put("/api/day/2026-01-01", json={"weight_kg": 88.2, "protein_g": 164})
+    response = client.put("/api/day/2026-01-01", json={"weight_kg": 88.2, "protein_g": 164}, headers=headers)
     assert response.status_code == 200
     data = response.json()
     assert data["weight_kg"] == 88.2
     assert data["protein_g"] == 164
     assert data["calories"] is None
 
-    response = client.put("/api/day/2026-01-01", json={"steps": 11000})
+    response = client.put("/api/day/2026-01-01", json={"steps": 11000}, headers=headers)
     data = response.json()
     assert data["weight_kg"] == 88.2
     assert data["steps"] == 11000
@@ -61,26 +73,29 @@ def test_daily_log_upsert_preserves_nullable_values(tmp_path, monkeypatch) -> No
 
 def test_import_csv_and_progress(tmp_path, monkeypatch) -> None:
     client = make_client(tmp_path, monkeypatch)
+    headers = auth_headers(client)
     csv_text = "date,weight,calories,protein,steps\n2026-01-01,88,2050,165,11000\n2026-01-08,87,2000,160,11200\n"
 
-    result = client.post("/api/import", json={"csv_text": csv_text}).json()
+    result = client.post("/api/import", json={"csv_text": csv_text}, headers=headers).json()
     assert result == {"imported": 2, "skipped": 0}
 
-    progress = client.get("/api/progress?date=2026-01-08").json()
+    progress = client.get("/api/progress?date=2026-01-08", headers=headers).json()
     assert progress["latest_weight_kg"] == 87
     assert progress["compliance"]["protein"]["scheduled"] == 1
 
 
 def test_settings_update(tmp_path, monkeypatch) -> None:
     client = make_client(tmp_path, monkeypatch)
+    headers = auth_headers(client)
 
-    settings = client.put("/api/settings", json={"values": {"calorie_floor": 1800}}).json()
+    settings = client.put("/api/settings", json={"values": {"calorie_floor": 1800}}, headers=headers).json()
 
     assert settings["calorie_floor"] == 1800
 
 
 def test_workout_progression_endpoint(tmp_path, monkeypatch) -> None:
     client = make_client(tmp_path, monkeypatch)
+    headers = auth_headers(client)
 
     payload = {
         "workout_name": "Upper A",
@@ -91,7 +106,7 @@ def test_workout_progression_endpoint(tmp_path, monkeypatch) -> None:
             {"exercise": "Bench press", "set_number": 3, "weight": 70, "reps": 12, "rir": 1},
         ],
     }
-    response = client.put("/api/workout/2026-01-01", json=payload)
+    response = client.put("/api/workout/2026-01-01", json=payload, headers=headers)
 
     assert response.status_code == 200
     assert response.json()["progression"][0]["ready_to_increase_load"] is True
@@ -99,12 +114,96 @@ def test_workout_progression_endpoint(tmp_path, monkeypatch) -> None:
 
 def test_coach_note_is_cached(tmp_path, monkeypatch) -> None:
     client = make_client(tmp_path, monkeypatch)
+    headers = auth_headers(client)
 
-    first = client.post("/api/coach-note", json={}).json()
-    second = client.post("/api/coach-note", json={}).json()
+    first = client.post("/api/coach-note", json={}, headers=headers).json()
+    second = client.post("/api/coach-note", json={}, headers=headers).json()
 
     assert first["state_hash"] == second["state_hash"]
     assert first["note"]
+
+
+def test_session_token_is_hashed_at_rest(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    login = client.post(
+        "/api/auth/google",
+        json={"credential": fake_google_credential("hash-user", "hash@example.com")},
+    ).json()
+    raw = login["session"]["token"]
+    headers = {"Authorization": f"Bearer {raw}"}
+
+    assert client.get("/api/auth/me", headers=headers).status_code == 200
+
+    from app.auth import hash_session_token
+    from app.database import connect
+
+    with connect() as conn:
+        stored = conn.execute("SELECT token FROM auth_sessions").fetchone()["token"]
+    assert stored == hash_session_token(raw)
+    assert stored != raw
+
+
+def test_legacy_plaintext_session_is_upgraded_to_hash(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    login = client.post(
+        "/api/auth/google",
+        json={"credential": fake_google_credential("legacy-user", "legacy@example.com")},
+    ).json()
+    raw = login["session"]["token"]
+
+    from app.auth import hash_session_token
+    from app.database import connect
+
+    with connect() as conn:
+        conn.execute("UPDATE auth_sessions SET token = ? WHERE token = ?", (raw, hash_session_token(raw)))
+        conn.commit()
+
+    headers = {"Authorization": f"Bearer {raw}"}
+    assert client.get("/api/auth/me", headers=headers).status_code == 200
+    with connect() as conn:
+        stored = conn.execute("SELECT token FROM auth_sessions").fetchone()["token"]
+    assert stored == hash_session_token(raw)
+
+
+def test_unverified_google_flag_is_ignored_when_client_id_is_set(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "prod-client.apps.googleusercontent.com")
+    monkeypatch.setenv("TRACKER_ALLOW_UNVERIFIED_GOOGLE", "1")
+
+    def fail_open(*_args, **_kwargs):
+        raise OSError("tokeninfo must be called")
+
+    monkeypatch.setattr("urllib.request.urlopen", fail_open)
+    response = client.post(
+        "/api/auth/google",
+        json={"credential": fake_google_credential("prod-user", "prod@example.com")},
+    )
+    assert response.status_code == 401
+
+
+def test_coach_note_cache_is_per_user(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+    calls: list[str] = []
+
+    def fake_note(summary, api_key, model):
+        calls.append("hit")
+        return f"note-{len(calls)}"
+
+    monkeypatch.setattr("app.services.request_groq_note", fake_note)
+    payload = {"summary": {"recommendation": {"headline": "Hold"}}, "rulesVersion": "1.0.0"}
+    first = auth_headers(client, "cache-a", "a@example.com")
+    second = auth_headers(client, "cache-b", "b@example.com")
+
+    note_a = client.post("/api/coach-note", json=payload, headers=first)
+    note_a_again = client.post("/api/coach-note", json=payload, headers=first)
+    note_b = client.post("/api/coach-note", json=payload, headers=second)
+
+    assert note_a.status_code == 200
+    assert note_a.json()["note"] == "note-1"
+    assert note_a_again.json()["note"] == "note-1"
+    assert note_b.json()["note"] == "note-2"
+    assert calls == ["hit", "hit"]
 
 
 def test_frontend_state_sync_round_trip_and_conflict(tmp_path, monkeypatch) -> None:
@@ -135,6 +234,28 @@ def test_frontend_state_sync_round_trip_and_conflict(tmp_path, monkeypatch) -> N
     assert stale.status_code == 409
 
 
+def test_state_sync_round_trips_tombstones(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    login = client.post(
+        "/api/auth/google",
+        json={"credential": fake_google_credential("tomb-user", "tomb@example.com")},
+    ).json()
+    headers = {"Authorization": f"Bearer {login['session']['token']}"}
+    doc = {
+        "version": 1,
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "baseVersion": 0,
+        "tables": {"meals": [{"id": "keep", "date": "2026-01-01", "slot": "lunch", "name": "Rice"}]},
+        "tombstones": [{"table": "meals", "id": "gone", "deletedAt": "2026-01-01T01:00:00.000Z"}],
+    }
+
+    assert client.put("/api/state", json=doc, headers=headers).status_code == 200
+    pulled = client.get("/api/state", headers=headers).json()
+    assert pulled["tables"]["meals"][0]["id"] == "keep"
+    assert pulled["tombstones"][0]["id"] == "gone"
+    assert pulled["tombstones"][0]["table"] == "meals"
+
+
 def test_state_sync_requires_sign_in(tmp_path, monkeypatch) -> None:
     client = make_client(tmp_path, monkeypatch)
     doc = {
@@ -147,6 +268,104 @@ def test_state_sync_requires_sign_in(tmp_path, monkeypatch) -> None:
     assert client.get("/api/state/version").status_code == 401
     assert client.get("/api/state").status_code == 401
     assert client.put("/api/state", json=doc).status_code == 401
+
+
+def test_legacy_sqlite_routes_require_sign_in(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+
+    assert client.get("/api/today").status_code == 401
+    assert client.get("/api/day/2026-01-01").status_code == 401
+    assert client.put("/api/day/2026-01-01", json={"steps": 1}).status_code == 401
+    assert client.get("/api/progress").status_code == 401
+    assert client.post("/api/import", json={"csv_text": "date\n2026-01-01"}).status_code == 401
+    assert client.get("/api/phase").status_code == 401
+    assert client.put("/api/phase", json={"current_phase_id": 1}).status_code == 401
+    assert client.get("/api/settings").status_code == 401
+    assert client.put("/api/settings", json={"values": {}}).status_code == 401
+    assert client.get("/api/workout/2026-01-01").status_code == 401
+    assert client.put("/api/workout/2026-01-01", json={"workout_name": "Upper A"}).status_code == 401
+    assert client.post("/api/runs", json={"local_date": "2026-01-01"}).status_code == 401
+    assert client.get("/api/plan/timeline").status_code == 401
+    assert client.post(
+        "/api/plan/import/excel/preview",
+        json={"filename": "plan.xlsx", "file_base64": "YQ==", "start_date": "2026-08-03"},
+    ).status_code == 401
+    assert client.post("/api/coach-note", json={}).status_code == 401
+
+
+def test_legacy_sqlite_routes_are_hidden_when_cloud_is_on(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    monkeypatch.setattr("app.main.cloud_store.enabled", lambda: True)
+
+    assert client.get("/api/today").status_code == 404
+    assert client.get("/api/day/2026-01-01").status_code == 404
+    assert client.post("/api/import", json={"csv_text": "date\n2026-01-01"}).status_code == 404
+    assert client.get("/api/phase").status_code == 404
+    assert client.get("/api/plan/timeline").status_code == 404
+
+
+def test_import_rejects_oversized_csv(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    headers = auth_headers(client)
+
+    response = client.post(
+        "/api/import",
+        json={"csv_text": "x" * 1_000_001},
+        headers=headers,
+    )
+
+    assert response.status_code == 422
+
+
+def test_openapi_docs_disabled_by_default(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+
+    assert client.get("/docs").status_code == 404
+    assert client.get("/redoc").status_code == 404
+    assert client.get("/openapi.json").status_code == 404
+
+
+def test_cloud_status_hides_account_counts(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+
+    assert client.get("/api/cloud/status").json() == {"enabled": False, "ok": False}
+
+    import app.main as main
+
+    monkeypatch.setattr(
+        main.cloud_store,
+        "status",
+        lambda: {"enabled": True, "ok": True, "users": 99, "sessions": 12, "state_documents": 7},
+    )
+    assert client.get("/api/cloud/status").json() == {"enabled": True, "ok": True}
+
+
+def test_security_headers_are_present(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+
+    response = client.get("/api/health")
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert "strict-transport-security" not in response.headers
+
+    https = client.get("/api/health", headers={"x-forwarded-proto": "https"})
+    assert https.headers["strict-transport-security"] == "max-age=31536000; includeSubDomains"
+
+
+def test_state_document_rejects_oversized_body(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    import app.main as main
+
+    main.STATE_BODY_MAX_BYTES = 800
+    headers = auth_headers(client)
+    doc = {
+        "version": 1,
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "baseVersion": 0,
+        "tables": {"dailyLogs": [{"date": "2026-01-01", "notes": "x" * 2000}]},
+    }
+
+    assert client.put("/api/state", json=doc, headers=headers).status_code == 413
 
 
 def test_google_accounts_get_separate_state_documents(tmp_path, monkeypatch) -> None:
@@ -268,12 +487,19 @@ def test_supabase_state_errors_return_service_unavailable(tmp_path, monkeypatch)
     response = client.get("/api/state/version", headers={"Authorization": "Bearer broken-token"})
 
     assert response.status_code == 503
-    assert response.json()["detail"]["error"] == "cloud_database_unavailable"
-    assert response.json()["detail"]["type"] == "RuntimeError"
+    assert response.json()["detail"] == {
+        "error": "cloud_database_unavailable",
+        "message": "The backend could not reach the cloud database.",
+    }
+    assert "type" not in response.json()["detail"]
+    assert "connection failed" not in str(response.json())
 
 
 def test_google_sign_in_is_rate_limited_to_20_attempts(tmp_path, monkeypatch) -> None:
     client = make_client(tmp_path, monkeypatch)
+    import app.main as main
+
+    main.AUTH_RATE_LIMIT = 20
     headers = {"x-forwarded-for": "203.0.113.20"}
 
     for _ in range(20):
@@ -282,6 +508,22 @@ def test_google_sign_in_is_rate_limited_to_20_attempts(tmp_path, monkeypatch) ->
 
     response = client.post("/api/auth/google", json={"credential": "not-a-jwt"}, headers=headers)
     assert response.status_code == 429
+
+
+def test_auth_rate_limit_uses_rightmost_forwarded_ip(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    import app.main as main
+
+    main.AUTH_RATE_LIMIT = 2
+    spoofed = {"x-forwarded-for": "198.51.100.1, 203.0.113.88"}
+    for _ in range(2):
+        assert client.post("/api/auth/google", json={"credential": "not-a-jwt"}, headers=spoofed).status_code == 401
+    assert client.post("/api/auth/google", json={"credential": "not-a-jwt"}, headers=spoofed).status_code == 429
+    assert client.post(
+        "/api/auth/google",
+        json={"credential": "not-a-jwt"},
+        headers={"x-forwarded-for": "198.51.100.1"},
+    ).status_code == 401
 
 
 def test_onboarding_draft_requires_auth_and_falls_back_without_groq(tmp_path, monkeypatch) -> None:
@@ -325,6 +567,8 @@ def test_onboarding_draft_requires_auth_and_falls_back_without_groq(tmp_path, mo
 
 def test_frontend_coach_note_shape_is_supported(tmp_path, monkeypatch) -> None:
     client = make_client(tmp_path, monkeypatch)
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    headers = auth_headers(client)
     payload = {
         "summary": {
             "recommendation": {
@@ -336,7 +580,7 @@ def test_frontend_coach_note_shape_is_supported(tmp_path, monkeypatch) -> None:
         "rulesVersion": "1.0.0",
     }
 
-    response = client.post("/api/coach-note", json=payload)
+    response = client.post("/api/coach-note", json=payload, headers=headers)
 
     assert response.status_code == 200
     assert response.json()["note"] == "On target - keep current plan."
@@ -416,6 +660,7 @@ def test_coach_chat_fallback_uses_activity_context() -> None:
 
 def test_frontend_coach_note_uses_groq_without_changing_rules(tmp_path, monkeypatch) -> None:
     client = make_client(tmp_path, monkeypatch)
+    headers = auth_headers(client)
     monkeypatch.setenv("GROQ_API_KEY", "test-key")
     monkeypatch.setenv("GROQ_MODEL", "openai/gpt-oss-20b")
     monkeypatch.setattr("app.services.request_groq_note", lambda summary, api_key, model: "Stay steady. Your trend is on plan.")
@@ -423,6 +668,7 @@ def test_frontend_coach_note_uses_groq_without_changing_rules(tmp_path, monkeypa
     response = client.post(
         "/api/coach-note",
         json={"summary": {"recommendation": {"headline": "Hold"}}, "rulesVersion": "1.0.0"},
+        headers=headers,
     )
 
     assert response.status_code == 200
@@ -442,6 +688,7 @@ def test_frontend_coach_note_falls_back_when_groq_fails(tmp_path, monkeypatch) -
     response = client.post(
         "/api/coach-note",
         json={"summary": {"recommendation": {"headline": "Hold"}}},
+        headers=auth_headers(client),
     )
 
     assert response.status_code == 200
@@ -472,6 +719,33 @@ def test_food_parse_requires_auth_and_falls_back_without_groq(tmp_path, monkeypa
     assert data["provider"] == "rules"
     assert data["needsManual"] is True
     assert [meal["name"] for meal in data["meals"]] == ["eggs", "toast"]
+
+
+def test_ai_endpoints_are_rate_limited_per_user(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    import app.main as main
+
+    main.AI_RATE_LIMIT = 2
+    headers = auth_headers(client, sub="ai-limit-user", email="ai-limit@example.com")
+    payload = {"text": "eggs", "defaultSlot": "breakfast"}
+
+    assert client.post("/api/food/parse", json=payload, headers=headers).status_code == 200
+    assert client.post("/api/food/parse", json=payload, headers=headers).status_code == 200
+    assert client.post("/api/food/parse", json=payload, headers=headers).status_code == 429
+
+
+def test_coach_note_rejects_oversized_summary(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    headers = auth_headers(client)
+
+    response = client.post(
+        "/api/coach-note",
+        json={"summary": {"detail": "x" * 50_100}},
+        headers=headers,
+    )
+
+    assert response.status_code == 422
 
 
 def test_food_parse_endpoint_returns_groq_estimate(tmp_path, monkeypatch) -> None:

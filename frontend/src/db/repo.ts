@@ -1,4 +1,4 @@
-import { db, markDirty } from './database'
+import { db, forgetTombstone, markDirty, recordTombstone } from './database'
 import { addDays, compareDates } from '@/domain/date'
 import { mealGroupCount } from '@/domain/mealGroups'
 import type {
@@ -91,7 +91,10 @@ export async function upsertLog(
     date,
     updatedAt: now(),
   }
-  await db.dailyLogs.put(next)
+  await db.transaction('rw', db.dailyLogs, db.tombstones, async () => {
+    await forgetTombstone('dailyLogs', date)
+    await db.dailyLogs.put(next)
+  })
   await markDirty()
   return next
 }
@@ -109,7 +112,10 @@ export async function addWater(date: LocalDate, deltaMl: number): Promise<void> 
 }
 
 export async function deleteLog(date: LocalDate): Promise<void> {
-  await db.dailyLogs.delete(date)
+  await db.transaction('rw', db.dailyLogs, db.tombstones, async () => {
+    await db.dailyLogs.delete(date)
+    await recordTombstone('dailyLogs', date)
+  })
   await markDirty()
 }
 
@@ -287,8 +293,9 @@ export async function updateMeal(
 export async function deleteMeal(id: string): Promise<void> {
   const existing = await db.meals.get(id)
   if (!existing) return
-  await db.transaction('rw', db.meals, db.dailyLogs, async () => {
+  await db.transaction('rw', db.meals, db.dailyLogs, db.tombstones, async () => {
     await db.meals.delete(id)
+    await recordTombstone('meals', id)
     await rollUpMealTotals(existing.date)
   })
   await markDirty()
@@ -422,7 +429,10 @@ export async function saveFood(
 }
 
 export async function deleteFood(id: string): Promise<void> {
-  await db.foods.delete(id)
+  await db.transaction('rw', db.foods, db.tombstones, async () => {
+    await db.foods.delete(id)
+    await recordTombstone('foods', id)
+  })
   await markDirty()
 }
 
@@ -615,7 +625,7 @@ export async function applyOnboardingPlan(draft: OnboardingPlanDraft): Promise<v
     calorieCutsApplied: 0,
     notes: phase.notes,
   }))
-  await db.transaction('rw', db.profile, db.settings, db.phases, async () => {
+  await db.transaction('rw', db.profile, db.settings, db.phases, db.tombstones, async () => {
     await db.profile.put({
       id: 'me',
       name: draft.profile.name,
@@ -634,6 +644,11 @@ export async function applyOnboardingPlan(draft: OnboardingPlanDraft): Promise<v
       calorieFloor: Math.min(existing.calorieFloor, Math.max(1200, draft.targets.calories - 350)),
       updatedAt: stamp,
     })
+    const previous = await db.phases.toArray()
+    const nextIds = new Set(phases.map((phase) => phase.id))
+    for (const phase of previous) {
+      if (!nextIds.has(phase.id)) await recordTombstone('phases', phase.id)
+    }
     await db.phases.clear()
     await db.phases.bulkPut(phases)
   })
@@ -844,17 +859,20 @@ export async function updateSet(id: string, patch: Partial<WorkoutSet>): Promise
 export async function deleteSet(id: string): Promise<void> {
   const set = await db.workoutSets.get(id)
   if (!set) return
-  await db.workoutSets.delete(id)
-  // Renumber what is left so set numbers stay 1..n for the exercise.
-  const remaining = await db.workoutSets
-    .where('workoutId')
-    .equals(set.workoutId)
-    .and((s) => s.exerciseId === set.exerciseId)
-    .toArray()
-  remaining.sort((a, b) => a.setNumber - b.setNumber)
-  await Promise.all(
-    remaining.map((s, i) => db.workoutSets.update(s.id, { setNumber: i + 1 })),
-  )
+  await db.transaction('rw', db.workoutSets, db.tombstones, async () => {
+    await db.workoutSets.delete(id)
+    await recordTombstone('workoutSets', id)
+    // Renumber what is left so set numbers stay 1..n for the exercise.
+    const remaining = await db.workoutSets
+      .where('workoutId')
+      .equals(set.workoutId)
+      .and((s) => s.exerciseId === set.exerciseId)
+      .toArray()
+    remaining.sort((a, b) => a.setNumber - b.setNumber)
+    await Promise.all(
+      remaining.map((s, i) => db.workoutSets.update(s.id, { setNumber: i + 1 })),
+    )
+  })
   await markDirty()
 }
 
@@ -934,8 +952,9 @@ export async function updateRun(id: string, patch: Partial<Omit<Run, 'id' | 'cre
 export async function deleteRun(id: string): Promise<void> {
   const existing = await db.runs.get(id)
   if (!existing) return
-  await db.transaction('rw', db.runs, db.dailyLogs, async () => {
+  await db.transaction('rw', db.runs, db.dailyLogs, db.tombstones, async () => {
     await db.runs.delete(id)
+    await recordTombstone('runs', id)
     await rollUpRunDistance(existing.date)
   })
   await markDirty()

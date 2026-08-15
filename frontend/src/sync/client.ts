@@ -1,17 +1,13 @@
-import { db, ensureLocalAccountOwner } from '@/db/database'
+import { db, ensureLocalAccountOwner, type Tombstone } from '@/db/database'
 import { authHeader } from '@/auth/session'
 
 /**
- * Sync is a whole-document last-write-wins blob, not table-level replication.
+ * Sync is row merge with tombstones, plus a document version check.
  *
- * For one person on one device at a time, per-table merge logic is a large
- * amount of code defending against a conflict that does not happen. The server
- * stores one JSON document and one integer version; if the version it holds is
- * newer than ours, the push is refused and the UI says so rather than silently
- * clobbering. That is the entire protocol.
- *
- * Development connects to the local FastAPI server by default. Production uses
- * the same origin unless `VITE_API_BASE` points at a separate backend.
+ * PUT upserts rows and applies deletes from `tombstones`. The server never
+ * drops a row just because this device's export omitted it. If both copies
+ * moved since the last shared version, the push is refused (409) rather than
+ * silently picking a winner for the same id.
  */
 
 export const API_BASE =
@@ -26,6 +22,7 @@ export interface StateDocument {
   version: number
   updatedAt: string
   tables: Record<string, unknown[]>
+  tombstones?: Tombstone[]
 }
 
 export type SyncOutcome =
@@ -63,29 +60,49 @@ export async function exportState(): Promise<StateDocument> {
     version: meta?.localVersion ?? 0,
     updatedAt: new Date().toISOString(),
     tables,
+    tombstones: await db.tombstones.toArray(),
   }
 }
 
-/** Replace local content wholesale. Used by pull and by file restore. */
+/** Restore from a file (replace) or from the server (merge rows + tombstones). */
 export async function importState(
   doc: StateDocument,
   { source = 'backup' }: { source?: 'backup' | 'server' } = {},
 ): Promise<void> {
   const previous = await db.syncMeta.get('sync')
-  const tables = [...TABLES.map((t) => db.table(t)), db.syncMeta]
+  const wasDirty = (previous?.localVersion ?? 0) > (previous?.syncedVersion ?? 0)
+  const tables = [...TABLES.map((t) => db.table(t)), db.tombstones, db.syncMeta]
+  const tombstones = Array.isArray(doc.tombstones) ? doc.tombstones : []
   await db.transaction('rw', tables, async () => {
-    for (const name of TABLES) {
-      const rows = doc.tables[name]
-      if (!Array.isArray(rows)) continue
-      await db.table(name).clear()
-      await db.table(name).bulkPut(rows)
+    if (source === 'backup') {
+      for (const name of TABLES) {
+        const rows = doc.tables[name]
+        if (!Array.isArray(rows)) continue
+        await db.table(name).clear()
+        await db.table(name).bulkPut(rows)
+      }
+      await db.tombstones.clear()
+      if (tombstones.length > 0) await db.tombstones.bulkPut(tombstones)
+    } else {
+      for (const name of TABLES) {
+        const rows = doc.tables[name]
+        if (!Array.isArray(rows)) continue
+        await db.table(name).bulkPut(rows)
+      }
+      for (const stamp of tombstones) {
+        if (!isFactTable(stamp.table) || !stamp.id) continue
+        await db.table(stamp.table).delete(stamp.id)
+        await db.tombstones.put(stamp)
+      }
     }
     await db.syncMeta.put({
       id: 'sync',
       accountUserId: previous?.accountUserId ?? null,
       localVersion:
         source === 'server'
-          ? doc.version
+          ? wasDirty
+            ? Math.max(doc.version, previous?.localVersion ?? 0) + 1
+            : doc.version
           : Math.max(doc.version, previous?.localVersion ?? 0) + 1,
       syncedVersion: source === 'server' ? doc.version : (previous?.syncedVersion ?? 0),
       backedUpVersion:
@@ -97,6 +114,10 @@ export async function importState(
       lastError: null,
     })
   })
+}
+
+function isFactTable(name: string): name is (typeof TABLES)[number] {
+  return (TABLES as readonly string[]).includes(name)
 }
 
 let syncInFlight: Promise<SyncOutcome> | null = null

@@ -1,3 +1,4 @@
+import { authHeader } from '@/auth/session'
 import { db } from '@/db/database'
 import { API_BASE } from '@/sync/client'
 import { RULES_VERSION, type CoachStateSummary } from '@/domain/rules'
@@ -60,7 +61,7 @@ export async function getCoachNote(
   try {
     const res = await fetch(`${API_BASE}/api/coach-note`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...authHeader() },
       body: JSON.stringify({
         summary,
         promptVersion: PROMPT_VERSION,

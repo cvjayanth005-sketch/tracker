@@ -199,15 +199,10 @@ function WelcomePage() {
 
       <main className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-5 py-6 safe-top sm:px-8 lg:px-10">
         <header className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-2xl font-black text-ink-950 shadow-[0_18px_40px_-22px] shadow-accent">
-              k
-            </div>
-            <div>
-              <div className="text-sm font-semibold text-ink-50">Fat Loss Ledger</div>
-              <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink-400">
-                Private training dashboard
-              </div>
+          <div>
+            <div className="text-3xl font-semibold leading-none text-ink-50">Formara</div>
+            <div className="mt-2 text-sm font-medium text-ink-400">
+              Your body. Your data. Your next move.
             </div>
           </div>
         </header>
@@ -240,15 +235,12 @@ function WelcomePage() {
           </div>
 
           <div className="glass-strong rounded-3xl p-5 shadow-[0_30px_90px_-52px_rgba(0,240,255,0.75)]">
-            <div className="flex items-center justify-between gap-4">
+            <div>
               <div>
                 <div className="text-lg font-semibold text-ink-50">Welcome back</div>
                 <p className="mt-1 text-[13px] leading-relaxed text-ink-400">
                   Sign in to open the tracker and sync this device.
                 </p>
-              </div>
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/8 text-xl font-black text-accent ring-1 ring-inset ring-white/10">
-                k
               </div>
             </div>
 

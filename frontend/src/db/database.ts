@@ -1,4 +1,4 @@
-import Dexie, { type EntityTable } from 'dexie'
+import Dexie, { type EntityTable, type Table } from 'dexie'
 import { defaultExercises, defaultPhases, defaultProfile, defaultSettings } from '@/domain/seed'
 import type {
   AiNote,
@@ -21,6 +21,12 @@ import type {
  * here first and the UI reads only from here, so the app is fully usable with
  * no network. Durability beyond the browser is the sync layer's job.
  */
+
+export interface Tombstone {
+  table: string
+  id: string
+  deletedAt: string
+}
 
 export interface SyncMeta {
   id: 'sync'
@@ -51,6 +57,7 @@ export class TrackerDb extends Dexie {
   runs!: EntityTable<Run, 'id'>
   weeklyCheckIns!: EntityTable<WeeklyCheckIn, 'id'>
   aiNotes!: EntityTable<AiNote, 'hash'>
+  tombstones!: Table<Tombstone, [string, string]>
   syncMeta!: EntityTable<SyncMeta, 'id'>
 
   constructor() {
@@ -232,6 +239,7 @@ export class TrackerDb extends Dexie {
         meal.groupId = groupId
       })
     })
+    this.version(17).stores({ tombstones: '[table+id], table, deletedAt' })
   }
 }
 
@@ -251,6 +259,7 @@ const SEEDED_TABLES = [
   db.runs,
   db.weeklyCheckIns,
   db.aiNotes,
+  db.tombstones,
   db.syncMeta,
 ] as const
 
@@ -296,6 +305,14 @@ export async function ensureSeeded(): Promise<void> {
       }
     },
   )
+}
+
+export async function recordTombstone(table: string, id: string): Promise<void> {
+  await db.tombstones.put({ table, id, deletedAt: new Date().toISOString() })
+}
+
+export async function forgetTombstone(table: string, id: string): Promise<void> {
+  await db.tombstones.delete([table, id])
 }
 
 /** Bump the local document version so the sync layer knows there is new work. */

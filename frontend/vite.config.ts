@@ -27,9 +27,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon-192.png', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Fat Loss Ledger',
-        short_name: 'Ledger',
-        description: 'Personal fat loss tracker with deterministic trend rules',
+        name: 'Formara',
+        short_name: 'Formara',
+        description: 'Your body. Your data. Your next move.',
         theme_color: '#0b0f14',
         background_color: '#0b0f14',
         display: 'standalone',
