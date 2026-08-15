@@ -187,6 +187,7 @@ function MealRow({ meal, nested = false }: { meal: Meal; nested?: boolean }) {
 }
 
 function MealGroupCard({ group }: { group: MealGroup }) {
+  const [open, setOpen] = useState(false)
   if (group.meals.length === 1) {
     const only = group.meals[0]
     return only ? <MealRow meal={only} /> : null
@@ -194,20 +195,29 @@ function MealGroupCard({ group }: { group: MealGroup }) {
   const totals = groupMacroTotals(group.meals)
   return (
     <div className="rounded-2xl bg-white/[0.03] p-3 ring-1 ring-inset ring-white/8">
-      <div className="flex items-start justify-between gap-3">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-start justify-between gap-3 text-left"
+      >
         <div className="min-w-0">
-          <div className="text-sm font-medium text-ink-50">{groupName(group.meals)}</div>
+          <div className="truncate text-sm font-medium text-ink-50">{groupName(group.meals)}</div>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             <MacroChips values={totals} />
           </div>
         </div>
-        {group.time ? <span className="tabular shrink-0 text-[11px] text-ink-400">{group.time}</span> : null}
-      </div>
-      <div className="mt-2 space-y-1.5">
-        {group.meals.map((meal) => (
-          <MealRow key={meal.id} meal={meal} nested />
-        ))}
-      </div>
+        <span className="flex shrink-0 items-center gap-2">
+          {group.time ? <span className="tabular text-[11px] text-ink-400">{group.time}</span> : null}
+          <span className={`text-ink-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>⌄</span>
+        </span>
+      </button>
+      {open ? (
+        <div className="mt-2 space-y-1.5">
+          {group.meals.map((meal) => (
+            <MealRow key={meal.id} meal={meal} nested />
+          ))}
+        </div>
+      ) : null}
     </div>
   )
 }
