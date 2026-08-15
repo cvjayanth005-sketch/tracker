@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { getGoogleClientId, signInWithGoogleCredential } from '@/auth/session'
+import { AUTH_API_BASE, getGoogleClientId, signInWithGoogleCredential } from '@/auth/session'
 
 declare global {
   interface Window {
@@ -9,6 +9,7 @@ declare global {
           initialize: (options: {
             client_id: string
             callback: (response: { credential?: string }) => void
+            ux_mode?: 'popup' | 'redirect'
           }) => void
           renderButton: (el: HTMLElement, options: Record<string, unknown>) => void
         }
@@ -17,9 +18,36 @@ declare global {
   }
 }
 
+const GIS_SCRIPT_ID = 'google-identity-services'
+
+function loadGisScript(): Promise<void> {
+  if (window.google?.accounts?.id) return Promise.resolve()
+  const existing = document.getElementById(GIS_SCRIPT_ID) as HTMLScriptElement | null
+  if (existing) {
+    return new Promise((resolve, reject) => {
+      if (window.google?.accounts?.id) {
+        resolve()
+        return
+      }
+      existing.addEventListener('load', () => resolve(), { once: true })
+      existing.addEventListener('error', () => reject(new Error('Google sign-in failed to load.')), { once: true })
+    })
+  }
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.id = GIS_SCRIPT_ID
+    script.src = 'https://accounts.google.com/gsi/client'
+    script.async = true
+    script.defer = true
+    script.onload = () => resolve()
+    script.onerror = () => reject(new Error('Google sign-in failed to load.'))
+    document.head.appendChild(script)
+  })
+}
+
 function GoogleMark() {
   return (
-    <svg viewBox="0 0 48 48" className="h-5 w-5" aria-hidden="true">
+    <svg viewBox="0 0 48 48" className="h-[18px] w-[18px]" aria-hidden="true">
       <path
         fill="#EA4335"
         d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
@@ -40,27 +68,29 @@ function GoogleMark() {
   )
 }
 
-type Phase = 'idle' | 'prompting' | 'signing'
-
 export function GoogleSlideSignIn({
   onStatus,
 }: {
   onStatus?: (status: string | null) => void
 }) {
-  const googleHostRef = useRef<HTMLDivElement | null>(null)
+  const hostRef = useRef<HTMLDivElement | null>(null)
   const onStatusRef = useRef(onStatus)
-  const phaseRef = useRef<Phase>('idle')
-
-  const [phase, setPhase] = useState<Phase>('idle')
+  const [googleClientId, setGoogleClientId] = useState<string | null>(null)
+  const [signing, setSigning] = useState(false)
   const [ready, setReady] = useState(false)
-  const [googleClientId, setGoogleClientId] = useState('')
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   onStatusRef.current = onStatus
 
-  const setPhaseBoth = (next: Phase) => {
-    phaseRef.current = next
-    setPhase(next)
-  }
+  // Wake a possibly cold-started backend the moment the sign-in is shown, so the
+  // OAuth POST that follows a user's account pick hits a warm server. Fire-and-
+  // forget — nothing depends on the result and it starts the GIS script too.
+  useEffect(() => {
+    if (AUTH_API_BASE) {
+      void fetch(`${AUTH_API_BASE}/api/health`, { cache: 'no-store' }).catch(() => {})
+    }
+    void loadGisScript().catch(() => {})
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -75,113 +105,107 @@ export function GoogleSlideSignIn({
   }, [])
 
   useEffect(() => {
-    if (!googleClientId || !googleHostRef.current) return
-
-    const scriptId = 'google-identity-services'
-    const host = googleHostRef.current
+    if (!googleClientId) return
+    const host = hostRef.current
+    if (!host) return
+    let cancelled = false
+    let lastWidth = 0
 
     const render = () => {
-      if (!window.google || !host) return
-      host.innerHTML = ''
+      if (cancelled || !window.google || !hostRef.current) return
+      const node = hostRef.current
+      const width = Math.min(400, Math.max(200, Math.floor(node.clientWidth) || 320))
+      if (width === lastWidth && node.childElementCount > 0) return
+      lastWidth = width
+      node.innerHTML = ''
       window.google.accounts.id.initialize({
         client_id: googleClientId,
+        ux_mode: 'popup',
         callback: (response) => {
           if (!response.credential) {
-            setPhaseBoth('idle')
+            setSigning(false)
             onStatusRef.current?.('Sign-in was cancelled.')
             return
           }
-          setPhaseBoth('signing')
+          setSigning(true)
           onStatusRef.current?.('Signing in...')
           void signInWithGoogleCredential(response.credential)
             .then(() => onStatusRef.current?.('Signed in. Syncing backup...'))
             .catch((error) => {
-              setPhaseBoth('idle')
+              setSigning(false)
               onStatusRef.current?.(error instanceof Error ? error.message : String(error))
             })
         },
       })
-      window.google.accounts.id.renderButton(host, {
-        theme: 'filled_black',
+      window.google.accounts.id.renderButton(node, {
+        type: 'standard',
+        theme: 'outline',
         size: 'large',
         shape: 'pill',
         text: 'signin_with',
+        width,
       })
       setReady(true)
     }
 
-    if (!document.getElementById(scriptId)) {
-      const script = document.createElement('script')
-      script.id = scriptId
-      script.src = 'https://accounts.google.com/gsi/client'
-      script.async = true
-      script.defer = true
-      script.onload = render
-      document.head.appendChild(script)
-    } else {
-      render()
+    void loadGisScript()
+      .then(() => {
+        if (cancelled) return
+        setLoadError(null)
+        render()
+      })
+      .catch((error) => {
+        if (cancelled) return
+        const message = error instanceof Error ? error.message : String(error)
+        setLoadError(message)
+        onStatusRef.current?.(message)
+      })
+
+    const observer = new ResizeObserver(() => render())
+    observer.observe(host)
+    return () => {
+      cancelled = true
+      observer.disconnect()
     }
   }, [googleClientId])
 
-  const triggerGoogle = () => {
-    if (phaseRef.current === 'prompting' || phaseRef.current === 'signing') return
-    if (!ready) {
-      onStatusRef.current?.('Google sign-in is not ready yet.')
-      return
-    }
-    setPhaseBoth('prompting')
-    onStatusRef.current?.('Opening Google...')
-    const host = googleHostRef.current
-    const button =
-      host?.querySelector<HTMLElement>('div[role="button"]') ??
-      host?.querySelector<HTMLElement>('div[tabindex]') ??
-      (host?.firstElementChild as HTMLElement | null)
-
-    if (button) {
-      button.click()
-      window.setTimeout(() => {
-        if (phaseRef.current === 'prompting') setPhaseBoth('idle')
-      }, 1200)
-      return
-    }
-
-    if (host) {
-      host.className = 'mt-3 flex justify-center'
-      host.removeAttribute('aria-hidden')
-      host.style.cssText = ''
-    }
-    onStatusRef.current?.('Continue with Google below.')
-    setPhaseBoth('idle')
+  if (googleClientId === null) {
+    return (
+      <div className="mt-4 h-12 animate-pulse rounded-full bg-white/8 ring-1 ring-inset ring-white/10" />
+    )
   }
 
-  const busy = phase === 'prompting' || phase === 'signing'
+  if (!googleClientId) {
+    return (
+      <div className="mt-4 rounded-2xl bg-warn/10 px-3 py-3 text-[12px] leading-relaxed text-warn ring-1 ring-inset ring-warn/20">
+        Google sign-in is not configured. Set GOOGLE_CLIENT_ID on the backend.
+      </div>
+    )
+  }
 
   return (
-    <div className="relative mt-4">
-      <button
-        type="button"
-        aria-label="Sign in with Google"
-        disabled={!ready || busy}
-        onClick={triggerGoogle}
-        className="group relative flex min-h-12 w-full items-center justify-center gap-3 overflow-hidden rounded-2xl bg-ink-50 px-4 text-sm font-semibold text-ink-950 shadow-[0_18px_42px_-24px_rgba(255,255,255,0.65)] ring-1 ring-inset ring-white/90 transition-[transform,background,box-shadow] active:scale-[0.985] disabled:cursor-wait disabled:opacity-70"
-      >
-        <span className="absolute inset-x-0 top-0 h-px bg-white" aria-hidden="true" />
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
-          <GoogleMark />
-        </span>
-        <span>{phase === 'signing' ? 'Signing in...' : busy ? 'Opening Google...' : 'Continue with Google'}</span>
-      </button>
-
-      {/*
-        GIS stays in the DOM so browser trust rules can fall back to the
-        official button when One Tap is unavailable. Keep it hidden until then.
-      */}
+    <div className="mt-4">
       <div
-        ref={googleHostRef}
-        className="pointer-events-none absolute h-px w-px overflow-hidden opacity-0"
-        aria-hidden="true"
-        tabIndex={-1}
-      />
+        className={`group relative h-12 w-full cursor-pointer ${signing ? 'pointer-events-none' : ''}`}
+      >
+        <div
+          className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-3 rounded-full bg-ink-50 shadow-[0_18px_42px_-22px_rgba(255,255,255,0.8)] ring-1 ring-inset ring-white/90 transition-[transform,filter] duration-150 ease-out group-hover:brightness-[0.97] group-active:scale-[0.985]"
+        >
+          <span className="absolute inset-x-4 top-0 h-px bg-white/90" aria-hidden="true" />
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-[inset_0_0_0_1px_rgba(15,23,42,0.06)]">
+            <GoogleMark />
+          </span>
+          <span className="text-[14px] font-semibold tracking-[-0.01em] text-ink-950">
+            {signing ? 'Signing in...' : ready ? 'Continue with Google' : 'Loading Google...'}
+          </span>
+        </div>
+        <div
+          ref={hostRef}
+          aria-label="Sign in with Google"
+          className="absolute inset-0 z-0 overflow-hidden rounded-full [&_div]:!h-full [&_div]:!w-full [&_iframe]:!h-full [&_iframe]:!min-h-full [&_iframe]:!w-full [&_iframe]:!min-w-full"
+        />
+      </div>
+      {loadError ? <p className="mt-2 text-[12px] text-alert">{loadError}</p> : null}
     </div>
   )
 }

@@ -55,6 +55,11 @@ export function authHeader(): Record<string, string> {
 }
 
 export function getGoogleClientId(): Promise<string> {
+  // The OAuth client ID is a public, build-time constant. When it is baked in at
+  // build (VITE_GOOGLE_CLIENT_ID), skip the backend `/api/config` round-trip
+  // entirely so the sign-in button appears instantly and does not wait on a
+  // cold-started backend.
+  if (GOOGLE_CLIENT_ID_FALLBACK) return Promise.resolve(GOOGLE_CLIENT_ID_FALLBACK)
   if (configInFlight) return configInFlight
   configInFlight = fetchGoogleClientId().catch(() => GOOGLE_CLIENT_ID_FALLBACK)
   return configInFlight
