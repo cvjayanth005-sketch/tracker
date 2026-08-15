@@ -216,6 +216,22 @@ export class TrackerDb extends Dexie {
         log.nightAwakenings ??= null
       })
     })
+    // Group foods saved together into one meal on the timeline. Rows that
+    // already share a date, slot, and createdAt (one addMeals batch) get the
+    // same groupId so today's existing lunches cluster without a re-log.
+    this.version(16).upgrade(async (tx) => {
+      const assigned = new Map<string, string>()
+      await tx.table<Meal, 'id'>('meals').toCollection().modify((meal) => {
+        if (meal.groupId) return
+        const key = `${meal.date}|${meal.slot}|${meal.createdAt}`
+        let groupId = assigned.get(key)
+        if (!groupId) {
+          groupId = crypto.randomUUID()
+          assigned.set(key, groupId)
+        }
+        meal.groupId = groupId
+      })
+    })
   }
 }
 

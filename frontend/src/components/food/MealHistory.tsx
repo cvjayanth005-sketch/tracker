@@ -3,6 +3,7 @@ import { Card } from '@/components/ui'
 import { fmtInt } from '@/components/format'
 import { compareDates, formatShort, weekdayName } from '@/domain/date'
 import type { MacroTargets } from '@/domain/foodContext'
+import { groupMacroTotals, groupMeals, groupName, mealGroupCount } from '@/domain/mealGroups'
 import type { DailyLog, LocalDate, Meal } from '@/domain/types'
 import { MACRO, SLOT_META, SLOT_ORDER } from './palette'
 import { MacroRings, type MacroTotals } from './MacroRings'
@@ -32,7 +33,7 @@ function DayCard({ entry, targets }: { entry: DayEntry; targets: MacroTargets })
           size={54}
           stroke={5}
           gap={2}
-          center={<span className="tabular text-[10px] font-semibold text-ink-200">{meals.length}</span>}
+          center={<span className="tabular text-[10px] font-semibold text-ink-200">{mealGroupCount(meals)}</span>}
         />
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold text-ink-50">
@@ -61,21 +62,24 @@ function DayCard({ entry, targets }: { entry: DayEntry; targets: MacroTargets })
             <div className="text-[12px] text-ink-500">Daily totals only — no itemized meals for this day.</div>
           ) : (
             SLOT_ORDER.map((slot) => {
-              const slotMeals = meals.filter((meal) => meal.slot === slot)
-              if (slotMeals.length === 0) return null
+              const groups = groupMeals(meals.filter((meal) => meal.slot === slot))
+              if (groups.length === 0) return null
               return (
                 <div key={slot} className="flex gap-2 text-[12px]">
                   <span className="w-16 shrink-0 text-ink-500">{SLOT_META[slot].label}</span>
                   <span className="min-w-0 text-ink-200">
-                    {slotMeals.map((meal, i) => (
-                      <span key={meal.id}>
-                        {i > 0 ? ', ' : ''}
-                        {meal.name || 'Untitled'}
-                        {meal.calories !== null ? (
-                          <span className="text-ink-500"> ({Math.round(meal.calories)})</span>
-                        ) : null}
-                      </span>
-                    ))}
+                    {groups.map((group, i) => {
+                      const calories = groupMacroTotals(group.meals).calories
+                      return (
+                        <span key={group.key}>
+                          {i > 0 ? '; ' : ''}
+                          {groupName(group.meals)}
+                          {calories !== null ? (
+                            <span className="text-ink-500"> ({Math.round(calories)})</span>
+                          ) : null}
+                        </span>
+                      )
+                    })}
                   </span>
                 </div>
               )

@@ -218,6 +218,11 @@ export interface Meal {
   notes: string | null
   /** How the macros were captured: hand-entered, or estimated by the AI parser. */
   source: 'manual' | 'ai'
+  /**
+   * Foods saved together (one Estimate / Save) share this so the timeline can
+   * show one meal with components. Absent on rows logged before grouping.
+   */
+  groupId?: string
   createdAt: Instant
   updatedAt: Instant
 }

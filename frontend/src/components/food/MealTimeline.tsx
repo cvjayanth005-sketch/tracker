@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { deleteMeal, saveMealAsFood, updateMeal } from '@/db/repo'
 import { Card } from '@/components/ui'
+import { groupMacroTotals, groupMeals, groupName, type MealGroup } from '@/domain/mealGroups'
 import type { Meal } from '@/domain/types'
 import { MACRO, SLOT_META, SLOT_ORDER, SUBMACRO, type SubMacroKey } from './palette'
 import { MicroFields, setMicro } from './micros'
@@ -130,13 +131,42 @@ function MealEditor({ meal, onClose }: { meal: Meal; onClose: () => void }) {
   )
 }
 
-function MealRow({ meal }: { meal: Meal }) {
+function MacroChips({
+  values,
+}: {
+  values: { calories: number | null; proteinG: number | null; carbsG: number | null; fatG: number | null }
+}) {
+  const chips = MACRO_CHIPS.map((field) =>
+    values[field.key] === null ? null : (
+      <span
+        key={field.key}
+        className="tabular rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
+        style={{ color: field.color, backgroundColor: `${field.color}1a` }}
+      >
+        {Math.round(values[field.key] as number)}
+        {field.key === 'calories' ? '' : field.unit}
+      </span>
+    ),
+  )
+  if (chips.every((chip) => chip === null)) {
+    return <span className="text-[11px] text-ink-500">No macros yet — tap to add</span>
+  }
+  return <>{chips}</>
+}
+
+function MealRow({ meal, nested = false }: { meal: Meal; nested?: boolean }) {
   const [editing, setEditing] = useState(false)
   return (
-    <div className="rounded-2xl bg-white/[0.03] p-3 ring-1 ring-inset ring-white/8">
+    <div
+      className={
+        nested
+          ? 'rounded-xl bg-black/20 p-2.5 ring-1 ring-inset ring-white/6'
+          : 'rounded-2xl bg-white/[0.03] p-3 ring-1 ring-inset ring-white/8'
+      }
+    >
       <button type="button" onClick={() => setEditing((v) => !v)} className="flex w-full items-start justify-between gap-3 text-left">
         <div className="min-w-0">
-          <div className="truncate text-sm font-medium text-ink-50">
+          <div className={`truncate font-medium text-ink-50 ${nested ? 'text-[13px]' : 'text-sm'}`}>
             {meal.name || 'Untitled meal'}
             {meal.quantity !== null ? (
               <span className="ml-1.5 text-[11px] font-normal text-ink-500">
@@ -146,31 +176,43 @@ function MealRow({ meal }: { meal: Meal }) {
             ) : null}
           </div>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {MACRO_CHIPS.map((field) =>
-              meal[field.key] === null ? null : (
-                <span
-                  key={field.key}
-                  className="tabular rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
-                  style={{ color: field.color, backgroundColor: `${field.color}1a` }}
-                >
-                  {Math.round(meal[field.key] as number)}
-                  {field.key === 'calories' ? '' : field.unit}
-                </span>
-              ),
-            )}
-            {MACRO_CHIPS.every((field) => meal[field.key] === null) ? (
-              <span className="text-[11px] text-ink-500">No macros yet — tap to add</span>
-            ) : null}
+            <MacroChips values={meal} />
           </div>
         </div>
-        {meal.time ? <span className="tabular shrink-0 text-[11px] text-ink-400">{meal.time}</span> : null}
+        {!nested && meal.time ? <span className="tabular shrink-0 text-[11px] text-ink-400">{meal.time}</span> : null}
       </button>
       {editing ? <MealEditor meal={meal} onClose={() => setEditing(false)} /> : null}
     </div>
   )
 }
 
-/** Today's meals grouped by slot, newest first within each slot. */
+function MealGroupCard({ group }: { group: MealGroup }) {
+  if (group.meals.length === 1) {
+    const only = group.meals[0]
+    return only ? <MealRow meal={only} /> : null
+  }
+  const totals = groupMacroTotals(group.meals)
+  return (
+    <div className="rounded-2xl bg-white/[0.03] p-3 ring-1 ring-inset ring-white/8">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-sm font-medium text-ink-50">{groupName(group.meals)}</div>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            <MacroChips values={totals} />
+          </div>
+        </div>
+        {group.time ? <span className="tabular shrink-0 text-[11px] text-ink-400">{group.time}</span> : null}
+      </div>
+      <div className="mt-2 space-y-1.5">
+        {group.meals.map((meal) => (
+          <MealRow key={meal.id} meal={meal} nested />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** Today's meals grouped by slot, then by the batch they were saved with. */
 export function MealTimeline({ meals }: { meals: Meal[] }) {
   if (meals.length === 0) {
     return (
@@ -186,20 +228,20 @@ export function MealTimeline({ meals }: { meals: Meal[] }) {
   return (
     <div className="space-y-4">
       {SLOT_ORDER.map((slot) => {
-        const slotMeals = meals.filter((meal) => meal.slot === slot)
-        if (slotMeals.length === 0) return null
+        const groups = groupMeals(meals.filter((meal) => meal.slot === slot))
+        if (groups.length === 0) return null
         return (
           <div key={slot}>
             <div className="mb-2 flex items-center gap-2 px-1">
               <span>{SLOT_META[slot].icon}</span>
               <span className="text-[12px] font-semibold text-ink-200">{SLOT_META[slot].label}</span>
               <span className="text-[11px] text-ink-500">
-                {slotMeals.length} item{slotMeals.length === 1 ? '' : 's'}
+                {groups.length} meal{groups.length === 1 ? '' : 's'}
               </span>
             </div>
             <div className="space-y-2">
-              {slotMeals.map((meal) => (
-                <MealRow key={meal.id} meal={meal} />
+              {groups.map((group) => (
+                <MealGroupCard key={group.key} group={group} />
               ))}
             </div>
           </div>

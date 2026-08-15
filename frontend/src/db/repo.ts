@@ -1,5 +1,6 @@
 import { db, markDirty } from './database'
 import { addDays, compareDates } from '@/domain/date'
+import { mealGroupCount } from '@/domain/mealGroups'
 import type {
   BodyMeasurement,
   DaySchedule,
@@ -225,7 +226,7 @@ async function rollUpMealTotals(date: LocalDate): Promise<void> {
     sugarG: sum((meal) => meal.sugarG),
     satFatG: sum((meal) => meal.satFatG),
     micros: sumMicros(meals),
-    mealsOnPlan: meals.length === 0 ? null : meals.length,
+    mealsOnPlan: meals.length === 0 ? null : mealGroupCount(meals),
     updatedAt: now(),
   })
 }
@@ -258,6 +259,7 @@ export async function addMeal(
     createdAt: stamp,
     updatedAt: stamp,
     ...partial,
+    groupId: partial.groupId ?? uid(),
   }
   await db.transaction('rw', db.meals, db.dailyLogs, async () => {
     await db.meals.put(meal)
@@ -300,6 +302,7 @@ export async function addMeals(
 ): Promise<Meal[]> {
   if (drafts.length === 0) return []
   const stamp = now()
+  const groupId = uid()
   const meals: Meal[] = drafts.map((draft) => ({
     id: uid(),
     date,
@@ -318,6 +321,7 @@ export async function addMeals(
     notes: null,
     source,
     ...draft,
+    groupId,
     createdAt: stamp,
     updatedAt: stamp,
   }))
