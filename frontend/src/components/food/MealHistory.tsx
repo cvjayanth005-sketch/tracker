@@ -33,16 +33,16 @@ function DayCard({ entry, targets }: { entry: DayEntry; targets: MacroTargets })
           size={54}
           stroke={5}
           gap={2}
-          center={<span className="tabular text-[10px] font-semibold text-[var(--app-ink)]">{mealGroupCount(meals)}</span>}
+          center={<span className="tabular type-caption font-semibold text-[var(--app-ink)]">{mealGroupCount(meals)}</span>}
         />
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold text-[var(--app-ink)]">
+          <div className="type-caption font-semibold text-[var(--app-ink)]">
             {weekdayName(entry.date)} <span className="font-normal text-[var(--app-muted)]">· {formatShort(entry.date)}</span>
           </div>
           <div className="mt-0.5 flex flex-wrap gap-1.5">
             {MACRO_CHIPS.map((field) =>
               totals[field.key as keyof MacroTotals] === null ? null : (
-                <span key={field.key} className="tabular text-[11px]" style={{ color: field.color }}>
+                <span key={field.key} className="tabular type-caption" style={{ color: field.color }}>
                   {Math.round(totals[field.key as keyof MacroTotals] as number)}
                   {field.key === 'calories' ? '' : field.unit}
                 </span>
@@ -50,7 +50,7 @@ function DayCard({ entry, targets }: { entry: DayEntry; targets: MacroTargets })
             )}
           </div>
         </div>
-        <span className="tabular shrink-0 text-right text-[11px] text-[var(--app-muted)]">
+        <span className="tabular shrink-0 text-right type-caption text-[var(--app-muted)]">
           <span className="block font-semibold text-[var(--app-ink)]">{fmtInt(totals.calories)}</span>
           kcal
         </span>
@@ -59,13 +59,13 @@ function DayCard({ entry, targets }: { entry: DayEntry; targets: MacroTargets })
       {open ? (
         <div className="space-y-1.5 border-t border-[var(--app-line)] px-3 pb-3 pt-2">
           {meals.length === 0 ? (
-            <div className="text-[12px] text-[var(--app-muted)]">Daily totals only — no itemized meals for this day.</div>
+            <div className="type-caption text-[var(--app-muted)]">Daily totals only — no itemized meals for this day.</div>
           ) : (
             SLOT_ORDER.map((slot) => {
               const groups = groupMeals(meals.filter((meal) => meal.slot === slot))
               if (groups.length === 0) return null
               return (
-                <div key={slot} className="flex gap-2 text-[12px]">
+                <div key={slot} className="flex gap-2 type-caption">
                   <span className="w-16 shrink-0 text-[var(--app-muted)]">{SLOT_META[slot].label}</span>
                   <span className="min-w-0 text-[var(--app-ink)]">
                     {groups.map((group, i) => {
@@ -135,8 +135,8 @@ export function MealHistory({
   if (entries.length === 0) {
     return (
       <Card className="text-center">
-        <div className="text-sm font-medium text-[var(--app-ink)]">No history yet</div>
-        <p className="mx-auto mt-1 max-w-xs text-[13px] leading-relaxed text-[var(--app-muted)]">
+        <div className="type-caption font-medium text-[var(--app-ink)]">No history yet</div>
+        <p className="mx-auto mt-1 max-w-xs type-caption leading-relaxed text-[var(--app-muted)]">
           As you log meals each day, they stack up here so you can watch your macros over time.
         </p>
       </Card>

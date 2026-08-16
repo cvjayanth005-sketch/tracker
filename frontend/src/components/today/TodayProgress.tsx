@@ -126,9 +126,7 @@ export function TodayProgress({
               <span className="flex items-baseline justify-between gap-2">
                 <span className="type-micro text-[var(--app-muted)]">{target.label}</span>
                 <span
-                  className={`radius-pill border px-1.5 py-0.5 text-[10px] font-semibold ${
-                    OUTCOME_CLASS[target.outcome] ?? 'today-outcome-unknown'
-                  }`}
+                  className={`radius-pill border px-1.5 py-0.5 type-caption font-semibold ${ OUTCOME_CLASS[target.outcome] ?? 'today-outcome-unknown' }`}
                 >
                   {OUTCOME_LABEL[target.outcome] ?? 'Not logged'}
                 </span>
@@ -137,9 +135,7 @@ export function TodayProgress({
               <span className="mt-1.5 flex items-baseline gap-1">
                 <span
                   key={`${target.metric}-${target.actual}`}
-                  className={`type-metric type-optical-left motion-value text-[var(--app-ink)] ${
-                    target.outcome === 'hit' ? 'motion-met' : ''
-                  }`}
+                  className={`type-metric type-optical-left motion-value text-[var(--app-ink)] ${ target.outcome === 'hit' ? 'motion-met' : '' }`}
                 >
                   {formatActual(target.actual, target.metric)}
                 </span>
@@ -150,13 +146,7 @@ export function TodayProgress({
 
               <span className="today-bar mt-2 block">
                 <span
-                  className={`today-bar-fill motion-fill block ${
-                    target.outcome === 'hit'
-                      ? 'today-bar-fill--hit'
-                      : target.outcome === 'missed'
-                        ? 'today-bar-fill--missed'
-                        : ''
-                  }`}
+                  className={`today-bar-fill motion-fill block ${ target.outcome === 'hit' ? 'today-bar-fill--hit' : target.outcome === 'missed' ? 'today-bar-fill--missed' : '' }`}
                   // Zero-width when unknown, so the track still reads as a bar.
                   style={{ width: `${Math.round((target.progress ?? 0) * 100)}%` }}
                 />

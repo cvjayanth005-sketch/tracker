@@ -36,7 +36,7 @@ export function MicroDaySummary({ micros }: { micros: Micros }) {
   const anyLogged = micros && MICRO_DEFS.some((def) => micros[def.key] != null)
   if (!anyLogged) {
     return (
-      <p className="text-[12px] leading-relaxed text-[var(--app-muted)]">
+      <p className="type-caption leading-relaxed text-[var(--app-muted)]">
         Log meals with the AI estimator and it captures micronutrients here — potassium, calcium, iron, and more.
       </p>
     )
@@ -49,12 +49,12 @@ export function MicroDaySummary({ micros }: { micros: Micros }) {
         return (
           <div key={def.key} className="radius-control bg-[var(--app-inset)] px-2.5 py-2 ring-1 ring-inset ring-[var(--app-line)]">
             <div className="flex items-baseline justify-between gap-1">
-              <span className="text-[11px] text-[var(--app-muted)]">{def.label}</span>
-              {pct !== null ? <span className="tabular text-[10px] text-[var(--app-muted)]">{pct}%</span> : null}
+              <span className="type-caption text-[var(--app-muted)]">{def.label}</span>
+              {pct !== null ? <span className="tabular type-caption text-[var(--app-muted)]">{pct}%</span> : null}
             </div>
-            <div className="tabular mt-0.5 text-[13px] font-semibold text-[var(--app-ink)]">
+            <div className="tabular mt-0.5 type-caption font-semibold text-[var(--app-ink)]">
               {value === null ? <span className="text-[var(--app-muted)]">—</span> : Math.round(value)}
-              <span className="ml-0.5 text-[10px] font-normal text-[var(--app-muted)]">{def.unit}</span>
+              <span className="ml-0.5 type-caption font-normal text-[var(--app-muted)]">{def.unit}</span>
             </div>
           </div>
         )
@@ -72,7 +72,7 @@ export function MicroFields({ value, onSet }: { value: Micros; onSet: (key: stri
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-2.5 py-1.5 text-[11px] font-medium text-[var(--app-ink-soft)]"
+        className="flex w-full items-center justify-between px-2.5 py-1.5 type-caption font-medium text-[var(--app-ink-soft)]"
       >
         <span>Micronutrients{filled > 0 ? ` · ${filled}` : ''}</span>
         <span className={`text-[var(--app-muted)] transition-transform ${open ? 'rotate-180' : ''}`}>⌄</span>
@@ -81,16 +81,16 @@ export function MicroFields({ value, onSet }: { value: Micros; onSet: (key: stri
         <div className="grid grid-cols-2 gap-1.5 px-2 pb-2">
           {MICRO_DEFS.map((def) => (
             <label key={def.key} className="flex items-center gap-1.5">
-              <span className="min-w-0 flex-1 truncate text-[10px] text-[var(--app-muted)]">{def.label}</span>
+              <span className="min-w-0 flex-1 truncate type-caption text-[var(--app-muted)]">{def.label}</span>
               <input
                 type="number"
                 inputMode="decimal"
                 defaultValue={value?.[def.key] ?? ''}
                 onBlur={(e) => onSet(def.key, num(e.target.value))}
                 placeholder="—"
-                className="tabular w-12 rounded bg-[var(--app-inset)] px-1 py-1 text-center text-[12px] text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
+                className="tabular w-12 rounded bg-[var(--app-inset)] px-1 py-1 text-center type-caption text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
               />
-              <span className="w-7 text-[9px] text-[var(--app-muted)]">{def.unit}</span>
+              <span className="w-7 type-caption text-[var(--app-muted)]">{def.unit}</span>
             </label>
           ))}
         </div>

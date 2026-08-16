@@ -70,13 +70,13 @@ export function HeroWeight({
   return (
     <div className="glass radius-inset p-4 sm:p-5">
       <div className="flex items-baseline justify-between">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">
+        <span className="type-micro font-semibold text-[var(--app-muted)]">
           Morning weight
         </span>
         {value !== null ? (
-          <span className="text-[11px] text-accent">saved</span>
+          <span className="type-caption text-accent">saved</span>
         ) : (
-          <span className="text-[11px] text-[var(--app-muted)]">not logged</span>
+          <span className="type-caption text-[var(--app-muted)]">not logged</span>
         )}
       </div>
 
@@ -99,9 +99,9 @@ export function HeroWeight({
             window.clearTimeout(timer.current)
             commit(e.target.value)
           }}
-          className="tabular-display w-full min-w-0 bg-transparent text-5xl font-semibold tracking-tight text-[var(--app-ink)] outline-none placeholder:text-[var(--app-muted)] sm:text-6xl"
+          className="tabular-display w-full min-w-0 bg-transparent type-display text-[var(--app-ink)] outline-none placeholder:text-[var(--app-muted)]"
         />
-        <span className="pb-1.5 text-lg font-medium text-[var(--app-muted)]">kg</span>
+        <span className="pb-1.5 type-lead font-medium text-[var(--app-muted)]">kg</span>
       </div>
 
       {series && series.length > 1 ? (
@@ -110,7 +110,7 @@ export function HeroWeight({
         </div>
       ) : null}
 
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[var(--app-muted)]">
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 type-caption text-[var(--app-muted)]">
         {delta !== null && previous ? (
           <span>
             <span className={delta <= 0 ? 'text-accent' : 'text-warn'}>

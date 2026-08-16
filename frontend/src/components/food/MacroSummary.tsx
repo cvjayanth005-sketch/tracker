@@ -12,15 +12,15 @@ function ConsistencyRow({ strip }: { strip: ConsistencyStrip }) {
   return (
     <div className="mt-4 border-t border-[var(--app-line)] pt-3.5">
       <div className="mb-2.5 flex items-center justify-between">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--app-muted)]">
+        <span className="type-micro font-semibold text-[var(--app-muted)]">
           Last {strip.days.length} days
         </span>
         {strip.streak > 0 ? (
-          <span className="flex items-center gap-1 rounded-full bg-accent/12 px-2 py-0.5 text-[11px] font-semibold text-accent ring-1 ring-inset ring-accent/20">
+          <span className="flex items-center gap-1 rounded-full bg-accent/12 px-2 py-0.5 type-caption font-semibold text-accent ring-1 ring-inset ring-accent/20">
             🔥 {strip.streak}-day streak
           </span>
         ) : (
-          <span className="text-[11px] text-[var(--app-muted)]">Hit calories + protein to build a streak</span>
+          <span className="type-caption text-[var(--app-muted)]">Hit calories + protein to build a streak</span>
         )}
       </div>
       <div className="flex items-center gap-[5px]">
@@ -44,7 +44,7 @@ function ConsistencyRow({ strip }: { strip: ConsistencyStrip }) {
           )
         })}
       </div>
-      <div className="mt-2 flex items-center gap-3 text-[10px] text-[var(--app-muted)]">
+      <div className="mt-2 flex items-center gap-3 type-caption text-[var(--app-muted)]">
         <span className="flex items-center gap-1">
           <span className="h-2 w-2 rounded-full" style={{ backgroundColor: ON_COLOR }} /> on target
         </span>
@@ -82,17 +82,15 @@ export function MacroSummary({ food, consistency }: { food: FoodContext; consist
             center={
               today.calories === null ? (
                 <>
-                  <div className="text-sm font-semibold text-[var(--app-ink-soft)]">No food yet</div>
-                  <div className="mt-1 text-[11px] text-[var(--app-muted)]">{targets.calories.toLocaleString()} kcal</div>
+                  <div className="type-caption font-semibold text-[var(--app-ink-soft)]">No food yet</div>
+                  <div className="mt-1 type-caption text-[var(--app-muted)]">{targets.calories.toLocaleString()} kcal</div>
                 </>
               ) : (
                 <>
-                  <div className="tabular text-[26px] font-semibold leading-none text-[var(--app-ink)]">{fmtInt(today.calories)}</div>
-                  <div className="mt-1 text-[10px] text-[var(--app-muted)]">of {targets.calories.toLocaleString()} kcal</div>
+                  <div className="tabular type-heading leading-none text-[var(--app-ink)]">{fmtInt(today.calories)}</div>
+                  <div className="mt-1 type-caption text-[var(--app-muted)]">of {targets.calories.toLocaleString()} kcal</div>
                   <div
-                    className={`mt-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                      over ? 'bg-alert/15 text-alert' : 'bg-accent/15 text-accent'
-                    }`}
+                    className={`mt-1.5 rounded-full px-2 py-0.5 type-caption font-semibold ${ over ? 'bg-alert/15 text-alert' : 'bg-accent/15 text-accent' }`}
                   >
                     {over ? `${Math.abs(remaining ?? 0)} over` : `${remaining} left`}
                   </div>
@@ -104,7 +102,7 @@ export function MacroSummary({ food, consistency }: { food: FoodContext; consist
         <div>
           <MacroLegend totals={totals} targets={macroTargets} />
           {today.fiberG !== null || today.sugarG !== null || today.satFatG !== null || today.mealCount > 0 ? (
-            <div className="mt-3.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 border-t border-[var(--app-line)] pt-3 text-[11px] text-[var(--app-muted)]">
+            <div className="mt-3.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 border-t border-[var(--app-line)] pt-3 type-caption text-[var(--app-muted)]">
               {today.fiberG !== null ? (
                 <span>
                   Fiber <span className="font-semibold text-[var(--app-ink-soft)]">{Math.round(today.fiberG)} g</span>

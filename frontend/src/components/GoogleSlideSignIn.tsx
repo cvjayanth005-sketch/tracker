@@ -204,18 +204,14 @@ export function GoogleSlideSignIn({
   if (googleClientId === null) {
     return (
       <div
-        className={`mt-4 h-12 animate-pulse rounded-full ${
-          appearance === 'light'
-            ? 'bg-black/8 ring-1 ring-inset ring-black/10'
-            : 'bg-[var(--app-inset)] ring-1 ring-inset ring-[var(--app-line)]'
-        }`}
+        className={`mt-4 h-12 animate-pulse rounded-full ${ appearance === 'light' ? 'bg-black/8 ring-1 ring-inset ring-black/10' : 'bg-[var(--app-inset)] ring-1 ring-inset ring-[var(--app-line)]' }`}
       />
     )
   }
 
   if (!googleClientId) {
     return (
-      <div className="mt-4 radius-control bg-surface-notice px-3 py-3 text-xs leading-relaxed text-surface-notice-ink ring-1 ring-inset ring-surface-notice-line/30">
+      <div className="mt-4 radius-control bg-surface-notice px-3 py-3 type-caption leading-relaxed text-surface-notice-ink ring-1 ring-inset ring-surface-notice-line/30">
         Google sign-in is not configured. Set GOOGLE_CLIENT_ID on the backend.
       </div>
     )
@@ -227,11 +223,7 @@ export function GoogleSlideSignIn({
         className={`group relative h-12 w-full cursor-pointer ${signing ? 'pointer-events-none' : ''}`}
       >
         <div
-          className={`pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-3 rounded-full transition-[transform,filter] duration-150 ease-out group-hover:brightness-[1.08] group-active:scale-[0.985] ${
-            appearance === 'light'
-              ? 'bg-surface-ink text-white shadow-[0_16px_32px_-20px_rgba(17,20,17,0.7)] ring-1 ring-inset ring-black/80'
-              : 'bg-ink-50 text-ink-950 shadow-[0_18px_42px_-22px_rgba(255,255,255,0.8)] ring-1 ring-inset ring-[var(--app-line)]'
-          }`}
+          className={`pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-3 rounded-full transition-[transform,filter] duration-150 ease-out group-hover:brightness-[1.08] group-active:scale-[0.985] ${ appearance === 'light' ? 'bg-surface-ink text-white shadow-[0_16px_32px_-20px_rgba(17,20,17,0.7)] ring-1 ring-inset ring-black/80' : 'bg-ink-50 text-ink-950 shadow-[0_18px_42px_-22px_rgba(255,255,255,0.8)] ring-1 ring-inset ring-[var(--app-line)]' }`}
         >
           <span
             className={`absolute inset-x-4 top-0 h-px ${appearance === 'light' ? 'bg-[var(--app-inset)]' : 'bg-[var(--app-inset)]'}`}
@@ -240,7 +232,7 @@ export function GoogleSlideSignIn({
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-[inset_0_0_0_1px_rgba(15,23,42,0.06)]">
             <GoogleMark />
           </span>
-          <span className="text-sm font-semibold">
+          <span className="type-caption font-semibold">
             {signing ? 'Signing in...' : ready ? 'Continue with Google' : 'Loading Google...'}
           </span>
         </div>
@@ -252,13 +244,13 @@ export function GoogleSlideSignIn({
       </div>
       {redirectMode ? (
         <p
-          className={`mt-2 text-xs leading-relaxed ${appearance === 'light' ? 'text-surface-ink-soft' : 'text-[var(--app-muted)]'}`}
+          className={`mt-2 type-caption leading-relaxed ${appearance === 'light' ? 'text-surface-ink-soft' : 'text-[var(--app-muted)]'}`}
         >
           This device will open Google in this tab, then return here signed in.
         </p>
       ) : null}
       {loadError ? (
-        <p className={`mt-2 text-xs ${appearance === 'light' ? 'text-surface-danger-ink' : 'text-alert'}`}>
+        <p className={`mt-2 type-caption ${appearance === 'light' ? 'text-surface-danger-ink' : 'text-alert'}`}>
           {loadError}
         </p>
       ) : null}

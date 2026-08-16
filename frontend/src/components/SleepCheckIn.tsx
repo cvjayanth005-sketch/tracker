@@ -33,7 +33,7 @@ function SleepHoursField({
 
   return (
     <label className="block min-w-0">
-      <span className="mb-1.5 flex justify-between text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--app-muted)]">
+      <span className="mb-1.5 flex justify-between type-micro font-semibold text-[var(--app-muted)]">
         Sleep hours <span className="normal-case tracking-normal text-[var(--app-muted)]">target {targetHours}h</span>
       </span>
       <div className="flex h-11 items-center radius-control bg-[var(--app-inset)] px-3 ring-1 ring-inset ring-[var(--app-line)] focus-within:ring-info/60">
@@ -57,9 +57,9 @@ function SleepHoursField({
             window.clearTimeout(timer.current)
             commit(event.target.value)
           }}
-          className="tabular min-w-0 flex-1 bg-transparent text-right text-base font-semibold text-[var(--app-ink)] outline-none placeholder:font-normal placeholder:text-[var(--app-muted)]"
+          className="tabular min-w-0 flex-1 bg-transparent text-right type-body font-semibold text-[var(--app-ink)] outline-none placeholder:font-normal placeholder:text-[var(--app-muted)]"
         />
-        <span className="ml-1 text-xs text-[var(--app-muted)]">h</span>
+        <span className="ml-1 type-caption text-[var(--app-muted)]">h</span>
       </div>
     </label>
   )
@@ -91,16 +91,16 @@ export function SleepCheckIn({
     <Card className="mt-4 overflow-hidden lg:mt-6">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--app-line)] pb-3">
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-info">Last night</div>
+          <div className="type-micro font-semibold text-info">Last night</div>
           {/* Semantic h2: card titles built as divs silently miss the heading face. */}
-          <h2 className="mt-1 text-[20px] font-semibold text-[var(--app-ink)]">Morning sleep check-in</h2>
+          <h2 className="mt-1 type-title text-[var(--app-ink)]">Morning sleep check-in</h2>
         </div>
         <div className="flex items-center gap-2">
           <div className="text-right">
-            <div className="tabular-display text-2xl font-semibold leading-none text-[var(--app-ink)]">
+            <div className="tabular-display type-heading leading-none text-[var(--app-ink)]">
               {score.score ?? '—'}
             </div>
-            <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--app-muted)]">
+            <div className="mt-1 type-micro font-semibold text-[var(--app-muted)]">
               Sleep score
             </div>
           </div>
@@ -115,7 +115,7 @@ export function SleepCheckIn({
           onCommit={(sleepHours) => onSave({ sleepHours })}
         />
         <div className="min-w-0">
-          <div className="mb-1.5 flex justify-between text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--app-muted)]">
+          <div className="mb-1.5 flex justify-between type-micro font-semibold text-[var(--app-muted)]">
             Sleep quality <span className="normal-case tracking-normal text-[var(--app-muted)]">1–5</span>
           </div>
           <div className="grid h-11 grid-cols-5 gap-1">
@@ -126,7 +126,7 @@ export function SleepCheckIn({
                 aria-label={`Sleep quality ${value} of 5`}
                 aria-pressed={log?.sleepQuality === value}
                 onClick={() => onSave({ sleepQuality: log?.sleepQuality === value ? null : value })}
-                className={`tabular radius-control text-sm font-semibold transition-colors ${optionClass(log?.sleepQuality === value)}`}
+                className={`tabular radius-control type-caption font-semibold transition-colors ${optionClass(log?.sleepQuality === value)}`}
               >
                 {value}
               </button>
@@ -134,25 +134,25 @@ export function SleepCheckIn({
           </div>
         </div>
         <label className="block min-w-0">
-          <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--app-muted)]">Bedtime</span>
+          <span className="mb-1.5 block type-micro font-semibold text-[var(--app-muted)]">Bedtime</span>
           <input
             type="time"
             value={log?.sleepBedtime ?? ''}
             onChange={(event) => onSave({ sleepBedtime: event.target.value || null })}
-            className="tabular h-11 w-full radius-control bg-[var(--app-inset)] px-3 text-sm font-medium text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] focus:ring-info/60"
+            className="tabular h-11 w-full radius-control bg-[var(--app-inset)] px-3 type-caption font-medium text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] focus:ring-info/60"
           />
         </label>
         <label className="block min-w-0">
-          <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--app-muted)]">Wake time</span>
+          <span className="mb-1.5 block type-micro font-semibold text-[var(--app-muted)]">Wake time</span>
           <input
             type="time"
             value={log?.sleepWakeTime ?? ''}
             onChange={(event) => onSave({ sleepWakeTime: event.target.value || null })}
-            className="tabular h-11 w-full radius-control bg-[var(--app-inset)] px-3 text-sm font-medium text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] focus:ring-info/60"
+            className="tabular h-11 w-full radius-control bg-[var(--app-inset)] px-3 type-caption font-medium text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] focus:ring-info/60"
           />
         </label>
         <div className="min-w-0">
-          <div className="mb-1.5 flex justify-between text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--app-muted)]">
+          <div className="mb-1.5 flex justify-between type-micro font-semibold text-[var(--app-muted)]">
             Awakenings <span className="normal-case tracking-normal text-[var(--app-muted)]">overnight</span>
           </div>
           <div className="grid h-11 grid-cols-5 gap-1">
@@ -163,7 +163,7 @@ export function SleepCheckIn({
                 aria-label={value === 4 ? '4 or more awakenings' : `${value} awakenings`}
                 aria-pressed={log?.nightAwakenings === value}
                 onClick={() => onSave({ nightAwakenings: log?.nightAwakenings === value ? null : value })}
-                className={`tabular radius-control text-xs font-semibold transition-colors ${optionClass(log?.nightAwakenings === value, 'accent')}`}
+                className={`tabular radius-control type-caption font-semibold transition-colors ${optionClass(log?.nightAwakenings === value, 'accent')}`}
               >
                 {value === 4 ? '4+' : value}
               </button>
@@ -171,7 +171,7 @@ export function SleepCheckIn({
           </div>
         </div>
       </div>
-      <p className="mt-3 text-[11px] leading-relaxed text-[var(--app-muted)]">
+      <p className="mt-3 type-caption leading-relaxed text-[var(--app-muted)]">
         Duration and quality create the score. Timing learns your rhythm after three nights; awakenings improve confidence when logged.
       </p>
     </Card>

@@ -11,7 +11,7 @@ function ConfidenceBadge({ confidence }: { confidence: TdeeConfidence }) {
         ? 'bg-info/12 text-info'
         : 'bg-warn/15 text-warn'
   return (
-    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${tone}`}>
+    <span className={`rounded-full px-2 py-0.5 type-caption font-semibold capitalize ${tone}`}>
       {confidence} confidence
     </span>
   )
@@ -37,12 +37,12 @@ export function AdaptiveTDEE({
     const { calorieDays, weightDays, needDays } = result
     return (
       <Card>
-        <div className="text-sm font-semibold text-[var(--app-ink)]">Measured maintenance</div>
-        <p className="mt-1 text-[12px] leading-relaxed text-[var(--app-muted)]">
+        <div className="type-caption font-semibold text-[var(--app-ink)]">Measured maintenance</div>
+        <p className="mt-1 type-caption leading-relaxed text-[var(--app-muted)]">
           Log calories and weigh-ins for about two weeks and I&apos;ll measure your real maintenance
           calories from the data — more accurate than any formula.
         </p>
-        <div className="mt-3 flex gap-2 text-[11px] text-[var(--app-muted)]">
+        <div className="mt-3 flex gap-2 type-caption text-[var(--app-muted)]">
           <span className="radius-control bg-[var(--app-inset)] px-2 py-1 ring-1 ring-inset ring-[var(--app-line)]">
             Weigh-ins <span className="tabular font-semibold text-[var(--app-ink)]">{weightDays}</span>/{needDays}
           </span>
@@ -63,21 +63,21 @@ export function AdaptiveTDEE({
     <Card>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-sm font-semibold text-[var(--app-ink)]">Measured maintenance</div>
-          <div className="mt-0.5 text-[11px] text-[var(--app-muted)]">from your last {est.windowDays} days of intake + weight</div>
+          <div className="type-caption font-semibold text-[var(--app-ink)]">Measured maintenance</div>
+          <div className="mt-0.5 type-caption text-[var(--app-muted)]">from your last {est.windowDays} days of intake + weight</div>
         </div>
         <ConfidenceBadge confidence={est.confidence} />
       </div>
 
       <div className="mt-3 flex items-baseline gap-2">
-        <span className="tabular-display text-3xl font-semibold leading-none text-accent">{fmtInt(est.tdeeKcal)}</span>
-        <span className="text-[12px] text-[var(--app-muted)]">kcal/day</span>
-        <span className="tabular ml-auto text-[11px] text-[var(--app-muted)]">
+        <span className="tabular-display type-heading leading-none text-accent">{fmtInt(est.tdeeKcal)}</span>
+        <span className="type-caption text-[var(--app-muted)]">kcal/day</span>
+        <span className="tabular ml-auto type-caption text-[var(--app-muted)]">
           range {fmtInt(est.lowKcal)}–{fmtInt(est.highKcal)}
         </span>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+      <div className="mt-3 grid grid-cols-2 gap-2 type-caption">
         <div className="radius-control bg-[var(--app-inset)] px-2.5 py-2 ring-1 ring-inset ring-[var(--app-line)]">
           <div className="text-[var(--app-muted)]">Avg intake</div>
           <div className="tabular mt-0.5 font-semibold text-[var(--app-ink)]">{fmtInt(est.avgIntakeKcal)} kcal</div>
@@ -91,7 +91,7 @@ export function AdaptiveTDEE({
         </div>
       </div>
 
-      <div className="mt-3 radius-control bg-[var(--app-inset)] px-3 py-2.5 text-[12px] leading-relaxed text-[var(--app-ink-soft)] ring-1 ring-inset ring-[var(--app-line)]">
+      <div className="mt-3 radius-control bg-[var(--app-inset)] px-3 py-2.5 type-caption leading-relaxed text-[var(--app-ink-soft)] ring-1 ring-inset ring-[var(--app-line)]">
         Your <span className="font-semibold text-[var(--app-ink)]">{fmtInt(targetKcal)}</span> target is about{' '}
         <span className="font-semibold text-[var(--app-ink)]">{fmtInt(Math.abs(dailyDeltaKcal))} kcal/day {deltaWord}</span>{' '}
         maintenance

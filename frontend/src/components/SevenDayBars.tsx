@@ -52,14 +52,14 @@ export function SevenDayBars({
                 />
               )}
             </div>
-            <div className="mt-1 truncate text-center text-[9px] font-medium text-[var(--app-muted)]">
+            <div className="mt-1 truncate text-center type-caption font-medium text-[var(--app-muted)]">
               {formatShort(point.date).slice(0, 5)}
             </div>
           </div>
         )
       })}
       {known.length === 0 ? (
-        <div className="col-span-7 mt-2 text-center text-[11px] text-[var(--app-muted)]">No logs yet</div>
+        <div className="col-span-7 mt-2 text-center type-caption text-[var(--app-muted)]">No logs yet</div>
       ) : null}
     </div>
   )

@@ -33,6 +33,7 @@ export function CoachChatButton({
   title,
   subtitle,
   fillHeight = false,
+  showTraining = true,
 }: {
   placement?: 'floating' | 'inline' | 'card'
   starters?: readonly string[]
@@ -41,6 +42,15 @@ export function CoachChatButton({
   subtitle?: ReactNode
   /** Lets a card-mode coach absorb the remaining height in a dashboard column. */
   fillHeight?: boolean
+  /**
+   * Whether to offer today's adaptive training session.
+   *
+   * The same component backs the training and nutrition coaches, but a
+   * nutrition coach offering to apply a six-exercise workout is answering a
+   * question nobody asked on that screen — and "Apply session" there writes to
+   * the workout, which is a surprising side effect from the Food tab.
+   */
+  showTraining?: boolean
 }) {
   const dash = useDashboard(30)
   const navigate = useNavigate()
@@ -50,8 +60,9 @@ export function CoachChatButton({
   const [messages, setMessages] = useState<CoachChatMessage[]>([
     {
       role: 'assistant',
-      content:
-        'Tell me what you want to improve. I can use your split, recent sets, exercise progression, running, recovery, and nutrition to shape the next workout.',
+      content: showTraining
+        ? 'Tell me what you want to improve. I can use your split, recent sets, exercise progression, running, recovery, and nutrition to shape the next workout.'
+        : 'Ask me anything about what you are eating. I can see today\'s meals, your macro targets, and the last week of intake.',
     },
   ])
   const [busy, setBusy] = useState(false)
@@ -346,14 +357,14 @@ export function CoachChatButton({
       <div className="flex items-start justify-between gap-3 border-b border-[var(--app-line)] px-1 pb-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center radius-control bg-accent text-[10px] font-black text-ink-950">
+            <span className="flex h-7 w-7 items-center justify-center radius-control bg-accent type-caption font-black text-ink-950">
               AI
             </span>
-            <div className="text-sm font-semibold text-[var(--app-ink)]">
+            <div className="type-caption font-semibold text-[var(--app-ink)]">
               {cardMode ? (title ?? 'Training Coach') : 'AI coach'}
             </div>
           </div>
-          <div className="mt-2 text-[11px] text-[var(--app-muted)]">
+          <div className="mt-2 type-caption text-[var(--app-muted)]">
             {subtitle ?? (
               <>
                 {dash.phase?.name ?? 'Current plan'} · {recentWorkouts?.length ?? 0} sessions ·{' '}
@@ -366,20 +377,20 @@ export function CoachChatButton({
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--app-inset)] text-lg text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)]"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--app-inset)] type-lead text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)]"
             aria-label="Close AI coach chat"
             title="Close"
           >
             x
           </button>
         ) : (
-          <span className="rounded-full bg-info/10 px-2.5 py-1 text-[10px] font-semibold text-info ring-1 ring-inset ring-info/20">
+          <span className="rounded-full bg-info/10 px-2.5 py-1 type-caption font-semibold text-info ring-1 ring-inset ring-info/20">
             Live context
           </span>
         )}
       </div>
 
-      {cardMode ? (
+      {cardMode && showTraining ? (
         <AdaptiveReadinessPanel
           log={dash.todayLog}
           prescription={adaptiveSession}
@@ -394,33 +405,25 @@ export function CoachChatButton({
 
       <div
         ref={chatScrollRef}
-        className={`min-h-0 flex-1 space-y-3 overflow-y-auto px-1 py-3 ${
-          cardMode ? (fillHeight ? 'max-h-36 xl:max-h-none' : 'max-h-36') : ''
-        }`}
+        className={`min-h-0 flex-1 space-y-3 overflow-y-auto px-1 py-3 ${ cardMode ? (fillHeight ? 'max-h-36 xl:max-h-none' : 'max-h-36') : '' }`}
         role="log"
         aria-live="polite"
       >
         {messages.map((message, index) => (
           <div
             key={`${message.role}-${index}`}
-            className={`max-w-[88%] radius-control px-3 py-2 text-[13px] leading-relaxed shadow-[0_10px_28px_-20px_rgba(0,0,0,0.8)] ${
-              cardMode ? 'lg:max-w-3xl ' : ''
-            }${
-              message.role === 'user'
-                ? 'ml-auto bg-accent text-ink-950'
-                : 'bg-[var(--app-inset)] text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)]'
-            }`}
+            className={`max-w-[88%] radius-control px-3 py-2 type-caption leading-relaxed shadow-[0_10px_28px_-20px_rgba(0,0,0,0.8)] ${ cardMode ? 'lg:max-w-3xl ' : '' }${ message.role === 'user' ? 'ml-auto bg-accent text-ink-950' : 'bg-[var(--app-inset)] text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)]' }`}
           >
             {message.content}
           </div>
         ))}
         {busy ? (
-          <div className="max-w-[70%] radius-control bg-[var(--app-inset)] px-3 py-2 text-[13px] text-[var(--app-ink-soft)] ring-1 ring-inset ring-[var(--app-line)]">
+          <div className="max-w-[70%] radius-control bg-[var(--app-inset)] px-3 py-2 type-caption text-[var(--app-ink-soft)] ring-1 ring-inset ring-[var(--app-line)]">
             Reading your training history...
           </div>
         ) : null}
         {error ? (
-          <div className="radius-control bg-alert/12 px-3 py-2 text-[12px] text-alert ring-1 ring-inset ring-alert/25">
+          <div className="radius-control bg-alert/12 px-3 py-2 type-caption text-alert ring-1 ring-inset ring-alert/25">
             {error}
           </div>
         ) : null}
@@ -434,7 +437,7 @@ export function CoachChatButton({
               type="button"
               onClick={() => void submit(starter)}
               disabled={busy}
-              className="shrink-0 rounded-full bg-[var(--app-inset)] px-3 py-1.5 text-[11px] font-medium text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)] transition-colors hover:bg-[var(--app-inset)] active:bg-[var(--app-inset)] disabled:opacity-40"
+              className="shrink-0 rounded-full bg-[var(--app-inset)] px-3 py-1.5 type-caption font-medium text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)] transition-colors hover:bg-[var(--app-inset)] active:bg-[var(--app-inset)] disabled:opacity-40"
             >
               {starter}
             </button>
@@ -460,8 +463,12 @@ export function CoachChatButton({
             }
           }}
           rows={cardMode ? 2 : 1}
-          placeholder="Ask about your next workout, recovery, sets, or progression..."
-          className="min-h-11 flex-1 resize-none radius-control bg-[var(--app-inset)] px-3 py-3 text-sm text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
+          placeholder={
+            showTraining
+              ? 'Ask about your next workout, recovery, sets, or progression...'
+              : 'Ask about today\'s meals, macros, or what to eat next...'
+          }
+          className="min-h-11 flex-1 resize-none radius-control bg-[var(--app-inset)] px-3 py-3 type-caption text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
         />
         <button
           type="submit"
@@ -483,8 +490,8 @@ export function CoachChatButton({
         onClick={() => setOpen((value) => !value)}
         className={
           placement === 'floating'
-            ? 'fixed bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-sm font-black text-ink-950 shadow-[0_22px_48px_-22px_rgba(57,255,20,0.9)] ring-1 ring-inset ring-[var(--app-line)] transition-transform active:scale-95 lg:bottom-auto lg:right-6 lg:top-5 lg:h-12 lg:w-auto lg:gap-2 lg:radius-control lg:px-4 lg:text-[13px]'
-            : 'flex min-h-11 items-center justify-center gap-2 radius-control bg-accent px-4 text-[13px] font-black text-ink-950 shadow-[0_18px_40px_-24px_rgba(57,255,20,0.9)] ring-1 ring-inset ring-[var(--app-line)] transition-transform active:scale-95'
+            ? 'fixed bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-accent type-caption font-black text-ink-950 shadow-[0_22px_48px_-22px_rgba(57,255,20,0.9)] ring-1 ring-inset ring-[var(--app-line)] transition-transform active:scale-95 lg:bottom-auto lg:right-6 lg:top-5 lg:h-12 lg:w-auto lg:gap-2 lg:radius-control lg:px-4 lg:type-caption'
+            : 'flex min-h-11 items-center justify-center gap-2 radius-control bg-accent px-4 type-caption font-black text-ink-950 shadow-[0_18px_40px_-24px_rgba(57,255,20,0.9)] ring-1 ring-inset ring-[var(--app-line)] transition-transform active:scale-95'
         }
         aria-label="Open AI coach chat"
         title="AI coach chat"
@@ -513,7 +520,7 @@ function CompactRating({
 }) {
   return (
     <div>
-      <div className="mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase text-[var(--app-muted)]">
+      <div className="mb-1.5 flex items-center justify-between type-micro font-semibold text-[var(--app-muted)]">
         <span>{label}</span>
         <span className="tabular text-[var(--app-muted)]">{value ?? '—'}/5</span>
       </div>
@@ -523,11 +530,7 @@ function CompactRating({
             key={option}
             type="button"
             onClick={() => onChange(value === option ? null : option)}
-            className={`tabular h-8 radius-control text-[11px] font-semibold transition-colors ${
-              value === option
-                ? 'bg-info text-ink-950'
-                : 'bg-[var(--app-inset)] text-[var(--app-muted)] ring-1 ring-inset ring-[var(--app-line)]'
-            }`}
+            className={`tabular h-8 radius-control type-caption font-semibold transition-colors ${ value === option ? 'bg-info text-ink-950' : 'bg-[var(--app-inset)] text-[var(--app-muted)] ring-1 ring-inset ring-[var(--app-line)]' }`}
           >
             {option}
           </button>
@@ -548,7 +551,7 @@ function ConstraintField({
   useEffect(() => setText(value ?? ''), [value])
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[10px] font-semibold uppercase text-[var(--app-muted)]">
+      <span className="mb-1.5 block type-micro font-semibold text-[var(--app-muted)]">
         Training constraint
       </span>
       <input
@@ -556,7 +559,7 @@ function ConstraintField({
         onChange={(event) => setText(event.target.value)}
         onBlur={() => onCommit(text.trim() || null)}
         placeholder="None, or note discomfort / equipment limits"
-        className="h-9 w-full radius-control bg-[var(--app-inset)] px-3 text-[12px] text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-info/50"
+        className="h-9 w-full radius-control bg-[var(--app-inset)] px-3 type-caption text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-info/50"
       />
     </label>
   )
@@ -575,7 +578,7 @@ function CompactSleepField({
   useEffect(() => setText(value == null ? '' : String(value)), [value])
   return (
     <label className="block">
-      <span className="mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase text-[var(--app-muted)]">
+      <span className="mb-1.5 flex items-center justify-between type-micro font-semibold text-[var(--app-muted)]">
         <span>Sleep</span>
         <span className="normal-case text-[var(--app-muted)]">target {target ?? '—'}h</span>
       </span>
@@ -597,9 +600,9 @@ function CompactSleepField({
             )
           }}
           placeholder="—"
-          className="tabular min-w-0 flex-1 bg-transparent text-center text-[12px] font-semibold text-[var(--app-ink)] outline-none placeholder:text-[var(--app-muted)]"
+          className="tabular min-w-0 flex-1 bg-transparent text-center type-caption font-semibold text-[var(--app-ink)] outline-none placeholder:text-[var(--app-muted)]"
         />
-        <span className="text-[10px] text-[var(--app-muted)]">h</span>
+        <span className="type-caption text-[var(--app-muted)]">h</span>
       </span>
     </label>
   )
@@ -638,8 +641,8 @@ function AdaptiveReadinessPanel({
     <div className="border-b border-[var(--app-line)] py-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="text-[10px] font-semibold uppercase text-[var(--app-muted)]">Readiness</div>
-          <div className="mt-1 text-base font-semibold text-[var(--app-ink)]">
+          <div className="type-micro font-semibold text-[var(--app-muted)]">Readiness</div>
+          <div className="mt-1 type-body font-semibold text-[var(--app-ink)]">
             {prescription?.headline ?? (scheduled ? 'Complete today\'s check-in' : 'Recovery day')}
           </div>
         </div>
@@ -647,7 +650,7 @@ function AdaptiveReadinessPanel({
           <Pill tone={tone}>
             {prescription?.readinessScore == null ? 'score pending' : `${prescription.readinessScore}/100`}
           </Pill>
-          <span className="text-[10px] uppercase text-[var(--app-muted)]">
+          <span className="type-micro text-[var(--app-muted)]">
             {prescription?.confidence ?? 'low'} confidence
           </span>
           <button
@@ -655,7 +658,7 @@ function AdaptiveReadinessPanel({
             onClick={() => setExpanded((value) => !value)}
             aria-expanded={expanded}
             aria-controls="coach-readiness-details"
-            className="radius-control bg-[var(--app-inset)] px-2.5 py-1 text-[10px] font-semibold text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)] transition-colors hover:bg-[var(--app-inset)]"
+            className="radius-control bg-[var(--app-inset)] px-2.5 py-1 type-caption font-semibold text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)] transition-colors hover:bg-[var(--app-inset)]"
           >
             {expanded ? 'Done' : 'Update'}
           </button>
@@ -665,17 +668,17 @@ function AdaptiveReadinessPanel({
       {prescription ? (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 radius-control bg-[var(--app-inset)] px-3 py-2.5 ring-1 ring-inset ring-[var(--app-line)]">
           <div className="min-w-0">
-            <div className="text-[10px] font-semibold uppercase text-[var(--app-muted)]">
+            <div className="type-micro font-semibold text-[var(--app-muted)]">
               Adaptive session · {prescription.exercises.length} exercises
             </div>
-            <div className="mt-1 truncate text-[11px] text-[var(--app-ink-soft)]">
+            <div className="mt-1 truncate type-caption text-[var(--app-ink-soft)]">
               {prescription.adjustments[0] ?? 'Current plan and progression retained'}
             </div>
           </div>
           <button
             type="button"
             onClick={onApply}
-            className="min-h-9 shrink-0 radius-control bg-accent px-3 text-[11px] font-semibold text-ink-950 transition-transform active:scale-[0.97]"
+            className="min-h-9 shrink-0 radius-control bg-accent px-3 type-caption font-semibold text-ink-950 transition-transform active:scale-[0.97]"
           >
             {workoutFinished
               ? 'Open completed workout'
@@ -713,7 +716,7 @@ function AdaptiveReadinessPanel({
 
           <div className="mt-3 grid items-end gap-3 sm:grid-cols-[auto_minmax(0,1fr)]">
             <div>
-              <div className="mb-1.5 text-[10px] font-semibold uppercase text-[var(--app-muted)]">Time</div>
+              <div className="mb-1.5 type-micro font-semibold text-[var(--app-muted)]">Time</div>
               <div className="flex gap-1" role="group" aria-label="Minutes available">
                 {TIME_OPTIONS.map((minutes) => (
                   <button
@@ -725,11 +728,7 @@ function AdaptiveReadinessPanel({
                           log?.trainingMinutesAvailable === minutes ? null : minutes,
                       })
                     }
-                    className={`h-9 radius-control px-2.5 text-[11px] font-semibold transition-colors ${
-                      log?.trainingMinutesAvailable === minutes
-                        ? 'bg-accent text-ink-950'
-                        : 'bg-[var(--app-inset)] text-[var(--app-muted)] ring-1 ring-inset ring-[var(--app-line)]'
-                    }`}
+                    className={`h-9 radius-control px-2.5 type-caption font-semibold transition-colors ${ log?.trainingMinutesAvailable === minutes ? 'bg-accent text-ink-950' : 'bg-[var(--app-inset)] text-[var(--app-muted)] ring-1 ring-inset ring-[var(--app-line)]' }`}
                   >
                     {minutes}m
                   </button>
@@ -744,12 +743,12 @@ function AdaptiveReadinessPanel({
 
           {prescription ? (
             <div className="mt-4 border-t border-[var(--app-line)] pt-3">
-              <div className="text-[10px] font-semibold uppercase text-[var(--app-muted)]">Session detail</div>
+              <div className="type-micro font-semibold text-[var(--app-muted)]">Session detail</div>
               <div className="mt-3 divide-y divide-[var(--app-line)] border-y border-[var(--app-line)]">
                 {prescription.exercises.slice(0, 4).map((exercise) => (
                   <div
                     key={exercise.exerciseId}
-                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-2 text-[11px]"
+                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-2 type-caption"
                   >
                     <div className="min-w-0">
                       <div className="truncate font-semibold text-[var(--app-ink)]">{exercise.exerciseName}</div>

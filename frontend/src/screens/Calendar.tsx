@@ -79,21 +79,21 @@ export default function Calendar() {
             <button
               type="button"
               onClick={() => setCursor((value) => shiftMonths(value, -1))}
-              className="radius-control px-3 py-1.5 text-[12px] font-semibold text-[var(--app-ink)]"
+              className="radius-control px-3 py-1.5 type-caption font-semibold text-[var(--app-ink)]"
             >
               Prev
             </button>
             <button
               type="button"
               onClick={() => setCursor(monthStart(today))}
-              className="radius-control px-3 py-1.5 text-[12px] font-semibold text-[var(--app-ink)]"
+              className="radius-control px-3 py-1.5 type-caption font-semibold text-[var(--app-ink)]"
             >
               Today
             </button>
             <button
               type="button"
               onClick={() => setCursor((value) => shiftMonths(value, 1))}
-              className="radius-control px-3 py-1.5 text-[12px] font-semibold text-[var(--app-ink)]"
+              className="radius-control px-3 py-1.5 type-caption font-semibold text-[var(--app-ink)]"
             >
               Next
             </button>
@@ -103,7 +103,7 @@ export default function Calendar() {
 
       <SectionTitle
         action={
-          <span className="text-xs text-[var(--app-muted)]">
+          <span className="type-caption text-[var(--app-muted)]">
             {monthCompliance?.overallHitRatePct == null ? 'Start logging' : `${Math.round(monthCompliance.overallHitRatePct)}% hit rate`}
           </span>
         }
@@ -112,7 +112,7 @@ export default function Calendar() {
       </SectionTitle>
 
       <Card>
-        <div className="grid grid-cols-7 gap-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--app-muted)]">
+        <div className="grid grid-cols-7 gap-1.5 text-center type-micro font-semibold text-[var(--app-muted)]">
           {WEEKDAYS.map((day) => (
             <div key={day}>{day}</div>
           ))}
@@ -139,9 +139,9 @@ export default function Calendar() {
                 className={`relative aspect-square radius-control p-2 text-left ring-1 ring-inset transition-transform active:scale-95 ${classes[status]}`}
                 aria-label={`${formatShort(date, true)} ${status}`}
               >
-                <span className="tabular text-sm font-semibold">{Number(date.slice(8, 10))}</span>
+                <span className="tabular type-caption font-semibold">{Number(date.slice(8, 10))}</span>
                 {week && dayOfWeek(date) === 1 ? (
-                  <span className="absolute bottom-1.5 left-2 text-[9px] text-[var(--app-muted)]">W{week}</span>
+                  <span className="absolute bottom-1.5 left-2 type-caption text-[var(--app-muted)]">W{week}</span>
                 ) : null}
                 {isToday ? (
                   <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-info" />
@@ -158,8 +158,8 @@ export default function Calendar() {
           <Card key={phase.id}>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-sm font-semibold text-[var(--app-ink)]">{phase.name}</div>
-                <div className="mt-1 text-[12px] text-[var(--app-muted)]">
+                <div className="type-caption font-semibold text-[var(--app-ink)]">{phase.name}</div>
+                <div className="mt-1 type-caption text-[var(--app-muted)]">
                   {phase.startWeightKg} to {phase.targetWeightKg} kg · {phase.calories} kcal
                 </div>
               </div>
@@ -173,7 +173,7 @@ export default function Calendar() {
 
       <SectionTitle>Legend</SectionTitle>
       <Card>
-        <div className="grid gap-2 text-[12px] text-[var(--app-ink-soft)] sm:grid-cols-3">
+        <div className="grid gap-2 type-caption text-[var(--app-ink-soft)] sm:grid-cols-3">
           <div><span className="mr-2 inline-block h-2 w-2 rounded-full bg-accent" />Hit day</div>
           <div><span className="mr-2 inline-block h-2 w-2 rounded-full bg-alert" />Missed target</div>
           <div><span className="mr-2 inline-block h-2 w-2 rounded-full bg-[var(--app-inset)]" />Open / not fully logged</div>

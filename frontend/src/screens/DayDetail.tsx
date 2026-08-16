@@ -59,7 +59,7 @@ export default function DayDetail() {
         action={
           <Link
             to="/calendar"
-            className="glass-inset radius-control px-3 py-2 text-[12px] font-semibold text-[var(--app-ink)]"
+            className="glass-inset radius-control px-3 py-2 type-caption font-semibold text-[var(--app-ink)]"
           >
             Calendar
           </Link>
@@ -70,8 +70,8 @@ export default function DayDetail() {
         <Card className="mt-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <div className="text-sm font-semibold text-[var(--app-ink)]">{phase.name}</div>
-              <div className="mt-1 text-[12px] text-[var(--app-muted)]">
+              <div className="type-caption font-semibold text-[var(--app-ink)]">{phase.name}</div>
+              <div className="mt-1 type-caption text-[var(--app-muted)]">
                 {phase.calories} kcal · {phase.proteinG} g protein · {phase.steps.toLocaleString()} steps
               </div>
             </div>
@@ -118,7 +118,7 @@ export default function DayDetail() {
                 <button
                   type="button"
                   onClick={() => void addRun(date, 'easy')}
-                  className="rounded-full bg-accent/15 px-3 py-1 text-[11px] font-semibold text-accent ring-1 ring-inset ring-accent/25"
+                  className="rounded-full bg-accent/15 px-3 py-1 type-caption font-semibold text-accent ring-1 ring-inset ring-accent/25"
                 >
                   Add run
                 </button>
@@ -129,7 +129,7 @@ export default function DayDetail() {
             <div className="space-y-3">
               {runs.length === 0 ? (
                 <Card>
-                  <div className="text-sm text-[var(--app-ink-soft)]">No runs logged for this day.</div>
+                  <div className="type-caption text-[var(--app-ink-soft)]">No runs logged for this day.</div>
                 </Card>
               ) : (
                 runs.map((run) => (
@@ -140,9 +140,7 @@ export default function DayDetail() {
                           key={type}
                           type="button"
                           onClick={() => void updateRun(run.id, { type })}
-                          className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${
-                            run.type === type ? 'bg-info text-ink-950' : 'bg-[var(--app-inset)] text-[var(--app-muted)]'
-                          }`}
+                          className={`rounded-full px-2.5 py-1 type-caption font-semibold ${ run.type === type ? 'bg-info text-ink-950' : 'bg-[var(--app-inset)] text-[var(--app-muted)]' }`}
                         >
                           {type}
                         </button>
@@ -158,7 +156,7 @@ export default function DayDetail() {
                     <button
                       type="button"
                       onClick={() => void deleteRun(run.id)}
-                      className="mt-3 radius-control bg-alert/15 px-3 py-2 text-[12px] font-semibold text-alert ring-1 ring-inset ring-alert/25"
+                      className="mt-3 radius-control bg-alert/15 px-3 py-2 type-caption font-semibold text-alert ring-1 ring-inset ring-alert/25"
                     >
                       Delete run
                     </button>
@@ -169,13 +167,13 @@ export default function DayDetail() {
           </div>
 
           <Card>
-            <div className="text-sm font-semibold text-[var(--app-ink)]">Training detail</div>
-            <p className="mt-1 text-[12px] leading-relaxed text-[var(--app-muted)]">
+            <div className="type-caption font-semibold text-[var(--app-ink)]">Training detail</div>
+            <p className="mt-1 type-caption leading-relaxed text-[var(--app-muted)]">
               Set-by-set lifting still lives in Training for now. Day Detail keeps the daily facts, run log, measurements, and notes editable.
             </p>
             <Link
               to="/workout"
-              className="mt-3 inline-flex radius-control bg-[var(--app-inset)] px-3 py-2 text-[12px] font-semibold text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)]"
+              className="mt-3 inline-flex radius-control bg-[var(--app-inset)] px-3 py-2 type-caption font-semibold text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)]"
             >
               Open Training
             </Link>

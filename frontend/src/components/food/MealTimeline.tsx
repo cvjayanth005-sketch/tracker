@@ -30,10 +30,10 @@ function MealEditor({ meal, onClose }: { meal: Meal; onClose: () => void }) {
           const name = e.target.value.trim()
           if (name && name !== meal.name) void updateMeal(meal.id, { name })
         }}
-        className="w-full radius-control bg-[var(--app-inset)] px-3 py-2 text-sm font-medium text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] focus:ring-accent/60"
+        className="w-full radius-control bg-[var(--app-inset)] px-3 py-2 type-caption font-medium text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] focus:ring-accent/60"
       />
       <div className="flex items-center gap-2">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--app-muted)]">Portion</span>
+        <span className="type-micro font-semibold text-[var(--app-muted)]">Portion</span>
         <input
           type="number"
           inputMode="decimal"
@@ -43,7 +43,7 @@ function MealEditor({ meal, onClose }: { meal: Meal; onClose: () => void }) {
             if (next !== (meal.quantity ?? null)) void updateMeal(meal.id, { quantity: next })
           }}
           placeholder="—"
-          className="tabular w-16 radius-control bg-[var(--app-inset)] px-2 py-1.5 text-center text-[13px] text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
+          className="tabular w-16 radius-control bg-[var(--app-inset)] px-2 py-1.5 text-center type-caption text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
         />
         <input
           defaultValue={meal.unit ?? ''}
@@ -52,13 +52,13 @@ function MealEditor({ meal, onClose }: { meal: Meal; onClose: () => void }) {
             if (next !== (meal.unit ?? null)) void updateMeal(meal.id, { unit: next })
           }}
           placeholder="g / cup / piece"
-          className="min-w-0 flex-1 radius-control bg-[var(--app-inset)] px-2.5 py-1.5 text-[13px] text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
+          className="min-w-0 flex-1 radius-control bg-[var(--app-inset)] px-2.5 py-1.5 type-caption text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
         />
       </div>
       <div className="grid grid-cols-4 gap-1.5">
         {MACRO_CHIPS.map((field) => (
           <label key={field.key} className="block">
-            <span className="mb-1 block text-[9px] font-semibold uppercase tracking-wide" style={{ color: field.color }}>
+            <span className="mb-1 block type-micro font-semibold" style={{ color: field.color }}>
               {field.label}
             </span>
             <input
@@ -70,7 +70,7 @@ function MealEditor({ meal, onClose }: { meal: Meal; onClose: () => void }) {
                 if (next !== (meal[field.key] ?? null)) void updateMeal(meal.id, { [field.key]: next })
               }}
               placeholder="—"
-              className="tabular w-full radius-control bg-[var(--app-inset)] px-2 py-1.5 text-center text-[13px] font-semibold text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:font-normal placeholder:text-[var(--app-muted)] focus:ring-accent/60"
+              className="tabular w-full radius-control bg-[var(--app-inset)] px-2 py-1.5 text-center type-caption font-semibold text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:font-normal placeholder:text-[var(--app-muted)] focus:ring-accent/60"
             />
           </label>
         ))}
@@ -78,7 +78,7 @@ function MealEditor({ meal, onClose }: { meal: Meal; onClose: () => void }) {
       <div className="grid grid-cols-2 gap-1.5">
         {(Object.keys(SUBMACRO) as SubMacroKey[]).map((key) => (
           <label key={key} className="flex items-center gap-2 radius-control bg-[var(--app-inset)] px-2 py-1">
-            <span className="text-[10px] font-semibold" style={{ color: SUBMACRO[key].color }}>
+            <span className="type-caption font-semibold" style={{ color: SUBMACRO[key].color }}>
               {SUBMACRO[key].label}
             </span>
             <input
@@ -90,9 +90,9 @@ function MealEditor({ meal, onClose }: { meal: Meal; onClose: () => void }) {
                 if (next !== (meal[key] ?? null)) void updateMeal(meal.id, { [key]: next })
               }}
               placeholder="—"
-              className="tabular ml-auto w-14 rounded bg-[var(--app-inset)] px-1.5 py-1 text-center text-[12px] text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
+              className="tabular ml-auto w-14 rounded bg-[var(--app-inset)] px-1.5 py-1 text-center type-caption text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
             />
-            <span className="text-[9px] text-[var(--app-muted)]">g</span>
+            <span className="type-caption text-[var(--app-muted)]">g</span>
           </label>
         ))}
       </div>
@@ -101,13 +101,13 @@ function MealEditor({ meal, onClose }: { meal: Meal; onClose: () => void }) {
         <button
           type="button"
           onClick={() => void deleteMeal(meal.id)}
-          className="text-[12px] font-medium text-alert/80 hover:text-alert"
+          className="type-caption font-medium text-alert/80 hover:text-alert"
         >
           Delete meal
         </button>
         <div className="flex items-center gap-3">
           {saved ? (
-            <span className="text-[12px] font-medium text-accent">★ Saved</span>
+            <span className="type-caption font-medium text-accent">★ Saved</span>
           ) : (
             <button
               type="button"
@@ -116,13 +116,13 @@ function MealEditor({ meal, onClose }: { meal: Meal; onClose: () => void }) {
                 setSaved(true)
               }}
               disabled={!meal.name.trim()}
-              className="text-[12px] font-medium text-[var(--app-ink-soft)] hover:text-accent disabled:opacity-40"
+              className="type-caption font-medium text-[var(--app-ink-soft)] hover:text-accent disabled:opacity-40"
               title="Save to your quick-add library"
             >
               ☆ Save food
             </button>
           )}
-          <button type="button" onClick={onClose} className="text-[12px] font-medium text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]">
+          <button type="button" onClick={onClose} className="type-caption font-medium text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]">
             Done
           </button>
         </div>
@@ -140,7 +140,7 @@ function MacroChips({
     values[field.key] === null ? null : (
       <span
         key={field.key}
-        className="tabular rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
+        className="tabular rounded-md px-1.5 py-0.5 type-caption font-semibold"
         style={{ color: field.color, backgroundColor: `${field.color}1a` }}
       >
         {Math.round(values[field.key] as number)}
@@ -149,7 +149,7 @@ function MacroChips({
     ),
   )
   if (chips.every((chip) => chip === null)) {
-    return <span className="text-[11px] text-[var(--app-muted)]">No macros yet — tap to add</span>
+    return <span className="type-caption text-[var(--app-muted)]">No macros yet — tap to add</span>
   }
   return <>{chips}</>
 }
@@ -166,10 +166,10 @@ function MealRow({ meal, nested = false }: { meal: Meal; nested?: boolean }) {
     >
       <button type="button" onClick={() => setEditing((v) => !v)} className="flex w-full items-start justify-between gap-3 text-left">
         <div className="min-w-0">
-          <div className={`truncate font-medium text-[var(--app-ink)] ${nested ? 'text-[13px]' : 'text-sm'}`}>
+          <div className={`truncate font-medium text-[var(--app-ink)] ${nested ? 'type-caption' : 'type-caption'}`}>
             {meal.name || 'Untitled meal'}
             {meal.quantity !== null ? (
-              <span className="ml-1.5 text-[11px] font-normal text-[var(--app-muted)]">
+              <span className="ml-1.5 type-caption font-normal text-[var(--app-muted)]">
                 {meal.quantity}
                 {meal.unit ? ` ${meal.unit}` : ''}
               </span>
@@ -179,7 +179,7 @@ function MealRow({ meal, nested = false }: { meal: Meal; nested?: boolean }) {
             <MacroChips values={meal} />
           </div>
         </div>
-        {!nested && meal.time ? <span className="tabular shrink-0 text-[11px] text-[var(--app-muted)]">{meal.time}</span> : null}
+        {!nested && meal.time ? <span className="tabular shrink-0 type-caption text-[var(--app-muted)]">{meal.time}</span> : null}
       </button>
       {editing ? <MealEditor meal={meal} onClose={() => setEditing(false)} /> : null}
     </div>
@@ -201,13 +201,13 @@ function MealGroupCard({ group }: { group: MealGroup }) {
         className="flex w-full items-start justify-between gap-3 text-left"
       >
         <div className="min-w-0">
-          <div className="truncate text-sm font-medium text-[var(--app-ink)]">{groupName(group.meals)}</div>
+          <div className="truncate type-caption font-medium text-[var(--app-ink)]">{groupName(group.meals)}</div>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             <MacroChips values={totals} />
           </div>
         </div>
         <span className="flex shrink-0 items-center gap-2">
-          {group.time ? <span className="tabular text-[11px] text-[var(--app-muted)]">{group.time}</span> : null}
+          {group.time ? <span className="tabular type-caption text-[var(--app-muted)]">{group.time}</span> : null}
           <span className={`text-[var(--app-muted)] transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>⌄</span>
         </span>
       </button>
@@ -227,8 +227,8 @@ export function MealTimeline({ meals }: { meals: Meal[] }) {
   if (meals.length === 0) {
     return (
       <Card className="text-center">
-        <div className="text-sm font-medium text-[var(--app-ink)]">No meals logged today</div>
-        <p className="mx-auto mt-1 max-w-xs text-[13px] leading-relaxed text-[var(--app-muted)]">
+        <div className="type-caption font-medium text-[var(--app-ink)]">No meals logged today</div>
+        <p className="mx-auto mt-1 max-w-xs type-caption leading-relaxed text-[var(--app-muted)]">
           Use the logger above to describe what you ate — the coach reads every meal you add.
         </p>
       </Card>
@@ -244,8 +244,8 @@ export function MealTimeline({ meals }: { meals: Meal[] }) {
           <div key={slot}>
             <div className="mb-2 flex items-center gap-2 px-1">
               <span>{SLOT_META[slot].icon}</span>
-              <span className="text-[12px] font-semibold text-[var(--app-ink)]">{SLOT_META[slot].label}</span>
-              <span className="text-[11px] text-[var(--app-muted)]">
+              <span className="type-caption font-semibold text-[var(--app-ink)]">{SLOT_META[slot].label}</span>
+              <span className="type-caption text-[var(--app-muted)]">
                 {groups.length} meal{groups.length === 1 ? '' : 's'}
               </span>
             </div>

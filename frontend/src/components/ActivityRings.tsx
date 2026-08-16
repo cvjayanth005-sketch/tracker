@@ -114,7 +114,7 @@ export function ActivityRings({
         {RINGS.map((ring) => {
           const m = compliance?.metrics[ring.metric]
           return (
-            <li key={ring.metric} className="text-[12px] leading-tight">
+            <li key={ring.metric} className="type-caption leading-tight">
               <div className="flex items-center gap-2">
                 <span
                   className="h-2 w-2 shrink-0 rounded-full"
@@ -125,7 +125,7 @@ export function ActivityRings({
                   {m?.hitRatePct == null ? '—' : `${Math.round(m.hitRatePct)}%`}
                 </span>
               </div>
-              <div className="tabular ml-4 text-[11px] text-[var(--app-muted)]">
+              <div className="tabular ml-4 type-caption text-[var(--app-muted)]">
                 {m
                   ? [
                       `${m.hitDays} hit`,

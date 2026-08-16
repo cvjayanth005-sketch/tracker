@@ -166,7 +166,7 @@ export function TrendChart({
     <div ref={hostRef} className={className}>
       {!model ? (
         <div
-          className="glass-inset flex items-center justify-center radius-control text-[13px] text-[var(--app-muted)]"
+          className="glass-inset flex items-center justify-center radius-control type-caption text-[var(--app-muted)]"
           style={{ height }}
         >
           {!measured ? '' : hasData ? 'Preparing chart…' : 'No weigh-ins yet'}
@@ -341,7 +341,7 @@ export function TrendChart({
           </svg>
 
           {compact ? null : (
-          <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px]">
+          <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 type-caption">
             <span className="flex items-center gap-3 text-[var(--app-muted)]">
               <span className="flex items-center gap-1.5">
                 <span className="h-0.5 w-3 rounded-full bg-accent" />

@@ -63,11 +63,7 @@ function SlotPicker({ value, onChange }: { value: MealSlot; onChange: (slot: Mea
           key={slot}
           type="button"
           onClick={() => onChange(slot)}
-          className={`flex-1 radius-control px-2 py-2 text-[12px] font-medium transition-colors ${
-            value === slot
-              ? 'bg-accent text-ink-950'
-              : 'bg-[var(--app-inset)] text-[var(--app-ink-soft)] ring-1 ring-inset ring-[var(--app-line)] hover:bg-[var(--app-inset)]'
-          }`}
+          className={`flex-1 radius-control px-2 py-2 type-caption font-medium transition-colors ${ value === slot ? 'bg-accent text-ink-950' : 'bg-[var(--app-inset)] text-[var(--app-ink-soft)] ring-1 ring-inset ring-[var(--app-line)] hover:bg-[var(--app-inset)]' }`}
         >
           {SLOT_META[slot].label}
         </button>
@@ -98,13 +94,13 @@ function DraftRow({
           value={draft.name}
           onChange={(e) => onChange({ name: e.target.value })}
           placeholder="Meal name"
-          className="min-w-0 flex-1 radius-control bg-[var(--app-inset)] px-3 py-2 text-sm font-medium text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
+          className="min-w-0 flex-1 radius-control bg-[var(--app-inset)] px-3 py-2 type-caption font-medium text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
         />
         <input
           value={draft.time ?? ''}
           onChange={(e) => onChange({ time: e.target.value.trim() || null })}
           placeholder="—:—"
-          className="tabular w-16 radius-control bg-[var(--app-inset)] px-2 py-2 text-center text-sm text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
+          className="tabular w-16 radius-control bg-[var(--app-inset)] px-2 py-2 text-center type-caption text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
         />
         <button
           type="button"
@@ -116,26 +112,26 @@ function DraftRow({
         </button>
       </div>
       <div className="mt-2 flex items-center gap-2">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--app-muted)]">Portion</span>
+        <span className="type-micro font-semibold text-[var(--app-muted)]">Portion</span>
         <input
           type="number"
           inputMode="decimal"
           value={draft.quantity ?? ''}
           onChange={(e) => onChange({ quantity: num(e.target.value) })}
           placeholder="—"
-          className="tabular w-16 radius-control bg-[var(--app-inset)] px-2 py-1.5 text-center text-[13px] text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
+          className="tabular w-16 radius-control bg-[var(--app-inset)] px-2 py-1.5 text-center type-caption text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
         />
         <input
           value={draft.unit ?? ''}
           onChange={(e) => onChange({ unit: e.target.value.trim() || null })}
           placeholder="g / cup / piece"
-          className="min-w-0 flex-1 radius-control bg-[var(--app-inset)] px-2.5 py-1.5 text-[13px] text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
+          className="min-w-0 flex-1 radius-control bg-[var(--app-inset)] px-2.5 py-1.5 type-caption text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
         />
       </div>
       <div className="mt-2 grid grid-cols-4 gap-1.5">
         {MACRO_FIELDS.map((field) => (
           <label key={field.key} className="block">
-            <span className="mb-1 block text-[9px] font-semibold uppercase tracking-wide" style={{ color: field.color }}>
+            <span className="mb-1 block type-micro font-semibold" style={{ color: field.color }}>
               {field.label}
             </span>
             <input
@@ -144,7 +140,7 @@ function DraftRow({
               value={draft[field.key] ?? ''}
               onChange={(e) => onChange({ [field.key]: num(e.target.value) })}
               placeholder="—"
-              className="tabular w-full radius-control bg-[var(--app-inset)] px-2 py-1.5 text-center text-[13px] font-semibold text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:font-normal placeholder:text-[var(--app-muted)] focus:ring-accent/60"
+              className="tabular w-full radius-control bg-[var(--app-inset)] px-2 py-1.5 text-center type-caption font-semibold text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:font-normal placeholder:text-[var(--app-muted)] focus:ring-accent/60"
             />
           </label>
         ))}
@@ -152,7 +148,7 @@ function DraftRow({
       <div className="mt-1.5 grid grid-cols-2 gap-1.5">
         {(Object.keys(SUBMACRO) as SubMacroKey[]).map((key) => (
           <label key={key} className="flex items-center gap-2 radius-control bg-[var(--app-inset)] px-2 py-1">
-            <span className="text-[10px] font-semibold" style={{ color: SUBMACRO[key].color }}>
+            <span className="type-caption font-semibold" style={{ color: SUBMACRO[key].color }}>
               {SUBMACRO[key].label}
             </span>
             <input
@@ -161,9 +157,9 @@ function DraftRow({
               value={draft[key] ?? ''}
               onChange={(e) => onChange({ [key]: num(e.target.value) })}
               placeholder="—"
-              className="tabular ml-auto w-14 rounded bg-[var(--app-inset)] px-1.5 py-1 text-center text-[12px] text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
+              className="tabular ml-auto w-14 rounded bg-[var(--app-inset)] px-1.5 py-1 text-center type-caption text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
             />
-            <span className="text-[9px] text-[var(--app-muted)]">g</span>
+            <span className="type-caption text-[var(--app-muted)]">g</span>
           </label>
         ))}
       </div>
@@ -171,7 +167,7 @@ function DraftRow({
         <MicroFields value={draft.micros} onSet={(key, next) => onChange({ micros: setMicro(draft.micros, key, next) })} />
       </div>
       {draft.confidence || draft.caloriesLow !== null || draft.caloriesHigh !== null ? (
-        <div className="mt-2 flex items-center gap-2 text-[11px]">
+        <div className="mt-2 flex items-center gap-2 type-caption">
           {draft.confidence ? <ConfidenceBadge confidence={draft.confidence} /> : null}
           {draft.caloriesLow !== null && draft.caloriesHigh !== null ? (
             <span className="tabular text-[var(--app-muted)]">
@@ -195,7 +191,7 @@ function ConfidenceBadge({ confidence }: { confidence: EstimateConfidence }) {
         ? 'bg-info/12 text-info'
         : 'bg-warn/15 text-warn'
   return (
-    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${tone}`}>
+    <span className={`rounded-full px-2 py-0.5 type-caption font-semibold capitalize ${tone}`}>
       {confidence} confidence
     </span>
   )
@@ -306,7 +302,7 @@ export function MealLogger({ date }: { date: LocalDate }) {
             onChange={(e) => setText(e.target.value)}
             rows={2}
             placeholder="Describe what you ate — e.g. 2 scrambled eggs, oats with banana, black coffee"
-            className="w-full resize-none radius-control bg-[var(--app-inset)] px-3.5 py-3 text-sm text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
+            className="w-full resize-none radius-control bg-[var(--app-inset)] px-3.5 py-3 type-caption text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
           />
           <div className="flex gap-2">
             <Button variant="primary" onClick={() => void estimate()} disabled={busy || !text.trim()} className="flex-1">
@@ -316,30 +312,28 @@ export function MealLogger({ date }: { date: LocalDate }) {
               Add manually
             </Button>
           </div>
-          {error ? <p className="text-[12px] text-alert">{error}</p> : null}
+          {error ? <p className="type-caption text-alert">{error}</p> : null}
         </div>
       ) : (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <div className="text-sm font-semibold text-[var(--app-ink)]">
+            <div className="type-caption font-semibold text-[var(--app-ink)]">
               Review {drafts.length} item{drafts.length === 1 ? '' : 's'}
             </div>
             <span
-              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                aiParsed ? 'bg-info/12 text-info' : 'bg-[var(--app-inset)] text-[var(--app-ink-soft)]'
-              }`}
+              className={`rounded-full px-2 py-0.5 type-caption font-semibold ${ aiParsed ? 'bg-info/12 text-info' : 'bg-[var(--app-inset)] text-[var(--app-ink-soft)]' }`}
             >
               {aiParsed ? 'AI estimate' : 'Manual'}
             </span>
           </div>
-          {notice ? <p className="text-[12px] leading-relaxed text-[var(--app-muted)]">{notice}</p> : null}
+          {notice ? <p className="type-caption leading-relaxed text-[var(--app-muted)]">{notice}</p> : null}
           {!draftsHaveMacros(drafts) ? (
-            <p className="radius-control bg-warn/10 px-3 py-2 text-[12px] text-warn ring-1 ring-inset ring-warn/20">
+            <p className="radius-control bg-warn/10 px-3 py-2 type-caption text-warn ring-1 ring-inset ring-warn/20">
               Empty macros will not update today's calorie or protein totals. Add numbers before saving if you want them counted.
             </p>
           ) : null}
           {drafts.some((draft) => draft.confidence === 'low') ? (
-            <p className="radius-control bg-warn/10 px-3 py-2 text-[12px] text-warn ring-1 ring-inset ring-warn/20">
+            <p className="radius-control bg-warn/10 px-3 py-2 type-caption text-warn ring-1 ring-inset ring-warn/20">
               Some estimates are rough — double-check the ones marked low confidence before saving.
             </p>
           ) : null}
@@ -356,11 +350,11 @@ export function MealLogger({ date }: { date: LocalDate }) {
           <button
             type="button"
             onClick={addManual}
-            className="w-full radius-control border border-dashed border-[var(--app-line)] py-2 text-[12px] font-medium text-[var(--app-muted)] hover:border-[var(--app-line)] hover:text-[var(--app-ink)]"
+            className="w-full radius-control border border-dashed border-[var(--app-line)] py-2 type-caption font-medium text-[var(--app-muted)] hover:border-[var(--app-line)] hover:text-[var(--app-ink)]"
           >
             + Add another item
           </button>
-          {error ? <p className="text-[12px] text-alert">{error}</p> : null}
+          {error ? <p className="type-caption text-alert">{error}</p> : null}
           <div className="flex gap-2 pt-1">
             <Button variant="primary" onClick={() => void save()} disabled={saving} className="flex-1">
               {saving ? 'Saving…' : `Save ${drafts.length} meal${drafts.length === 1 ? '' : 's'}`}

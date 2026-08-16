@@ -146,6 +146,23 @@
   text-transform: uppercase;
 }
 
+/*
+ * Dense data cells.
+ *
+ * A ninth step, added reluctantly and scoped narrowly: a seven-column week grid
+ * on a 375px phone gives each cell about 44px, and the 13px floor overflows it.
+ * This is a real layout constraint rather than a shortcut, so it is named for
+ * that constraint — use it only in tabular grids where a cell cannot widen, and
+ * never for prose.
+ */
+.type-dense {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem; /* 11px */
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+  font-weight: 500;
+}
+
 /* ---------------------------------------------------------------------------
    Numerals
 

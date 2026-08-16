@@ -18,8 +18,7 @@ import { targetSegmentsForDay } from '@/components/today/dayTargetRingModel'
 import { buildTodayActions } from '@/components/today/todayActions'
 import { buildInsight, buildTodayTargets } from '@/components/today/todayTargets'
 import { projectArrival } from '@/domain/projection'
-import { Card, EmptyState, Pill, Stat } from '@/components/ui'
-import { statInt, statVal } from '@/components/format'
+import { Card, EmptyState, Pill } from '@/components/ui'
 import type { DailyLog, LocalDate, Phase, Run } from '@/domain/types'
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -73,12 +72,12 @@ function TodayCalendar({
   return (
     <Card>
       <div className="mb-3 flex items-baseline justify-between">
-        <div className="text-sm font-semibold text-[var(--app-ink)]">{monthLabel}</div>
-        <Link to="/calendar" className="text-[11px] font-medium text-accent">
+        <div className="type-caption font-semibold text-[var(--app-ink)]">{monthLabel}</div>
+        <Link to="/calendar" className="type-caption font-medium text-accent">
           Full calendar
         </Link>
       </div>
-      <div className="grid grid-cols-7 gap-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--app-muted)]">
+      <div className="grid grid-cols-7 gap-1.5 text-center type-micro font-semibold text-[var(--app-muted)]">
         {WEEKDAYS.map((day) => (
           <div key={day}>{day}</div>
         ))}
@@ -110,9 +109,9 @@ function TodayCalendar({
               className={`relative aspect-square radius-control p-2 text-left ring-1 ring-inset transition-transform active:scale-95 ${classes}`}
               aria-label={formatShort(date, true)}
             >
-              <span className="tabular text-sm font-semibold">{Number(date.slice(8, 10))}</span>
+              <span className="tabular type-caption font-semibold">{Number(date.slice(8, 10))}</span>
               {week && dayOfWeek(date) === 1 ? (
-                <span className="absolute bottom-1.5 left-2 text-[9px] text-[var(--app-muted)]">W{week}</span>
+                <span className="absolute bottom-1.5 left-2 type-caption text-[var(--app-muted)]">W{week}</span>
               ) : null}
               {isToday ? (
                 <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-info" />
@@ -121,7 +120,7 @@ function TodayCalendar({
           )
         })}
       </div>
-      <div className="mt-4 grid grid-cols-3 text-[11px] font-medium text-[var(--app-ink-soft)]">
+      <div className="mt-4 grid grid-cols-3 type-caption font-medium text-[var(--app-ink-soft)]">
         <span className="flex items-center gap-2">
           <span className="h-2.5 w-2.5 rounded-full bg-accent" /> Hit
         </span>
@@ -152,6 +151,8 @@ export default function Today() {
 
   const save = (patch: Partial<DailyLog>) => void upsertLog(today, patch)
   const focusLogField = (metric: MetricKey) => {
+    const logPanel = document.getElementById('today-log-panel') as HTMLDetailsElement | null
+    if (logPanel && !logPanel.open) logPanel.open = true
     const element = document.getElementById(`today-log-${metric}`)
     element?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     window.setTimeout(() => {
@@ -176,7 +177,14 @@ export default function Today() {
   )
   const todayRuns = dash.runs.filter((run) => run.date === today)
   const todayRunSummary = runSummary(todayRuns)
-  const coverage = Math.round(dash.compliance?.overallCoveragePct ?? 0)
+  const logEntryCount = [
+    todayLog?.calories,
+    todayLog?.proteinG,
+    todayLog?.steps,
+    todayRuns.length > 0 ? todayRuns.length : null,
+    todayLog?.gymDone,
+    todayLog?.mealsOnPlan,
+  ].filter((value) => value !== null && value !== undefined).length
 
   /*
    * The weigh-in card appears at the very top on a phone and at the head of the
@@ -242,16 +250,16 @@ export default function Today() {
 
           <div className="grid items-start gap-4 xl:grid-cols-[1fr_1.05fr]">
             <details className="group">
-              <summary className="surface flex min-h-20 cursor-pointer list-none items-center justify-between gap-4 radius-inset px-4 py-4 sm:px-5">
+              <summary className="surface flex min-h-20 cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 sm:px-5">
                 <span>
-                  <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">
+                  <span className="block type-micro font-semibold text-[var(--app-muted)]">
                     More insights
                   </span>
-                  <span className="mt-1 block text-[12px] text-[var(--app-muted)]">
-                    Plan signal, trend, and weekly averages
+                  <span className="mt-1 block type-caption text-[var(--app-muted)]">
+                    Plan signal and weight trend
                   </span>
                 </span>
-                <span className="text-lg text-[var(--app-muted)] transition-transform group-open:rotate-45">+</span>
+                <span className="type-lead text-[var(--app-muted)] transition-transform group-open:rotate-45">+</span>
               </summary>
               <div className="mt-4 space-y-4">
                 {dash.recommendation ? (
@@ -282,29 +290,15 @@ export default function Today() {
                     </p>
                   ) : null}
                 </Card>
-                <Card>
-                  <div className="mb-3 flex items-baseline justify-between px-1">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">
-                      Last 7 days
-                    </div>
-                    <span className="text-[11px] text-[var(--app-muted)]">{coverage}% coverage</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Stat label="Avg calories" value={statInt(dash.weekAverages?.calories)} unit="kcal" />
-                    <Stat label="Avg protein" value={statInt(dash.weekAverages?.protein)} unit="g" />
-                    <Stat label="Avg steps" value={statInt(dash.weekAverages?.steps)} />
-                    <Stat label="Run volume" value={statVal(dash.weekAverages?.runKmTotal, 1)} unit="km" />
-                  </div>
-                </Card>
               </div>
             </details>
 
             <div>
               <div className="mb-2.5 flex items-baseline justify-between px-1">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">
+                <div className="type-micro font-semibold text-[var(--app-muted)]">
                   Calendar
                 </div>
-                <span className="text-[11px] text-[var(--app-muted)]">This month</span>
+                <span className="type-caption text-[var(--app-muted)]">This month</span>
               </div>
               <TodayCalendar
                 today={today}
@@ -322,11 +316,24 @@ export default function Today() {
           <div className="hidden lg:block">{heroWeight}</div>
 
           <Card className="overflow-hidden">
-            <div className="mb-3 flex items-baseline justify-between px-1">
-              <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">Log</h2>
-              <span className="text-[11px] text-[var(--app-muted)]">Today</span>
-            </div>
-            <div className="space-y-2.5">
+            <details id="today-log-panel" className="group">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-1">
+                <span>
+                  <span className="block type-micro font-semibold text-[var(--app-muted)]">
+                    Log
+                  </span>
+                  <span className="mt-1 block type-caption text-[var(--app-muted)]">
+                    {logEntryCount > 0 ? `${logEntryCount} ${logEntryCount === 1 ? 'entry' : 'entries'} today` : 'Nothing logged yet'}
+                  </span>
+                </span>
+                <span className="flex items-center gap-3">
+                  <span className="type-caption text-[var(--app-muted)]">Today</span>
+                  <span className="glass-inset flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--app-ink-soft)] transition-transform group-open:rotate-180">
+                    ↓
+                  </span>
+                </span>
+              </summary>
+              <div className="mt-4 space-y-2.5 border-t border-[var(--app-line)] pt-4">
               <NumberField
                 id="today-log-calories"
                 label="Calories"
@@ -359,15 +366,15 @@ export default function Today() {
                 className="glass-tile flex scroll-mt-6 items-center justify-between gap-3 radius-inset px-4 py-3.5 transition-colors active:bg-[var(--app-inset)]"
               >
                 <span className="min-w-0">
-                  <span className="block text-[13px] font-medium text-[var(--app-ink)]">Run</span>
-                  <span className="block truncate text-[11px] text-[var(--app-muted)]">
+                  <span className="block type-caption font-medium text-[var(--app-ink)]">Run</span>
+                  <span className="block truncate type-caption text-[var(--app-muted)]">
                     {todayRunSummary ??
                       (todaySchedule?.runKm
                         ? `Planned ${todaySchedule.runKm} km`
                         : 'Nothing planned today')}
                   </span>
                 </span>
-                <span className="shrink-0 text-[12px] font-medium text-accent">Log details →</span>
+                <span className="shrink-0 type-caption font-medium text-accent">Log details →</span>
               </Link>
               <div id="today-log-gym" className="scroll-mt-6">
                 <TriToggle
@@ -389,17 +396,18 @@ export default function Today() {
                 onCommit={(mealsOnPlan) => save({ mealsOnPlan })}
                 target={`Out of ${phase.mealsPerDay}`}
               />
-            </div>
+              </div>
+            </details>
           </Card>
 
           <Card className="overflow-hidden">
             <details className="group">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-1">
                 <span>
-                  <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">
+                  <span className="block type-micro font-semibold text-[var(--app-muted)]">
                     How it felt
                   </span>
-                  <span className="mt-1 block text-[12px] text-[var(--app-muted)]">
+                  <span className="mt-1 block type-caption text-[var(--app-muted)]">
                     Energy {todayLog?.energy ?? '—'} · Hunger {todayLog?.hunger ?? '—'} · Soreness{' '}
                     {todayLog?.soreness ?? '—'}
                   </span>

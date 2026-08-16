@@ -51,9 +51,7 @@ export function TodayActionList({
           return (
             <li
               key={action.lane}
-              className={`radius-inset motion-press border p-3 sm:p-3.5 ${
-                done ? 'today-action-done border-transparent' : 'border-[var(--app-line)]'
-              }`}
+              className={`radius-inset motion-press border p-3 sm:p-3.5 ${ done ? 'today-action-done border-transparent' : 'border-[var(--app-line)]' }`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -67,9 +65,7 @@ export function TodayActionList({
                 </div>
 
                 <span
-                  className={`radius-pill shrink-0 border px-2 py-0.5 text-[11px] font-semibold ${statusClass(
-                    action.status,
-                  )}`}
+                  className={`radius-pill shrink-0 border px-2 py-0.5 type-caption font-semibold ${statusClass( action.status, )}`}
                 >
                   {STATUS_TEXT[action.status]}
                 </span>
@@ -79,7 +75,7 @@ export function TodayActionList({
                 <div className="mt-3">
                   <button
                     type="button"
-                    className="app-button app-button-secondary radius-control motion-press text-[13px]"
+                    className="app-button app-button-secondary radius-control motion-press type-caption"
                     onClick={() =>
                       action.command!.kind === 'workout'
                         ? onOpenWorkout()

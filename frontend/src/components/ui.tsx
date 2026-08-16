@@ -21,7 +21,10 @@ export function Card({
   refract?: boolean
 }) {
   const ref = useLiquidGlass<HTMLDivElement>({ scale: -90, chroma: 5, blur: 4 }, refract)
-  const base = `${refract ? 'glass' : 'surface'} radius-control p-4 sm:p-5`
+  // No radius utility here: `.surface` and `.glass` already carry the panel
+  // radius from the design system, and adding a control-sized one on top was
+  // flattening every card to 12px.
+  const base = `${refract ? 'glass' : 'surface'} p-4 sm:p-5`
 
   if (onClick) {
     return (
@@ -44,7 +47,7 @@ export function Card({
 export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
     <div className="mb-2.5 mt-7 flex items-baseline justify-between first:mt-0">
-      <h2 className="text-[11px] font-semibold uppercase tracking-normal text-[var(--app-muted)]">
+      <h2 className="type-micro font-semibold text-[var(--app-muted)]">
         {children}
       </h2>
       {action}
@@ -80,18 +83,18 @@ export function Stat({
           : 'text-[var(--app-ink)]'
   return (
     <div className="glass-inset radius-control px-3.5 py-3">
-      <div className="text-[10px] font-medium uppercase tracking-normal text-[var(--app-muted)]">
+      <div className="type-micro font-medium text-[var(--app-muted)]">
         {label}
       </div>
       <div
-        className={`tabular mt-1 text-xl font-semibold leading-none tracking-tight sm:text-2xl ${toneClass}`}
+        className={`tabular mt-1 type-title leading-none ${toneClass}`}
       >
         {value === null ? <span className="text-[var(--app-muted)]">—</span> : value}
         {value !== null && unit ? (
-          <span className="ml-1 text-xs font-normal text-[var(--app-muted)]">{unit}</span>
+          <span className="ml-1 type-dense text-[var(--app-muted)]">{unit}</span>
         ) : null}
       </div>
-      {sub ? <div className="mt-1.5 text-[11px] leading-tight text-[var(--app-muted)]">{sub}</div> : null}
+      {sub ? <div className="mt-1.5 type-caption leading-tight text-[var(--app-muted)]">{sub}</div> : null}
     </div>
   )
 }
@@ -112,7 +115,7 @@ export function Pill({
   } as const
   return (
     <span
-      className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 ring-inset ${tones[tone]}`}
+      className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-1 type-caption font-medium ring-1 ring-inset ${tones[tone]}`}
     >
       {children}
     </span>
@@ -259,11 +262,11 @@ export function PageHeader({
     <header className="flex items-end justify-between gap-3 pt-4 sm:pt-6">
       <div className="min-w-0">
         {eyebrow ? (
-          <div className="text-[11px] font-medium uppercase tracking-normal text-[var(--app-muted)]">
+          <div className="type-micro font-medium text-[var(--app-muted)]">
             {eyebrow}
           </div>
         ) : null}
-        <h1 className="mt-1 text-2xl font-semibold tracking-normal text-[var(--app-ink)] sm:text-3xl">{title}</h1>
+        <h1 className="mt-1 type-display text-[var(--app-ink)]">{title}</h1>
       </div>
       {action}
     </header>

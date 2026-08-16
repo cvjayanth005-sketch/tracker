@@ -51,16 +51,16 @@ export function SleepScoreCard({
     <Card className="flex min-h-[29rem] flex-col overflow-hidden">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-info">Sleep score</div>
-          <h2 className="mt-1 text-xl font-semibold text-[var(--app-ink)]">Last night&apos;s recovery</h2>
+          <div className="type-micro font-semibold text-info">Sleep score</div>
+          <h2 className="mt-1 type-title text-[var(--app-ink)]">Last night&apos;s recovery</h2>
         </div>
         <Pill tone={scoreTone(score.score)}>{score.score == null ? 'Needs check-in' : `${score.confidence} confidence`}</Pill>
       </div>
 
       {score.score == null ? (
         <div className="mt-5 flex min-h-44 flex-1 flex-col items-center justify-center radius-control border border-dashed border-[var(--app-line)] bg-[var(--app-inset)] px-6 text-center">
-          <h3 className="text-lg font-semibold text-[var(--app-ink)]">No score yet</h3>
-          <p className="mt-2 max-w-xs text-[12px] leading-relaxed text-[var(--app-muted)]">
+          <h3 className="type-lead font-semibold text-[var(--app-ink)]">No score yet</h3>
+          <p className="mt-2 max-w-xs type-caption leading-relaxed text-[var(--app-muted)]">
             Log sleep hours and a quality rating in Today to create a recovery score. Your optional timing and wake-ups sharpen it over time.
           </p>
         </div>
@@ -70,17 +70,17 @@ export function SleepScoreCard({
             <div className="relative mx-auto grid h-32 w-32 place-items-center rounded-full p-2" style={ringStyle}>
               <div className="grid h-full w-full place-items-center rounded-full bg-[var(--app-canvas-pure)] text-center shadow-inner">
                 <div>
-                  <div className="tabular-display text-4xl font-semibold leading-none text-[var(--app-ink)]">{score.score}</div>
-                  <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--app-muted)]">out of 100</div>
+                  <div className="tabular-display type-display leading-none text-[var(--app-ink)]">{score.score}</div>
+                  <div className="mt-1 type-micro font-semibold text-[var(--app-muted)]">out of 100</div>
                 </div>
               </div>
             </div>
             <div>
-              <div className="font-heading text-lg font-semibold text-[var(--app-ink)]">{score.label}</div>
-              <p className="mt-1 text-[12px] leading-relaxed text-[var(--app-muted)]">
+              <div className="font-heading type-lead font-semibold text-[var(--app-ink)]">{score.label}</div>
+              <p className="mt-1 type-caption leading-relaxed text-[var(--app-muted)]">
                 {log?.sleepHours ?? '—'}h against a {targetHours}h target · quality {log?.sleepQuality ?? '—'}/5
               </p>
-              <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-[11px]">
+              <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 type-caption">
                 <div><span className="text-[var(--app-muted)]">Duration</span><span className="float-right tabular font-semibold text-[var(--app-ink)]">{componentText(score.durationScore)}</span></div>
                 <div><span className="text-[var(--app-muted)]">Quality</span><span className="float-right tabular font-semibold text-[var(--app-ink)]">{componentText(score.qualityScore)}</span></div>
                 <div><span className="text-[var(--app-muted)]">Rhythm</span><span className="float-right tabular font-semibold text-[var(--app-ink)]">{componentText(score.consistencyScore, 'Learning')}</span></div>
@@ -90,7 +90,7 @@ export function SleepScoreCard({
           </div>
 
           <div className="mt-5 h-40 min-h-40 border-t border-[var(--app-line)] pt-4">
-            <div className="mb-2 flex items-center justify-between text-[11px]">
+            <div className="mb-2 flex items-center justify-between type-caption">
               <span className="font-medium text-[var(--app-muted)]">Seven-night trend</span>
               <span className="tabular text-[var(--app-muted)]">{known.length}/7 scored</span>
             </div>
@@ -113,8 +113,8 @@ export function SleepScoreCard({
                     if (!active || !night) return null
                     return (
                       <div className="radius-control border border-[var(--app-line)] bg-[var(--app-ink-raised)]/95 px-3 py-2 shadow-2xl backdrop-blur-xl">
-                        <div className="text-[10px] font-semibold uppercase text-[var(--app-muted)]">{weekdayName(night.date)} · {formatShort(night.date)}</div>
-                        <div className="mt-1 tabular text-sm font-semibold text-[var(--app-ink)]">{night.score == null ? 'No complete check-in' : `${night.score}/100`}</div>
+                        <div className="type-micro font-semibold text-[var(--app-muted)]">{weekdayName(night.date)} · {formatShort(night.date)}</div>
+                        <div className="mt-1 tabular type-caption font-semibold text-[var(--app-ink)]">{night.score == null ? 'No complete check-in' : `${night.score}/100`}</div>
                       </div>
                     )
                   }}

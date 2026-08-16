@@ -100,11 +100,7 @@ export default function Progress() {
                 key={r.label}
                 type="button"
                 onClick={() => setRangeDays(r.days)}
-                className={`radius-control px-3 py-1.5 text-[11px] font-medium transition-colors ${
-                  rangeDays === r.days
-                    ? 'bg-[var(--app-inset)] text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)]'
-                    : 'text-[var(--app-muted)]'
-                }`}
+                className={`radius-control px-3 py-1.5 type-caption font-medium transition-colors ${ rangeDays === r.days ? 'bg-[var(--app-inset)] text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)]' : 'text-[var(--app-muted)]' }`}
               >
                 {r.label}
               </button>
@@ -160,7 +156,7 @@ export default function Progress() {
       <SectionTitle>This week at a glance</SectionTitle>
       <Card>
         <ActivityRings compliance={compliance} />
-        <p className="mt-3 text-[11px] leading-relaxed text-[var(--app-muted)]">
+        <p className="mt-3 type-caption leading-relaxed text-[var(--app-muted)]">
           Solid arc = logged and hit. Faded arc = logged and missed. Grey arc = never
           logged. A week you did not track shows as gaps rather than as a full ring.
         </p>
@@ -172,15 +168,15 @@ export default function Progress() {
       <SectionTitle>Phase</SectionTitle>
       <Card>
         <div className="flex items-start justify-between gap-3">
-          <h3 className="text-[15px] font-semibold leading-snug">{review?.headline}</h3>
+          <h3 className="type-body font-semibold leading-snug">{review?.headline}</h3>
           <Pill tone={review?.code === 'ready_for_review' ? 'good' : 'neutral'}>
             {phase.name}
           </Pill>
         </div>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--app-ink-soft)]">{review?.detail}</p>
+        <p className="mt-1.5 type-caption leading-relaxed text-[var(--app-ink-soft)]">{review?.detail}</p>
         {review && review.daysRequired > 0 ? (
           <div className="mt-3">
-            <div className="mb-1 flex justify-between text-[11px] text-[var(--app-muted)]">
+            <div className="mb-1 flex justify-between type-caption text-[var(--app-muted)]">
               <span>Hold under target</span>
               <span className="tabular">
                 {review.daysHeld}/{review.daysRequired} days
@@ -200,7 +196,7 @@ export default function Progress() {
         <div>
       <SectionTitle
         action={
-          <span className="tabular text-xs text-[var(--app-muted)]">
+          <span className="tabular type-caption text-[var(--app-muted)]">
             {fmt(compliance?.overallHitRatePct ?? null, 0)}% · {fmt(compliance?.overallCoveragePct ?? null, 0)}% logged
           </span>
         }
@@ -215,7 +211,7 @@ export default function Progress() {
             if (!m) return null
             if (m.eligibleDays === 0) {
               return (
-                <div key={metric} className="flex items-center justify-between text-[12px]">
+                <div key={metric} className="flex items-center justify-between type-caption">
                   <span className="text-[var(--app-muted)]">{METRIC_LABEL[metric]}</span>
                   <span className="text-[var(--app-muted)]">not scheduled</span>
                 </div>
@@ -223,7 +219,7 @@ export default function Progress() {
             }
             return (
               <div key={metric}>
-                <div className="mb-1 flex items-baseline justify-between text-[12px]">
+                <div className="mb-1 flex items-baseline justify-between type-caption">
                   <span className="text-[var(--app-ink)]">{METRIC_LABEL[metric]}</span>
                   <span className="tabular text-[var(--app-muted)]">
                     {m.hitRatePct === null ? (
@@ -265,7 +261,7 @@ export default function Progress() {
             )
           })}
         </div>
-        <p className="mt-3 text-[11px] leading-relaxed text-[var(--app-muted)]">
+        <p className="mt-3 type-caption leading-relaxed text-[var(--app-muted)]">
           Hit rate counts only the days you logged. The second number is how much of the
           week was logged at all — a high hit rate on low coverage is not a good week, and
           the rules engine treats it as unknown rather than good.
@@ -323,7 +319,7 @@ export default function Progress() {
       <Card>
         <div className="space-y-2">
           {training.map((week) => (
-            <div key={week.label} className="flex items-center justify-between text-[13px]">
+            <div key={week.label} className="flex items-center justify-between type-caption">
               <span className="text-[var(--app-ink-soft)]">{week.label}</span>
               <span className="tabular text-[var(--app-ink)]">
                 {week.sessions} session{week.sessions === 1 ? '' : 's'}
@@ -340,14 +336,14 @@ export default function Progress() {
         <div>
           <SectionTitle>The working</SectionTitle>
           <Card>
-            <p className="mb-3 text-[12px] leading-relaxed text-[var(--app-muted)]">
+            <p className="mb-3 type-caption leading-relaxed text-[var(--app-muted)]">
               Every number the recommendation engine used to reach{' '}
               <span className="text-[var(--app-ink)]">
                 &ldquo;{dash.recommendation?.headline}&rdquo;
               </span>
               . Nothing here comes from the AI.
             </p>
-            <dl className="glass-inset-deep grid grid-cols-2 gap-x-3 gap-y-1.5 radius-control p-3.5 text-[12px]">
+            <dl className="glass-inset-deep grid grid-cols-2 gap-x-3 gap-y-1.5 radius-control p-3.5 type-caption">
               <Row label="Loss rate" value={`${fmt(e.lossKgPerWeek, 2)} kg/wk`} />
               <Row label="Trend weight" value={`${fmt(e.trendWeightKg, 2)} kg`} />
               <Row label="Previous week" value={`${fmt(e.previousTrendWeightKg, 2)} kg`} />
@@ -370,7 +366,7 @@ export default function Progress() {
                   )})`}
                 />
               ) : null}
-              <div className="col-span-2 mt-1 text-[10px] text-[var(--app-muted)]">
+              <div className="col-span-2 mt-1 type-caption text-[var(--app-muted)]">
                 rules v{dash.recommendation?.rulesVersion}
               </div>
             </dl>

@@ -167,14 +167,14 @@ function WelcomePage() {
       <main className="mx-auto flex min-h-dvh w-full max-w-[1600px] flex-col p-3 safe-top sm:p-5 lg:p-6">
         <header className="flex min-h-16 shrink-0 items-center justify-between px-2 sm:px-3">
           <div>
-            <div className="font-heading text-2xl font-bold leading-none text-surface-ink sm:text-3xl">
+            <div className="font-heading type-heading leading-none text-surface-ink">
               Formara
             </div>
-            <div className="mt-1.5 text-xs font-medium text-surface-ink-muted sm:text-sm">
+            <div className="mt-1.5 type-caption font-medium text-surface-ink-muted">
               Your body. Your data. Your next move.
             </div>
           </div>
-          <div className="hidden items-center gap-2 text-xs font-medium text-surface-ink-muted sm:flex">
+          <div className="hidden items-center gap-2 type-caption font-medium text-surface-ink-muted sm:flex">
             <span className="h-2 w-2 rounded-full bg-accent" aria-hidden="true" />
             Private by design
           </div>
@@ -213,7 +213,7 @@ function WelcomePage() {
             />
           </picture>
           <div className="relative z-10 flex min-h-[calc(100dvh-6.5rem)] flex-col p-5 sm:p-8 lg:p-12">
-            <div className="text-[11px] font-semibold uppercase text-surface-ink-muted">
+            <div className="type-micro font-semibold text-surface-ink-muted">
               Personal fitness, made clear
             </div>
 
@@ -226,27 +226,27 @@ function WelcomePage() {
                 reflowing. `text-balance` keeps the two-line shape it was drawn
                 with, and the max-width sets where it turns over.
               */}
-              <h1 className="font-heading max-w-[14ch] text-4xl font-bold leading-[0.94] text-surface-ink sm:text-6xl lg:text-7xl xl:text-8xl [text-wrap:balance]">
+              <h1 className="font-heading max-w-[14ch] type-display leading-[0.94] text-surface-ink lg:text-7xl xl:text-8xl [text-wrap:balance]">
                 Make your next move count
               </h1>
 
               <div className="w-full max-w-sm lg:ml-auto">
                 <div className="formara-auth-panel radius-control p-5 text-surface-ink sm:p-6">
-                  <h2 className="font-heading text-2xl font-semibold leading-tight text-surface-ink">
+                  <h2 className="font-heading type-heading leading-tight text-surface-ink">
                     Welcome back
                   </h2>
-                  <p className="mt-2 text-sm leading-6 text-surface-ink-muted">
+                  <p className="mt-2 type-caption leading-6 text-surface-ink-muted">
                     Sign in to continue with your training, recovery, and nutrition data.
                   </p>
 
                   <GoogleSlideSignIn appearance="light" onStatus={setStatus} />
                   {status ? (
-                    <div className="mt-3 text-xs leading-relaxed text-surface-ink-muted" role="status">
+                    <div className="mt-3 type-caption leading-relaxed text-surface-ink-muted" role="status">
                       {status}
                     </div>
                   ) : null}
 
-                  <p className="mt-4 border-t border-surface-line pt-4 text-xs leading-5 text-surface-ink-soft">
+                  <p className="mt-4 border-t border-surface-line pt-4 type-caption leading-5 text-surface-ink-soft">
                     Your account keeps this device synced. Your fitness data stays private.
                   </p>
                 </div>
@@ -288,11 +288,11 @@ function AccountSyncGate({
     <div className="min-h-dvh">
       <Aurora />
       <main className="mx-auto flex min-h-dvh max-w-md items-center px-5 text-center">
-        <div className="glass-strong radius-inset p-5">
-          <h1 className="text-lg font-semibold text-[var(--app-ink)]">{title}</h1>
-          <p className="mt-2 text-sm leading-6 text-[var(--app-ink-soft)]">{body}</p>
+        <div className="glass-strong p-5">
+          <h1 className="type-lead font-semibold text-[var(--app-ink)]">{title}</h1>
+          <p className="mt-2 type-caption leading-6 text-[var(--app-ink-soft)]">{body}</p>
           {detail ? (
-            <div className="mt-3 radius-control bg-warn/10 px-3 py-2 text-[12px] leading-relaxed text-warn ring-1 ring-inset ring-warn/20">
+            <div className="mt-3 radius-control bg-warn/10 px-3 py-2 type-caption leading-relaxed text-warn ring-1 ring-inset ring-warn/20">
               {detail}
             </div>
           ) : null}
@@ -301,7 +301,7 @@ function AccountSyncGate({
               <button
                 type="button"
                 onClick={onUseServer}
-                className="radius-control bg-accent px-3 py-2.5 text-sm font-semibold text-ink-950"
+                className="radius-control bg-accent px-3 py-2.5 type-caption font-semibold text-ink-950"
               >
                 Use server copy
               </button>
@@ -310,7 +310,7 @@ function AccountSyncGate({
               <button
                 type="button"
                 onClick={onReplaceServer}
-                className="radius-control bg-[var(--app-inset)] px-3 py-2.5 text-sm font-semibold text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)]"
+                className="radius-control bg-[var(--app-inset)] px-3 py-2.5 type-caption font-semibold text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)]"
               >
                 Replace server with this device
               </button>
@@ -318,7 +318,7 @@ function AccountSyncGate({
             <button
               type="button"
               onClick={onRetry}
-              className="radius-control bg-[var(--app-inset)] px-3 py-2.5 text-sm font-semibold text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)]"
+              className="radius-control bg-[var(--app-inset)] px-3 py-2.5 type-caption font-semibold text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)]"
             >
               Retry sync
             </button>
@@ -501,12 +501,12 @@ export default function App() {
       <div className="min-h-dvh">
         <Aurora />
         <main className="mx-auto flex min-h-dvh max-w-md items-center px-5 text-center">
-          <div className="glass-strong radius-inset p-5">
-            <h1 className="text-lg font-semibold text-[var(--app-ink)]">Loading your tracker</h1>
-            <p className="mt-2 text-sm leading-6 text-[var(--app-ink-soft)]">
+          <div className="glass-strong p-5">
+            <h1 className="type-lead font-semibold text-[var(--app-ink)]">Loading your tracker</h1>
+            <p className="mt-2 type-caption leading-6 text-[var(--app-ink-soft)]">
               Pulling your account data before opening the dashboard.
             </p>
-            {bootError ? <div className="mt-3 text-[12px] text-warn">{bootError}</div> : null}
+            {bootError ? <div className="mt-3 type-caption text-warn">{bootError}</div> : null}
           </div>
         </main>
       </div>
