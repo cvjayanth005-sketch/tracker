@@ -87,7 +87,7 @@ export function HeroWeight({
             window.clearTimeout(timer.current)
             commit(e.target.value)
           }}
-          className="tabular w-full min-w-0 bg-transparent text-5xl font-semibold tracking-tight text-ink-50 outline-none placeholder:text-ink-700 sm:text-6xl"
+          className="tabular-display w-full min-w-0 bg-transparent text-5xl font-semibold tracking-tight text-ink-50 outline-none placeholder:text-ink-700 sm:text-6xl"
         />
         <span className="pb-1.5 text-lg font-medium text-ink-400">kg</span>
       </div>

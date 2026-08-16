@@ -734,6 +734,21 @@
   }
 }
 
+/*
+ * Large hero numerals — the weigh-in, the sleep score.
+ *
+ * `.tabular` is right for columns of figures, but wrong for one big number:
+ * IBM Plex Mono gives the period a full character cell, so "90.4" at 48px reads
+ * as "90 . 4" with the decimal adrift. Archivo is proportional and ships a
+ * `tnum` feature, so digits still share one advance width — values stay
+ * jitter-free as they change, without the monospace gap. (DM Sans has no `tnum`,
+ * which is why this deliberately uses the heading family rather than the body.)
+ */
+@utility tabular-display {
+  font-family: var(--font-heading);
+  font-variant-numeric: tabular-nums;
+}
+
 @utility safe-bottom {
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }

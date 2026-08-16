@@ -92,11 +92,12 @@ export function SleepCheckIn({
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/8 pb-3">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-info">Last night</div>
-          <div className="mt-1 text-lg font-semibold text-ink-50">Morning sleep check-in</div>
+          {/* Semantic h2: card titles built as divs silently miss the heading face. */}
+          <h2 className="mt-1 text-lg font-semibold text-ink-50">Morning sleep check-in</h2>
         </div>
         <div className="flex items-center gap-2">
           <div className="text-right">
-            <div className="tabular text-2xl font-semibold leading-none text-ink-50">
+            <div className="tabular-display text-2xl font-semibold leading-none text-ink-50">
               {score.score ?? '—'}
             </div>
             <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-500">
@@ -125,7 +126,7 @@ export function SleepCheckIn({
                 aria-label={`Sleep quality ${value} of 5`}
                 aria-pressed={log?.sleepQuality === value}
                 onClick={() => onSave({ sleepQuality: log?.sleepQuality === value ? null : value })}
-                className={`rounded-xl text-sm font-semibold transition-colors ${optionClass(log?.sleepQuality === value)}`}
+                className={`tabular rounded-xl text-sm font-semibold transition-colors ${optionClass(log?.sleepQuality === value)}`}
               >
                 {value}
               </button>
@@ -138,7 +139,7 @@ export function SleepCheckIn({
             type="time"
             value={log?.sleepBedtime ?? ''}
             onChange={(event) => onSave({ sleepBedtime: event.target.value || null })}
-            className="h-11 w-full rounded-xl bg-black/25 px-3 text-sm font-medium text-ink-100 outline-none ring-1 ring-inset ring-white/10 focus:ring-info/60"
+            className="tabular h-11 w-full rounded-xl bg-black/25 px-3 text-sm font-medium text-ink-100 outline-none ring-1 ring-inset ring-white/10 focus:ring-info/60"
           />
         </label>
         <label className="block min-w-0">
@@ -147,7 +148,7 @@ export function SleepCheckIn({
             type="time"
             value={log?.sleepWakeTime ?? ''}
             onChange={(event) => onSave({ sleepWakeTime: event.target.value || null })}
-            className="h-11 w-full rounded-xl bg-black/25 px-3 text-sm font-medium text-ink-100 outline-none ring-1 ring-inset ring-white/10 focus:ring-info/60"
+            className="tabular h-11 w-full rounded-xl bg-black/25 px-3 text-sm font-medium text-ink-100 outline-none ring-1 ring-inset ring-white/10 focus:ring-info/60"
           />
         </label>
         <div className="min-w-0">
@@ -162,7 +163,7 @@ export function SleepCheckIn({
                 aria-label={value === 4 ? '4 or more awakenings' : `${value} awakenings`}
                 aria-pressed={log?.nightAwakenings === value}
                 onClick={() => onSave({ nightAwakenings: log?.nightAwakenings === value ? null : value })}
-                className={`rounded-xl text-xs font-semibold transition-colors ${optionClass(log?.nightAwakenings === value, 'accent')}`}
+                className={`tabular rounded-xl text-xs font-semibold transition-colors ${optionClass(log?.nightAwakenings === value, 'accent')}`}
               >
                 {value === 4 ? '4+' : value}
               </button>
