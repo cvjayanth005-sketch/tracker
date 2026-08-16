@@ -3,6 +3,7 @@ import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { googleLoginDevRoute } from './src/dev/googleLoginDevRoute.js'
 
 export default defineConfig({
   resolve: {
@@ -21,6 +22,8 @@ export default defineConfig({
     },
   },
   plugins: [
+    // Serves /api/google-login locally; the deployed app uses the edge function.
+    googleLoginDevRoute(),
     react(),
     tailwindcss(),
     VitePWA({
