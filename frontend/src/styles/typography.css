@@ -1,0 +1,197 @@
+/*
+ * Typographic scale.
+ *
+ * The app had 31 distinct font sizes, 319 of its uses crammed between 9px and
+ * 13px, and exactly one size above 15px anywhere in the JSX. Everything was
+ * within a few pixels of everything else, so nothing could be dominant and the
+ * eye had nowhere to land — which is why the screens read as flat regardless of
+ * colour or spacing.
+ *
+ * This replaces that with eight steps on a ~1.25 ratio. Steps are named for the
+ * job they do rather than their size, so a heading stays a heading when the
+ * scale is retuned, and so a component cannot quietly invent a ninth size.
+ *
+ * Weight is deliberately light: hierarchy comes from the 3.6x size range, so
+ * display text can sit at 300 and still dominate. Two floors are not stylistic
+ * choices but limits — IBM Plex Mono ships as static 400/500/600 files, so no
+ * numeral can go below 400, and 11px uppercase stops being legible under about
+ * 500 regardless of what the rest of the scale does.
+ *
+ * Each step ships with its own line height and letter spacing, because the
+ * correct values differ by size: large text needs negative tracking to stop it
+ * looking loose, and small uppercase text needs positive tracking to stay
+ * legible. Pairing them here is most of the difference between type that is
+ * merely sized and type that looks set.
+ */
+
+:root {
+  /* --- Scale ------------------------------------------------------------
+   * 16px base. Ratio ~1.25 through the reading range, widening at the top so
+   * display text separates decisively from body rather than merely being a bit
+   * bigger.
+   */
+  --type-micro: 0.8125rem;   /* 13px — eyebrows, axis labels, chip text */
+  --type-caption: 0.8125rem; /* 13px — supporting and secondary copy */
+  --type-body: 0.9375rem;    /* 15px — default reading size */
+  --type-lead: 1.0625rem;    /* 17px — summaries, the sentence that matters */
+  --type-title: 1.34375rem;  /* 21.5px — card and section titles */
+  --type-heading: 1.9375rem; /* 31px — screen sections */
+  --type-display: 2.625rem;  /* 42px — screen titles */
+  /* The one hero number per screen. Fluid so it stays dominant on a phone. */
+  --type-hero: clamp(3rem, 9vw, 4.5rem);
+
+  /* --- Line heights ------------------------------------------------------
+   * Tight at display sizes, generous at reading sizes. A single global
+   * line-height is the other half of why dense screens feel cramped.
+   */
+  --leading-hero: 0.92;
+  --leading-display: 1;
+  --leading-heading: 1.12;
+  --leading-title: 1.25;
+  --leading-body: 1.55;
+  --leading-caption: 1.45;
+  --leading-micro: 1.3;
+
+  /* --- Optical tracking --------------------------------------------------
+   * Negative as size grows, positive for small uppercase. These are the values
+   * a typesetter would apply by eye; without them large text looks loose and
+   * small caps look jammed.
+   */
+  --tracking-hero: -0.03em;
+  --tracking-display: -0.028em;
+  --tracking-heading: -0.02em;
+  --tracking-title: -0.008em;
+  --tracking-body: 0;
+  --tracking-micro: 0.045em;
+}
+
+/* ---------------------------------------------------------------------------
+   Roles
+
+   Each class sets size, leading, tracking, weight and family together. Applying
+   one class should produce correctly set text with no follow-up utilities,
+   which is what stops the 31-size sprawl from growing back.
+--------------------------------------------------------------------------- */
+
+.type-hero {
+  font-family: var(--font-mono);
+  font-size: var(--type-hero);
+  line-height: var(--leading-hero);
+  letter-spacing: var(--tracking-hero);
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+}
+
+.type-display {
+  font-family: var(--font-heading);
+  font-size: var(--type-display);
+  line-height: var(--leading-display);
+  letter-spacing: var(--tracking-display);
+  font-weight: 300;
+}
+
+.type-heading {
+  font-family: var(--font-heading);
+  font-size: var(--type-heading);
+  line-height: var(--leading-heading);
+  letter-spacing: var(--tracking-heading);
+  font-weight: 300;
+  /* Separates the heading from the list beneath it without a margin that
+     would collapse against the first child's own spacing. */
+  padding-bottom: 1.5px;
+}
+
+.type-title {
+  font-family: var(--font-heading);
+  font-size: var(--type-title);
+  line-height: var(--leading-title);
+  letter-spacing: var(--tracking-title);
+  font-weight: 400;
+}
+
+.type-lead {
+  font-family: var(--font-sans);
+  font-size: var(--type-lead);
+  line-height: var(--leading-body);
+  letter-spacing: var(--tracking-body);
+  font-weight: 400;
+}
+
+.type-body {
+  font-family: var(--font-sans);
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
+  letter-spacing: var(--tracking-body);
+  font-weight: 400;
+}
+
+.type-caption {
+  font-family: var(--font-sans);
+  font-size: var(--type-caption);
+  line-height: var(--leading-caption);
+  letter-spacing: var(--tracking-body);
+  font-weight: 400;
+}
+
+/*
+ * Eyebrow / label. Uppercase at 11px is unreadable without extra tracking,
+ * which is why the positive value is baked in rather than left to the caller.
+ */
+.type-micro {
+  font-family: var(--font-sans);
+  font-size: var(--type-micro);
+  line-height: var(--leading-micro);
+  letter-spacing: var(--tracking-micro);
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+/* ---------------------------------------------------------------------------
+   Numerals
+
+   Numbers are the app's primary content, so they get their own roles rather
+   than borrowing the text ones. All use tabular figures: a value that changes
+   as you log must not reflow the row it sits in.
+--------------------------------------------------------------------------- */
+
+.type-metric {
+  font-family: var(--font-mono);
+  font-size: var(--type-heading);
+  line-height: var(--leading-heading);
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+}
+
+.type-metric-sm {
+  font-family: var(--font-mono);
+  font-size: var(--type-lead);
+  line-height: var(--leading-title);
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+}
+
+/*
+ * The unit trailing a number. Deliberately much smaller and lighter: "90.4 kg"
+ * should read as one object with a quiet suffix, not as two competing words.
+ */
+.type-unit {
+  font-family: var(--font-sans);
+  font-size: 0.5em;
+  letter-spacing: 0.02em;
+  font-weight: 500;
+  opacity: 0.62;
+}
+
+/*
+ * Optical alignment for a hero numeral.
+ *
+ * Tabular figures carry side bearings, so a large number set flush to a
+ * container edge looks visibly indented next to a label above it. Pulling it
+ * back by a fraction of its own size makes the stack look aligned, which is the
+ * kind of detail that reads as care rather than as an effect.
+ */
+.type-optical-left {
+  margin-left: -0.04em;
+}

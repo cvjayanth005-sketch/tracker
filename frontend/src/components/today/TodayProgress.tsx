@@ -74,10 +74,10 @@ function TargetRing({ segments, size = 96 }: { segments: DayTargetSegment[]; siz
         ))}
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-        <span className="today-numeral text-lg font-semibold leading-none text-[var(--app-ink)]">
+        <span className="type-metric-sm text-[var(--app-ink)]">
           {hit}/{applicable}
         </span>
-        <span className="app-eyebrow mt-0.5 text-[9px]">targets</span>
+        <span className="type-micro mt-0.5 text-[var(--app-muted)]">targets</span>
       </div>
     </div>
   )
@@ -107,10 +107,10 @@ export function TodayProgress({
             whether to change anything, and the averages behind it are already
             in the logger.
           */}
-          <div className="mt-1 text-[15px] font-semibold text-[var(--app-ink)]">
+          <div className="type-title mt-1 text-[var(--app-ink)]">
             {INSIGHT_LABEL[insight.verdict]}
           </div>
-          <p className="app-copy mt-1 text-[13px] leading-relaxed">{insight.summary}</p>
+          <p className="type-caption mt-1 text-[var(--app-ink-soft)]">{insight.summary}</p>
         </div>
       </div>
 
@@ -124,7 +124,7 @@ export function TodayProgress({
               aria-label={`${target.label}: ${OUTCOME_LABEL[target.outcome] ?? 'unknown'}. Jump to its logger.`}
             >
               <span className="flex items-baseline justify-between gap-2">
-                <span className="app-eyebrow">{target.label}</span>
+                <span className="type-micro text-[var(--app-muted)]">{target.label}</span>
                 <span
                   className={`rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${
                     OUTCOME_CLASS[target.outcome] ?? 'today-outcome-unknown'
@@ -135,10 +135,10 @@ export function TodayProgress({
               </span>
 
               <span className="mt-1.5 flex items-baseline gap-1">
-                <span className="today-numeral text-lg font-semibold leading-none text-[var(--app-ink)]">
+                <span className="type-metric type-optical-left text-[var(--app-ink)]">
                   {formatActual(target.actual, target.metric)}
                 </span>
-                <span className="app-copy text-[11px]">
+                <span className="type-caption text-[var(--app-muted)]">
                   / {formatBand(target.band)} {target.unit}
                 </span>
               </span>
@@ -158,7 +158,7 @@ export function TodayProgress({
               </span>
 
               {target.hint ? (
-                <span className="app-copy mt-1.5 block text-[11px] leading-snug">{target.hint}</span>
+                <span className="type-caption mt-1.5 block text-[var(--app-muted)]">{target.hint}</span>
               ) : null}
             </button>
           </li>

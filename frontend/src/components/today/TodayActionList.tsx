@@ -41,7 +41,7 @@ export function TodayActionList({
 }) {
   return (
     <section className="app-panel p-4 sm:p-5" aria-labelledby="today-actions-heading">
-      <h2 id="today-actions-heading" className="app-title text-[1.6rem] sm:text-[1.9rem]">
+      <h2 id="today-actions-heading" className="type-heading">
         What should I do today?
       </h2>
 
@@ -57,15 +57,13 @@ export function TodayActionList({
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="app-eyebrow">{LANE_LABEL[action.lane]}</div>
+                  <div className="type-micro text-[var(--app-muted)]">{LANE_LABEL[action.lane]}</div>
                   <div
-                    className={`today-action-title mt-1 text-[15px] font-semibold leading-snug ${
-                      done ? '' : 'text-[var(--app-ink)]'
-                    }`}
+                    className={`today-action-title type-title mt-1 ${done ? '' : 'text-[var(--app-ink)]'}`}
                   >
                     {action.title}
                   </div>
-                  <p className="app-copy mt-1 text-[13px] leading-relaxed">{action.reason}</p>
+                  <p className="type-caption mt-1 text-[var(--app-ink-soft)]">{action.reason}</p>
                 </div>
 
                 <span

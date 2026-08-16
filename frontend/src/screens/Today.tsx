@@ -195,10 +195,10 @@ export default function Today() {
     <div className="today-root pb-4">
       <header className="flex items-start justify-between gap-4 pt-4 sm:pt-6">
         <div>
-          <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink-400">
+          <div className="type-micro text-[var(--app-muted)]">
             {weekdayName(today)} · {formatShort(today)}
           </div>
-          <h1 className="mt-1 text-3xl font-semibold">Today</h1>
+          <h1 className="type-display mt-1">Today</h1>
         </div>
         <div className="flex flex-col items-end gap-3">
           <Pill tone={review?.code === 'ready_for_review' ? 'good' : 'neutral'}>

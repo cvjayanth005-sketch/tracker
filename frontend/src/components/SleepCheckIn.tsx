@@ -93,7 +93,7 @@ export function SleepCheckIn({
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-info">Last night</div>
           {/* Semantic h2: card titles built as divs silently miss the heading face. */}
-          <h2 className="mt-1 text-lg font-semibold text-ink-50">Morning sleep check-in</h2>
+          <h2 className="mt-1 text-[20px] font-semibold text-ink-50">Morning sleep check-in</h2>
         </div>
         <div className="flex items-center gap-2">
           <div className="text-right">
