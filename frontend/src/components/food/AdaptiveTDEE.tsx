@@ -70,7 +70,7 @@ export function AdaptiveTDEE({
       </div>
 
       <div className="mt-3 flex items-baseline gap-2">
-        <span className="tabular text-3xl font-semibold leading-none text-accent">{fmtInt(est.tdeeKcal)}</span>
+        <span className="tabular-display text-3xl font-semibold leading-none text-accent">{fmtInt(est.tdeeKcal)}</span>
         <span className="text-[12px] text-ink-400">kcal/day</span>
         <span className="tabular ml-auto text-[11px] text-ink-500">
           range {fmtInt(est.lowKcal)}–{fmtInt(est.highKcal)}

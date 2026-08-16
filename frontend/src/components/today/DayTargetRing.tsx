@@ -130,7 +130,7 @@ export function DayTargetRing({
             })}
           </svg>
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-            <span className="tabular text-2xl font-semibold leading-none text-ink-50">
+            <span className="tabular-display text-2xl font-semibold leading-none text-ink-50">
               {count.hit}/{count.applicable}
             </span>
             <span className="mt-1 text-[10px] uppercase tracking-[0.12em] text-ink-500">targets</span>

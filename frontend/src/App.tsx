@@ -200,7 +200,7 @@ function WelcomePage() {
       <main className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-5 py-6 safe-top sm:px-8 lg:px-10">
         <header className="flex items-center justify-between">
           <div>
-            <div className="text-3xl font-semibold leading-none text-ink-50">Formara</div>
+            <div className="font-heading text-3xl font-semibold leading-none text-ink-50">Formara</div>
             <div className="mt-2 text-sm font-medium text-ink-400">
               Your body. Your data. Your next move.
             </div>
@@ -237,7 +237,7 @@ function WelcomePage() {
           <div className="glass-strong rounded-3xl p-5 shadow-[0_30px_90px_-52px_rgba(0,240,255,0.75)]">
             <div>
               <div>
-                <div className="text-lg font-semibold text-ink-50">Welcome back</div>
+                <h2 className="text-lg font-semibold text-ink-50">Welcome back</h2>
                 <p className="mt-1 text-[13px] leading-relaxed text-ink-400">
                   Sign in to open the tracker and sync this device.
                 </p>
@@ -294,7 +294,7 @@ function AccountSyncGate({
       <Aurora />
       <main className="mx-auto flex min-h-dvh max-w-md items-center px-5 text-center">
         <div className="glass-strong rounded-3xl p-5">
-          <div className="text-lg font-semibold text-ink-50">{title}</div>
+          <h1 className="text-lg font-semibold text-ink-50">{title}</h1>
           <p className="mt-2 text-sm leading-6 text-ink-300">{body}</p>
           {detail ? (
             <div className="mt-3 rounded-2xl bg-warn/10 px-3 py-2 text-[12px] leading-relaxed text-warn ring-1 ring-inset ring-warn/20">
@@ -507,7 +507,7 @@ export default function App() {
         <Aurora />
         <main className="mx-auto flex min-h-dvh max-w-md items-center px-5 text-center">
           <div className="glass-strong rounded-3xl p-5">
-            <div className="text-lg font-semibold text-ink-50">Loading your tracker</div>
+            <h1 className="text-lg font-semibold text-ink-50">Loading your tracker</h1>
             <p className="mt-2 text-sm leading-6 text-ink-300">
               Pulling your account data before opening the dashboard.
             </p>

@@ -52,14 +52,14 @@ export function SleepScoreCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-info">Sleep score</div>
-          <div className="mt-1 text-xl font-semibold text-ink-50">Last night&apos;s recovery</div>
+          <h2 className="mt-1 text-xl font-semibold text-ink-50">Last night&apos;s recovery</h2>
         </div>
         <Pill tone={scoreTone(score.score)}>{score.score == null ? 'Needs check-in' : `${score.confidence} confidence`}</Pill>
       </div>
 
       {score.score == null ? (
         <div className="mt-5 flex min-h-44 flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-white/12 bg-white/[0.025] px-6 text-center">
-          <div className="text-lg font-semibold text-ink-100">No score yet</div>
+          <h3 className="text-lg font-semibold text-ink-100">No score yet</h3>
           <p className="mt-2 max-w-xs text-[12px] leading-relaxed text-ink-400">
             Log sleep hours and a quality rating in Today to create a recovery score. Your optional timing and wake-ups sharpen it over time.
           </p>
@@ -70,13 +70,13 @@ export function SleepScoreCard({
             <div className="relative mx-auto grid h-32 w-32 place-items-center rounded-full p-2" style={ringStyle}>
               <div className="grid h-full w-full place-items-center rounded-full bg-ink-950 text-center shadow-inner">
                 <div>
-                  <div className="tabular text-4xl font-semibold leading-none text-ink-50">{score.score}</div>
+                  <div className="tabular-display text-4xl font-semibold leading-none text-ink-50">{score.score}</div>
                   <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-400">out of 100</div>
                 </div>
               </div>
             </div>
             <div>
-              <div className="text-lg font-semibold text-ink-50">{score.label}</div>
+              <div className="font-heading text-lg font-semibold text-ink-50">{score.label}</div>
               <p className="mt-1 text-[12px] leading-relaxed text-ink-400">
                 {log?.sleepHours ?? '—'}h against a {targetHours}h target · quality {log?.sleepQuality ?? '—'}/5
               </p>

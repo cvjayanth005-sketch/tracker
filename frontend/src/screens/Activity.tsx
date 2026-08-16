@@ -347,7 +347,7 @@ function MetricChart({
           </div>
         </div>
         <div className="px-5 pt-5 text-right sm:px-6 sm:pt-6">
-          <div className="tabular text-2xl font-semibold leading-none text-ink-50">
+          <div className="tabular-display text-2xl font-semibold leading-none text-ink-50">
             {formatMetricValue(average, unit)}
           </div>
           <div className="mt-1.5 text-[10px] font-semibold uppercase text-ink-500">7-day avg</div>
@@ -607,7 +607,7 @@ function MoveRing({
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-              <div className="tabular text-3xl font-semibold leading-none text-ink-50">
+              <div className="tabular-display text-3xl font-semibold leading-none text-ink-50">
                 {Math.round(total)}
               </div>
               <div className="mt-1 text-[11px] text-ink-500">kcal</div>
