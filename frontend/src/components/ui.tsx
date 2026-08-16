@@ -154,11 +154,59 @@ export function Button({
   )
 }
 
-export function EmptyState({ title, body }: { title: string; body: string }) {
+/**
+ * Empty state.
+ *
+ * Day one is a new user's first impression, and on a tracker most screens are
+ * empty until they have logged for a week — so this is one of the most-seen
+ * views in the product, not an edge case. It therefore states what will appear
+ * here and what to do to fill it, rather than apologising for having no data.
+ *
+ * `action` is optional because some emptiness is a waiting state the user
+ * cannot act on (a trend needs days to accumulate), and offering a button that
+ * cannot help is worse than offering none.
+ */
+export function EmptyState({
+  title,
+  body,
+  hint,
+  action,
+}: {
+  title: string
+  body: string
+  /** What will make this fill in, when the user cannot act immediately. */
+  hint?: string
+  action?: { label: string; onClick: () => void }
+}) {
   return (
     <Card className="text-center">
-      <div className="text-sm font-medium text-[var(--app-ink)]">{title}</div>
-      <p className="mx-auto mt-1 max-w-xs text-[13px] leading-relaxed text-[var(--app-muted)]">{body}</p>
+      <div className="mx-auto flex max-w-sm flex-col items-center px-2 py-6">
+        {/*
+          A quiet mark rather than an illustration: it gives the block a centre
+          of gravity without implying the screen is broken or celebratory.
+        */}
+        <span
+          aria-hidden="true"
+          className="mb-4 flex h-11 w-11 items-center justify-center radius-control"
+          style={{ background: 'var(--app-inset)', border: '1px solid var(--app-line)' }}
+        >
+          <span className="type-metric-sm text-[var(--app-muted)]">—</span>
+        </span>
+
+        <div className="type-title text-[var(--app-ink)]">{title}</div>
+        <p className="type-caption mt-2 text-[var(--app-ink-soft)]">{body}</p>
+        {hint ? <p className="type-micro mt-3 text-[var(--app-muted)]">{hint}</p> : null}
+
+        {action ? (
+          <button
+            type="button"
+            onClick={action.onClick}
+            className="app-button app-button-primary motion-press mt-5"
+          >
+            {action.label}
+          </button>
+        ) : null}
+      </div>
     </Card>
   )
 }

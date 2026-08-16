@@ -150,8 +150,8 @@ export function TrendChart({
           >
             <defs>
               <linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--color-accent)" stopOpacity="0.22" />
-                <stop offset="100%" stopColor="var(--color-accent)" stopOpacity="0" />
+                <stop offset="0%" stopColor="var(--app-blue)" stopOpacity="0.22" />
+                <stop offset="100%" stopColor="var(--app-blue)" stopOpacity="0" />
               </linearGradient>
             </defs>
 
@@ -162,7 +162,7 @@ export function TrendChart({
                   x2={width - PAD.right}
                   y1={model.y(value)}
                   y2={model.y(value)}
-                  stroke="rgb(255 255 255 / 0.07)"
+                  stroke="var(--app-line)"
                   strokeWidth={1}
                 />
                 <text
@@ -171,7 +171,7 @@ export function TrendChart({
                   textAnchor="end"
                   className="tabular"
                   fontSize={10}
-                  fill="var(--color-ink-400)"
+                  fill="var(--app-muted)"
                 >
                   {value.toFixed(1)}
                 </text>
@@ -187,7 +187,7 @@ export function TrendChart({
                   x2={width - PAD.right}
                   y1={model.y(targetKg)}
                   y2={model.y(targetKg)}
-                  stroke="var(--color-warn)"
+                  stroke="var(--app-warm-neutral)"
                   strokeWidth={1}
                   strokeDasharray="4 3"
                   opacity={0.7}
@@ -197,7 +197,7 @@ export function TrendChart({
                   y={model.y(targetKg) - 5}
                   textAnchor="end"
                   fontSize={10}
-                  fill="var(--color-warn)"
+                  fill="var(--app-warm-neutral)"
                 >
                   target {targetKg}
                 </text>
@@ -211,7 +211,7 @@ export function TrendChart({
                   cx={model.x(i)}
                   cy={model.y(p.rawKg)}
                   r={2}
-                  fill="var(--color-ink-300)"
+                  fill="var(--app-muted)"
                   opacity={0.45}
                 />
               ),
@@ -222,7 +222,7 @@ export function TrendChart({
                 key={path.slice(0, 24)}
                 d={path}
                 fill="none"
-                stroke="var(--color-accent)"
+                stroke="var(--app-blue)"
                 strokeWidth={2}
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -236,7 +236,7 @@ export function TrendChart({
                   x2={model.x(active)}
                   y1={PAD.top}
                   y2={height - PAD.bottom}
-                  stroke="rgb(255 255 255 / 0.22)"
+                  stroke="var(--app-line-strong)"
                   strokeWidth={1}
                 />
                 {point.trendKg !== null ? (
@@ -244,15 +244,15 @@ export function TrendChart({
                     cx={model.x(active)}
                     cy={model.y(point.trendKg)}
                     r={4}
-                    fill="var(--color-accent)"
-                    stroke="rgb(0 0 0 / 0.5)"
+                    fill="var(--app-blue)"
+                    stroke="var(--app-canvas-pure)"
                     strokeWidth={2}
                   />
                 ) : null}
               </g>
             ) : null}
 
-            <text x={PAD.left} y={height - 6} fontSize={10} fill="var(--color-ink-400)">
+            <text x={PAD.left} y={height - 6} fontSize={10} fill="var(--app-muted)">
               {series[0] ? formatShort(series[0].date) : ''}
             </text>
             <text
@@ -260,7 +260,7 @@ export function TrendChart({
               y={height - 6}
               textAnchor="end"
               fontSize={10}
-              fill="var(--color-ink-400)"
+              fill="var(--app-muted)"
             >
               {series.at(-1) ? formatShort(series.at(-1)!.date) : ''}
             </text>

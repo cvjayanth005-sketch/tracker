@@ -466,7 +466,7 @@ export function CoachChatButton({
         <button
           type="submit"
           disabled={busy || !input.trim()}
-          className="min-h-11 self-end radius-control bg-accent px-4 text-sm font-semibold text-ink-950 transition-transform active:scale-[0.97] disabled:opacity-40"
+          className="app-button app-button-primary motion-press shrink-0 self-end disabled:opacity-40"
         >
           Send
         </button>
