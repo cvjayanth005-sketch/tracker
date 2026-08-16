@@ -1,0 +1,124 @@
+.plan-decision h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
+.plan-decision p {
+  margin: 0.45rem 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--canvas-muted);
+}
+
+.plan-change {
+  margin-top: 0.85rem;
+  font-size: 13px;
+  color: var(--canvas-muted);
+}
+
+.plan-change strong {
+  color: var(--canvas-ink);
+  font-weight: 600;
+}
+
+.plan-secondary {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--canvas-line);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--canvas-muted);
+}
+
+.plan-warn {
+  margin-top: 0.85rem;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--canvas-warn);
+}
+
+.plan-hold {
+  margin-top: 0.85rem;
+}
+
+.plan-hold-bar {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--canvas-line);
+}
+
+.plan-hold-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--canvas-ink);
+}
+
+.plan-roadmap {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.plan-roadmap li {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+  gap: 0.65rem;
+  align-items: baseline;
+  padding: 0.45rem 0;
+  font-size: 14px;
+}
+
+.plan-roadmap li + li {
+  border-top: 1px solid var(--canvas-line);
+}
+
+.plan-roadmap .plan-step {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--canvas-muted);
+}
+
+.plan-roadmap .is-current {
+  font-weight: 600;
+}
+
+.plan-roadmap .is-completed {
+  color: var(--canvas-muted);
+}
+
+.plan-roadmap .plan-meta {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--canvas-muted);
+}
+
+.plan-phase-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.plan-phase-list li {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.35rem 0;
+  font-size: 13px;
+}
+
+.plan-dot {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 99px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--canvas-line);
+  cursor: pointer;
+}
+
+.plan-dot.is-on {
+  background: var(--canvas-ink);
+}

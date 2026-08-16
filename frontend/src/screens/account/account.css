@@ -1,0 +1,77 @@
+.account-identity {
+  display: flex;
+  gap: 0.85rem;
+  align-items: center;
+}
+
+.account-avatar {
+  display: flex;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--canvas-ink);
+  color: #f7f6f2;
+  font-family: Archivo, sans-serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.account-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.account-identity h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.account-identity p {
+  margin: 0.15rem 0 0;
+  font-size: 13px;
+  color: var(--canvas-muted);
+}
+
+.account-dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.4rem 1rem;
+  margin: 0.85rem 0 0;
+  font-size: 13px;
+}
+
+.account-dl dt {
+  color: var(--canvas-muted);
+}
+
+.account-dl dd {
+  margin: 0;
+  text-align: right;
+}
+
+.account-placeholder {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--canvas-muted);
+}
+
+.account-field {
+  margin-top: 0.85rem;
+}
+
+.account-field:first-child {
+  margin-top: 0;
+}
+
+.account-field span {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--canvas-muted);
+}
