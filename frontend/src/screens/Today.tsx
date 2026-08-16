@@ -192,6 +192,7 @@ export default function Today() {
       value={todayLog?.weightKg ?? null}
       onCommit={(weightKg) => save({ weightKg })}
       trendKg={change?.current.averageKg ?? null}
+      projection={projection}
     />
   )
 

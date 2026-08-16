@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { addDays, formatShort } from '@/domain/date'
+import type { Projection } from '@/domain/projection'
 import type { LocalDate } from '@/domain/types'
 import type { LogIndex } from '@/domain/trend'
 
@@ -16,12 +18,15 @@ export function HeroWeight({
   value,
   onCommit,
   trendKg,
+  projection,
 }: {
   today: LocalDate
   index: LogIndex
   value: number | null
   onCommit: (next: number | null) => void
   trendKg: number | null
+  /** Projected arrival at the target, when the trend supports one. */
+  projection?: Projection
 }) {
   const [text, setText] = useState(value === null ? '' : String(value))
   const timer = useRef<number | undefined>(undefined)
@@ -111,6 +116,38 @@ export function HeroWeight({
           </span>
         ) : null}
       </div>
+
+      {/*
+        The projection lives here rather than beside the chart because this is
+        where someone already looks after weighing in, and it is the question
+        the number provokes. It is one sentence, not a second metric, so it does
+        not compete with the day's actions elsewhere on the screen.
+      */}
+      {projection ? (
+        <Link
+          to="/progress"
+          className="motion-press mt-3 flex items-center justify-between gap-3 border-t border-[var(--app-line)] pt-3"
+        >
+          <span className="type-caption text-[var(--app-ink-soft)]">
+            {projection.status === 'ok' && projection.arrivalDate ? (
+              <>
+                On track for goal around{' '}
+                <span className="font-semibold text-[var(--app-ink)]">
+                  {formatShort(projection.arrivalDate)}
+                </span>
+                {projection.uncertaintyDays
+                  ? ` · ±${projection.uncertaintyDays} days`
+                  : ''}
+              </>
+            ) : (
+              projection.detail
+            )}
+          </span>
+          <span aria-hidden="true" className="type-caption shrink-0 text-[var(--app-blue)]">
+            Trend →
+          </span>
+        </Link>
+      ) : null}
     </div>
   )
 }
