@@ -17,6 +17,7 @@ import { TodayProgress } from '@/components/today/TodayProgress'
 import { targetSegmentsForDay } from '@/components/today/dayTargetRingModel'
 import { buildTodayActions } from '@/components/today/todayActions'
 import { buildInsight, buildTodayTargets } from '@/components/today/todayTargets'
+import { projectArrival } from '@/domain/projection'
 import { Card, EmptyState, Pill, Stat } from '@/components/ui'
 import { statInt, statVal } from '@/components/format'
 import type { DailyLog, LocalDate, Phase, Run } from '@/domain/types'
@@ -165,6 +166,9 @@ export default function Today() {
   const targetSegments = targetSegmentsForDay(checklist, todayLog, phase, today)
   const todayActions = buildTodayActions(phase, todaySchedule, todayLog, today)
   const todayTargets = buildTodayTargets(phase, todayLog, today)
+  // Projected against the same target the chart draws as its horizon, so the
+  // date and the line can never disagree.
+  const projection = projectArrival(dash.series, today, phase.targetWeightKg)
   const insight = buildInsight(
     dash.compliance?.overallHitRatePct ?? null,
     dash.compliance?.overallCoveragePct ?? null,
@@ -252,14 +256,28 @@ export default function Today() {
                 ) : null}
                 <Card className="hidden lg:block">
                   <div className="mb-1 flex items-baseline justify-between">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">
-                      Last 30 days
+                    <span className="type-micro text-[var(--app-muted)]">Last 30 days</span>
+                    {/*
+                      The projection is the question the chart is actually opened
+                      to answer, so it sits with the chart rather than behind a
+                      further click.
+                    */}
+                    <span className="type-caption text-[var(--app-ink-soft)]">
+                      {projection.status === 'ok'
+                        ? `Goal around ${formatShort(projection.arrivalDate!)}`
+                        : projection.detail}
                     </span>
-                    <Link to="/progress" className="text-[11px] text-accent">
-                      Full progress →
-                    </Link>
                   </div>
                   <TrendChart series={dash.series} targetKg={phase.targetWeightKg} />
+                  {projection.status === 'ok' ? (
+                    <p className="type-micro mt-2 text-[var(--app-muted)]">
+                      {projection.daysRemaining} days at{' '}
+                      {Math.abs(projection.ratePerWeek!).toFixed(2)} kg/week
+                      {projection.uncertaintyDays
+                        ? ` · give or take ${projection.uncertaintyDays} days`
+                        : ''}
+                    </p>
+                  ) : null}
                 </Card>
                 <Card>
                   <div className="mb-3 flex items-baseline justify-between px-1">

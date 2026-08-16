@@ -52,6 +52,16 @@ export function TrendChart({
     return () => window.removeEventListener('scroll', clear)
   }, [])
 
+  // A zero width means the chart has not been measured yet — it mounts inside a
+  // collapsed <details> — not that there is nothing to draw. Reporting that as
+  // "no weigh-ins" blames the user for a layout timing detail.
+  const measured = width > 0
+
+  const hasData = useMemo(
+    () => series.some((p) => p.rawKg !== null || p.trendKg !== null),
+    [series],
+  )
+
   const model = useMemo(() => {
     if (width <= 0) return null
 
@@ -125,7 +135,7 @@ export function TrendChart({
           className="glass-inset flex items-center justify-center radius-control text-[13px] text-[var(--app-muted)]"
           style={{ height }}
         >
-          No weigh-ins yet
+          {!measured ? '' : hasData ? 'Preparing chart…' : 'No weigh-ins yet'}
         </div>
       ) : (
         <>
