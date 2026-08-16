@@ -193,6 +193,8 @@ export default function Today() {
       onCommit={(weightKg) => save({ weightKg })}
       trendKg={change?.current.averageKg ?? null}
       projection={projection}
+      series={dash.series}
+      targetKg={phase.targetWeightKg}
     />
   )
 

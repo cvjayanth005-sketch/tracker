@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { addDays, formatShort } from '@/domain/date'
 import type { Projection } from '@/domain/projection'
+import { TrendChart } from '@/components/TrendChart'
+import type { TrendPoint } from '@/domain/trend'
 import type { LocalDate } from '@/domain/types'
 import type { LogIndex } from '@/domain/trend'
 
@@ -19,6 +21,8 @@ export function HeroWeight({
   onCommit,
   trendKg,
   projection,
+  series,
+  targetKg,
 }: {
   today: LocalDate
   index: LogIndex
@@ -27,6 +31,9 @@ export function HeroWeight({
   trendKg: number | null
   /** Projected arrival at the target, when the trend supports one. */
   projection?: Projection
+  /** Trend series for the inline sparkline. */
+  series?: TrendPoint[]
+  targetKg?: number | null
 }) {
   const [text, setText] = useState(value === null ? '' : String(value))
   const timer = useRef<number | undefined>(undefined)
@@ -96,6 +103,12 @@ export function HeroWeight({
         />
         <span className="pb-1.5 text-lg font-medium text-[var(--app-muted)]">kg</span>
       </div>
+
+      {series && series.length > 1 ? (
+        <div className="mt-3">
+          <TrendChart series={series} targetKg={targetKg ?? null} compact height={44} />
+        </div>
+      ) : null}
 
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[var(--app-muted)]">
         {delta !== null && previous ? (

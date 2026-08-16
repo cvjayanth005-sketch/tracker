@@ -19,11 +19,13 @@ import type { LocalDate } from '@/domain/types'
  */
 
 const PAD = { top: 14, right: 12, bottom: 22, left: 40 }
+const PAD_COMPACT = { top: 4, right: 2, bottom: 4, left: 2 }
 
 export function TrendChart({
   series,
   targetKg,
   phaseStarts,
+  compact = false,
   height = 180,
   className = '',
 }: {
@@ -31,6 +33,13 @@ export function TrendChart({
   targetKg?: number | null
   /** Dates a new phase began, marked on the axis so trend shifts have context. */
   phaseStarts?: Array<{ date: LocalDate; name: string }>
+  /**
+   * Sparkline mode: the shape of the trend without the apparatus around it.
+   * Axis labels, ticks, dots and the hover readout all go, because at 48px they
+   * would be unreadable and the point here is the silhouette, not the values —
+   * those are already stated next to it.
+   */
+  compact?: boolean
   height?: number
   className?: string
 }) {
@@ -66,6 +75,8 @@ export function TrendChart({
     [series],
   )
 
+  const PADDING = compact ? PAD_COMPACT : PAD
+
   const model = useMemo(() => {
     if (width <= 0) return null
 
@@ -74,7 +85,13 @@ export function TrendChart({
       if (p.rawKg !== null) values.push(p.rawKg)
       if (p.trendKg !== null) values.push(p.trendKg)
     }
-    if (targetKg != null) values.push(targetKg)
+    /*
+     * The target is part of the y-range on the full chart, because the distance
+     * to it is the point. A sparkline is the opposite: it shows the shape of
+     * recent movement, and including a target eight kilos away flattens that
+     * shape into a straight line.
+     */
+    if (targetKg != null && !compact) values.push(targetKg)
     if (values.length === 0) return null
 
     const rawMin = Math.min(...values)
@@ -84,11 +101,11 @@ export function TrendChart({
     const max = rawMax + pad
     const span = max - min || 1
 
-    const innerW = Math.max(1, width - PAD.left - PAD.right)
-    const innerH = Math.max(1, height - PAD.top - PAD.bottom)
+    const innerW = Math.max(1, width - PADDING.left - PADDING.right)
+    const innerH = Math.max(1, height - PADDING.top - PADDING.bottom)
     const x = (i: number) =>
-      PAD.left + (series.length <= 1 ? innerW / 2 : (i / (series.length - 1)) * innerW)
-    const y = (v: number) => PAD.top + innerH - ((v - min) / span) * innerH
+      PADDING.left + (series.length <= 1 ? innerW / 2 : (i / (series.length - 1)) * innerW)
+    const y = (v: number) => PADDING.top + innerH - ((v - min) / span) * innerH
 
     /*
      * Phase boundaries, placed by matching the date to its index in the series.
@@ -126,21 +143,21 @@ export function TrendChart({
     if (lastSegment && firstTrendIndex >= 0) {
       const startX = x(firstTrendIndex)
       const endX = x(series.length - 1)
-      const baseY = PAD.top + innerH
+      const baseY = PADDING.top + innerH
       area = `${segments.join(' ')} L${endX.toFixed(1)},${baseY} L${startX.toFixed(1)},${baseY} Z`
     }
 
     const ticks = [min + span * 0.15, min + span * 0.5, min + span * 0.85]
 
     return { x, y, segments, area, ticks, innerW, marks }
-  }, [series, targetKg, phaseStarts, width, height])
+  }, [series, targetKg, phaseStarts, width, height, PADDING, compact])
 
   const point = active === null ? null : series[active]
 
   const handlePointer = (clientX: number, svg: SVGSVGElement) => {
     if (!model) return
     const rect = svg.getBoundingClientRect()
-    const ratio = (clientX - rect.left - PAD.left) / model.innerW
+    const ratio = (clientX - rect.left - PADDING.left) / model.innerW
     const index = Math.round(ratio * (series.length - 1))
     setActive(Math.max(0, Math.min(series.length - 1, index)))
   }
@@ -182,18 +199,18 @@ export function TrendChart({
               </linearGradient>
             </defs>
 
-            {model.ticks.map((value) => (
+            {(compact ? [] : model.ticks).map((value) => (
               <g key={value}>
                 <line
-                  x1={PAD.left}
-                  x2={width - PAD.right}
+                  x1={PADDING.left}
+                  x2={width - PADDING.right}
                   y1={model.y(value)}
                   y2={model.y(value)}
                   stroke="var(--app-line)"
                   strokeWidth={1}
                 />
                 <text
-                  x={PAD.left - 8}
+                  x={PADDING.left - 8}
                   y={model.y(value) + 3.5}
                   textAnchor="end"
                   className="tabular"
@@ -209,20 +226,20 @@ export function TrendChart({
               Drawn before the data so a boundary never obscures the line it is
               meant to explain.
             */}
-            {model.marks.map((mark) => (
+            {(compact ? [] : model.marks).map((mark) => (
               <g key={`${mark.name}-${mark.x}`}>
                 <line
                   x1={mark.x}
                   x2={mark.x}
-                  y1={PAD.top}
-                  y2={height - PAD.bottom}
+                  y1={PADDING.top}
+                  y2={height - PADDING.bottom}
                   stroke="var(--app-line-strong)"
                   strokeWidth={1}
                   strokeDasharray="2 3"
                 />
                 <text
                   x={mark.x + 3}
-                  y={PAD.top + 9}
+                  y={PADDING.top + 9}
                   fontSize={9}
                   fill="var(--app-muted)"
                 >
@@ -233,11 +250,11 @@ export function TrendChart({
 
             {model.area ? <path d={model.area} fill="url(#trend-fill)" /> : null}
 
-            {targetKg != null ? (
+            {targetKg != null && !compact ? (
               <g>
                 <line
-                  x1={PAD.left}
-                  x2={width - PAD.right}
+                  x1={PADDING.left}
+                  x2={width - PADDING.right}
                   y1={model.y(targetKg)}
                   y2={model.y(targetKg)}
                   stroke="var(--app-warm-neutral)"
@@ -246,7 +263,7 @@ export function TrendChart({
                   opacity={0.7}
                 />
                 <text
-                  x={width - PAD.right}
+                  x={width - PADDING.right}
                   y={model.y(targetKg) - 5}
                   textAnchor="end"
                   fontSize={10}
@@ -257,7 +274,7 @@ export function TrendChart({
               </g>
             ) : null}
 
-            {series.map((p, i) =>
+            {(compact ? [] : series).map((p, i) =>
               p.rawKg === null ? null : (
                 <circle
                   key={p.date}
@@ -287,8 +304,8 @@ export function TrendChart({
                 <line
                   x1={model.x(active)}
                   x2={model.x(active)}
-                  y1={PAD.top}
-                  y2={height - PAD.bottom}
+                  y1={PADDING.top}
+                  y2={height - PADDING.bottom}
                   stroke="var(--app-line-strong)"
                   strokeWidth={1}
                 />
@@ -305,20 +322,25 @@ export function TrendChart({
               </g>
             ) : null}
 
-            <text x={PAD.left} y={height - 6} fontSize={10} fill="var(--app-muted)">
-              {series[0] ? formatShort(series[0].date) : ''}
-            </text>
-            <text
-              x={width - PAD.right}
-              y={height - 6}
-              textAnchor="end"
-              fontSize={10}
-              fill="var(--app-muted)"
-            >
-              {series.at(-1) ? formatShort(series.at(-1)!.date) : ''}
-            </text>
+            {compact ? null : (
+              <>
+                <text x={PADDING.left} y={height - 6} fontSize={10} fill="var(--app-muted)">
+                  {series[0] ? formatShort(series[0].date) : ''}
+                </text>
+                <text
+                  x={width - PADDING.right}
+                  y={height - 6}
+                  textAnchor="end"
+                  fontSize={10}
+                  fill="var(--app-muted)"
+                >
+                  {series.at(-1) ? formatShort(series.at(-1)!.date) : ''}
+                </text>
+              </>
+            )}
           </svg>
 
+          {compact ? null : (
           <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px]">
             <span className="flex items-center gap-3 text-[var(--app-muted)]">
               <span className="flex items-center gap-1.5">
@@ -338,6 +360,7 @@ export function TrendChart({
               </span>
             ) : null}
           </div>
+          )}
         </>
       )}
     </div>
