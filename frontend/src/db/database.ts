@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable, type Table } from 'dexie'
 import { defaultExercises, defaultPhases, defaultProfile, defaultSettings } from '@/domain/seed'
+import type { OnboardingDraft } from '@/domain/onboarding/types'
 import type {
   AiNote,
   BodyMeasurement,
@@ -57,6 +58,7 @@ export class TrackerDb extends Dexie {
   runs!: EntityTable<Run, 'id'>
   weeklyCheckIns!: EntityTable<WeeklyCheckIn, 'id'>
   aiNotes!: EntityTable<AiNote, 'hash'>
+  onboardingDrafts!: EntityTable<OnboardingDraft, 'id'>
   tombstones!: Table<Tombstone, [string, string]>
   syncMeta!: EntityTable<SyncMeta, 'id'>
 
@@ -240,6 +242,16 @@ export class TrackerDb extends Dexie {
       })
     })
     this.version(17).stores({ tombstones: '[table+id], table, deletedAt' })
+    /*
+     * Versioned onboarding draft, one row keyed 'me'.
+     *
+     * A new table rather than fields on `settings`, because a draft is answers
+     * the user is still editing while `settings` describes an active plan —
+     * merging them would make an unfinished answer indistinguishable from an
+     * accepted target. Nothing is backfilled: existing users have no draft row,
+     * and `onboardingCompleted` already tells us they do not need one.
+     */
+    this.version(18).stores({ onboardingDrafts: 'id' })
   }
 }
 
@@ -259,6 +271,7 @@ const SEEDED_TABLES = [
   db.runs,
   db.weeklyCheckIns,
   db.aiNotes,
+  db.onboardingDrafts,
   db.tombstones,
   db.syncMeta,
 ] as const

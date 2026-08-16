@@ -1,4 +1,6 @@
 import { db, forgetTombstone, markDirty, recordTombstone } from './database'
+import { completedChapterIds, emptyDraft, resumePosition } from '@/domain/onboarding/chapters'
+import type { ChapterId, GeneratedProposal, OnboardingDraft, ResumePosition } from '@/domain/onboarding/types'
 import { addDays, compareDates } from '@/domain/date'
 import { mealGroupCount } from '@/domain/mealGroups'
 import type {
@@ -976,4 +978,75 @@ export async function recentRuns(limit = 80): Promise<Run[]> {
   return rows.sort((a, b) =>
     compareDates(a.date, b.date) || a.createdAt.localeCompare(b.createdAt),
   )
+}
+
+// ---------------------------------------------------------------------------
+// Onboarding draft
+// ---------------------------------------------------------------------------
+
+/**
+ * Read/write access to the single versioned onboarding draft.
+ *
+ * Saving a draft is explicitly *not* activation. Nothing here touches phases,
+ * settings, or the profile — `applyOnboardingPlan` remains the only path that
+ * changes the live plan, and it is reached only after the user confirms a
+ * proposal. That separation is what lets the interview autosave freely without
+ * a half-finished answer ever influencing a target.
+ */
+
+export async function getOnboardingDraft(): Promise<OnboardingDraft | undefined> {
+  return db.onboardingDrafts.get('me')
+}
+
+/** Creates the draft on first use. Existing accounts simply never call this. */
+export async function ensureOnboardingDraft(timezone: string | null = null): Promise<OnboardingDraft> {
+  const existing = await db.onboardingDrafts.get('me')
+  if (existing) return existing
+  const draft = emptyDraft(timezone)
+  await db.onboardingDrafts.put(draft)
+  await markDirty()
+  return draft
+}
+
+/**
+ * Merge one chapter's answers and re-derive completion.
+ *
+ * Chapter-scoped rather than whole-draft so two rapid edits in different
+ * chapters cannot clobber one another, and `completedChapters` is recomputed
+ * from the data instead of being trusted from the caller — a stored flag that
+ * disagrees with the answers is worse than no flag.
+ */
+export async function saveOnboardingChapter<K extends ChapterId>(
+  chapter: K,
+  patch: Partial<OnboardingDraft[K]>,
+  resume?: ResumePosition,
+): Promise<OnboardingDraft> {
+  const draft = await ensureOnboardingDraft()
+  const next: OnboardingDraft = {
+    ...draft,
+    [chapter]: { ...draft[chapter], ...patch },
+    updatedAt: now(),
+  } as OnboardingDraft
+  next.completedChapters = completedChapterIds(next)
+  next.resume = resume ?? resumePosition(next)
+  await db.onboardingDrafts.put(next)
+  await markDirty()
+  return next
+}
+
+/** Stores a generated proposal for review. Never activates it. */
+export async function saveOnboardingProposal(proposal: GeneratedProposal): Promise<void> {
+  const draft = await ensureOnboardingDraft()
+  await db.onboardingDrafts.put({ ...draft, proposal, updatedAt: now() })
+  await markDirty()
+}
+
+export async function clearOnboardingDraft(): Promise<void> {
+  await db.transaction('rw', db.onboardingDrafts, db.tombstones, async () => {
+    const existing = await db.onboardingDrafts.get('me')
+    if (!existing) return
+    await db.onboardingDrafts.delete('me')
+    await recordTombstone('onboardingDrafts', 'me')
+  })
+  await markDirty()
 }
