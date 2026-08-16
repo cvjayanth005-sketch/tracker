@@ -4,25 +4,29 @@
  */
 
 :root {
-  --app-canvas: #f7f8f5;
+  --app-canvas: #fbfcfa;
   --app-canvas-pure: #ffffff;
-  --app-ink: #111612;
-  --app-ink-soft: #465047;
-  --app-muted: #747e75;
-  --app-line: rgb(24 37 26 / 0.11);
-  --app-line-strong: rgb(24 37 26 / 0.18);
+  --app-ink: #393e46;
+  --app-ink-raised: #44444e;
+  --app-ink-soft: rgb(57 62 70 / 0.82);
+  --app-muted: rgb(57 62 70 / 0.62);
+  --app-warm-neutral: #948979;
+  --app-line: rgb(57 62 70 / 0.11);
+  --app-line-strong: rgb(57 62 70 / 0.18);
   --app-frost: rgb(255 255 255 / 0.76);
   --app-frost-strong: rgb(255 255 255 / 0.84);
-  --app-inset: rgb(239 243 239 / 0.76);
-  --app-green: #35d326;
-  --app-green-deep: #219915;
-  --app-cyan: #168baa;
-  --app-gold: #d99b16;
-  --app-rose: #d64d72;
-  --app-violet: #7657bd;
+  --app-inset: rgb(248 249 247 / 0.78);
+  --app-blue: #78a4cb;
+  --app-blue-soft: #b4e1eb;
+  --app-energy: #f9e8a2;
+  --app-coach: #bdb2ff;
+  --app-success: #c4f7ca;
+  --app-success-soft: #d8ffc5;
+  --app-strain: #ff9d9d;
+  --app-danger: #e63946;
   --app-radius: 8px;
-  --app-shadow: 0 20px 55px -42px rgb(28 43 30 / 0.42);
-  --app-shadow-raised: 0 28px 70px -48px rgb(28 43 30 / 0.5);
+  --app-shadow: 0 20px 55px -42px rgb(57 62 70 / 0.42);
+  --app-shadow-raised: 0 28px 70px -48px rgb(57 62 70 / 0.5);
   --app-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.16'/%3E%3C/svg%3E");
 }
 
@@ -119,9 +123,9 @@
 }
 
 .app-nav-link.is-active {
-  border-color: rgb(33 153 21 / 0.22);
-  background: rgb(53 211 38 / 0.1);
-  color: #176c10;
+  border-color: rgb(196 247 202 / 0.9);
+  background: rgb(216 255 197 / 0.62);
+  color: var(--app-ink);
 }
 
 .app-nav-icon {
@@ -190,7 +194,7 @@
   overflow: hidden;
   place-items: center;
   border-radius: 50%;
-  background: var(--app-green);
+  background: var(--app-success);
   color: var(--app-ink);
   font-weight: 700;
 }
@@ -268,9 +272,9 @@
 }
 
 .app-mobile-tab.is-active {
-  border-color: rgb(33 153 21 / 0.2);
-  background: rgb(53 211 38 / 0.1);
-  color: #176c10;
+  border-color: rgb(196 247 202 / 0.9);
+  background: rgb(216 255 197 / 0.62);
+  color: var(--app-ink);
 }
 
 .app-mobile-tab svg {
@@ -347,6 +351,69 @@
   line-height: 1.6;
 }
 
+/* Semantic accent surfaces. One tone per tile; never combine these to make a
+ * decorative rainbow. All pale fills intentionally retain the shared ink. */
+.app-tone-action,
+.app-tone-recovery,
+.app-tone-energy,
+.app-tone-coach,
+.app-tone-success,
+.app-tone-strain,
+.app-tone-danger,
+.app-tone-muted {
+  border: 1px solid var(--tone-edge);
+  background-color: var(--tone-fill);
+  color: var(--app-ink);
+}
+
+.app-tone-action {
+  --tone-fill: rgb(180 225 235 / 0.48);
+  --tone-edge: rgb(120 164 203 / 0.48);
+  --tone-solid: var(--app-blue);
+}
+
+.app-tone-recovery {
+  --tone-fill: rgb(180 225 235 / 0.42);
+  --tone-edge: rgb(180 225 235 / 0.92);
+  --tone-solid: var(--app-blue-soft);
+}
+
+.app-tone-energy {
+  --tone-fill: rgb(249 232 162 / 0.5);
+  --tone-edge: rgb(249 232 162 / 0.96);
+  --tone-solid: var(--app-energy);
+}
+
+.app-tone-coach {
+  --tone-fill: rgb(189 178 255 / 0.34);
+  --tone-edge: rgb(189 178 255 / 0.78);
+  --tone-solid: var(--app-coach);
+}
+
+.app-tone-success {
+  --tone-fill: rgb(216 255 197 / 0.55);
+  --tone-edge: rgb(196 247 202 / 0.95);
+  --tone-solid: var(--app-success);
+}
+
+.app-tone-strain {
+  --tone-fill: rgb(255 157 157 / 0.38);
+  --tone-edge: rgb(255 157 157 / 0.9);
+  --tone-solid: var(--app-strain);
+}
+
+.app-tone-danger {
+  --tone-fill: rgb(255 157 157 / 0.26);
+  --tone-edge: rgb(230 57 70 / 0.62);
+  --tone-solid: var(--app-danger);
+}
+
+.app-tone-muted {
+  --tone-fill: rgb(148 137 121 / 0.1);
+  --tone-edge: rgb(148 137 121 / 0.32);
+  --tone-solid: var(--app-warm-neutral);
+}
+
 .app-button {
   min-height: 2.75rem;
   border: 1px solid transparent;
@@ -389,8 +456,8 @@
 }
 
 .app-field:focus {
-  border-color: rgb(33 153 21 / 0.55);
-  box-shadow: 0 0 0 3px rgb(53 211 38 / 0.12);
+  border-color: rgb(120 164 203 / 0.78);
+  box-shadow: 0 0 0 3px rgb(180 225 235 / 0.46);
 }
 
 .app-nav-link:focus-visible,
@@ -398,7 +465,7 @@
 .app-account-button:focus-visible,
 .app-button:focus-visible,
 .app-field:focus-visible {
-  outline: 3px solid rgb(53 211 38 / 0.28);
+  outline: 3px solid rgb(120 164 203 / 0.42);
   outline-offset: 2px;
 }
 

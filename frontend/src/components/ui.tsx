@@ -72,7 +72,7 @@ export function Stat({
 }) {
   const toneClass =
     tone === 'good'
-      ? 'text-accent'
+      ? 'text-success-ink'
       : tone === 'warn'
         ? 'text-warn'
         : tone === 'bad'
@@ -104,11 +104,11 @@ export function Pill({
   tone?: 'neutral' | 'good' | 'warn' | 'bad' | 'info'
 }) {
   const tones = {
-    neutral: 'bg-ink-850 text-ink-300 ring-ink-700',
-    good: 'bg-accent/15 text-accent ring-accent/25',
-    warn: 'bg-warn/15 text-warn ring-warn/25',
-    bad: 'bg-alert/15 text-alert ring-alert/25',
-    info: 'bg-info/15 text-info ring-info/25',
+    neutral: 'bg-warm/10 text-ink-300 ring-warm/20',
+    good: 'bg-success/55 text-success-ink ring-success',
+    warn: 'bg-energy/65 text-energy-ink ring-energy',
+    bad: 'bg-strain/55 text-alert ring-alert/30',
+    info: 'bg-recovery/60 text-recovery-ink ring-recovery',
   } as const
   return (
     <span
@@ -174,10 +174,10 @@ export function Meter({
   tone?: 'accent' | 'warn' | 'alert' | 'info'
 }) {
   const tones = {
-    accent: 'bg-accent shadow-[0_0_12px_-2px] shadow-accent/60',
-    warn: 'bg-warn shadow-[0_0_12px_-2px] shadow-warn/60',
+    accent: 'bg-accent',
+    warn: 'bg-energy',
     alert: 'bg-alert shadow-[0_0_12px_-2px] shadow-alert/60',
-    info: 'bg-info shadow-[0_0_12px_-2px] shadow-info/60',
+    info: 'bg-recovery',
   } as const
   if (value === null) {
     return (

@@ -91,14 +91,27 @@
   --color-surface-notice: #fff4cf;
   --color-surface-notice-ink: #745500;
   --color-surface-notice-line: #d7ad2b;
-  --color-surface-danger-ink: #b42318;
+  --color-surface-danger-ink: #e63946;
 
-  --color-accent: #35d326;
-  --color-accent-dim: #219915;
-  --color-warn: #d99b16;
-  --color-alert: #d64d72;
-  --color-info: #168baa;
-  --color-violet: #7657bd;
+  /* Formara semantic palette. Pale tokens are fills; their ink partners are
+   * used when the same meaning needs to carry text at accessible contrast. */
+  --color-accent: #78a4cb;
+  --color-accent-dim: #4d7395;
+  --color-success: #c4f7ca;
+  --color-success-soft: #d8ffc5;
+  --color-success-ink: #37633d;
+  --color-recovery: #b4e1eb;
+  --color-recovery-ink: #315f70;
+  --color-energy: #f9e8a2;
+  --color-energy-ink: #735d08;
+  --color-coach: #bdb2ff;
+  --color-coach-ink: #554b95;
+  --color-strain: #ff9d9d;
+  --color-warn: #9b6b00;
+  --color-alert: #e63946;
+  --color-info: #4d7395;
+  --color-violet: #bdb2ff;
+  --color-warm: #948979;
 
   --font-sans: 'DM Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-heading: 'Archivo', 'DM Sans', ui-sans-serif, system-ui, sans-serif;
