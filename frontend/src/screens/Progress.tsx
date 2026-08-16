@@ -90,16 +90,16 @@ export default function Progress() {
       <PageHeader
         title="Progress"
         action={
-          <div className="glass-inset flex gap-1 rounded-xl p-1">
+          <div className="glass-inset flex gap-1 radius-control p-1">
             {RANGES.map((r) => (
               <button
                 key={r.label}
                 type="button"
                 onClick={() => setRangeDays(r.days)}
-                className={`rounded-lg px-3 py-1.5 text-[11px] font-medium transition-colors ${
+                className={`radius-control px-3 py-1.5 text-[11px] font-medium transition-colors ${
                   rangeDays === r.days
-                    ? 'bg-white/12 text-ink-50 ring-1 ring-inset ring-white/12'
-                    : 'text-ink-400'
+                    ? 'bg-[var(--app-inset)] text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)]'
+                    : 'text-[var(--app-muted)]'
                 }`}
               >
                 {r.label}
@@ -151,7 +151,7 @@ export default function Progress() {
       <SectionTitle>This week at a glance</SectionTitle>
       <Card>
         <ActivityRings compliance={compliance} />
-        <p className="mt-3 text-[11px] leading-relaxed text-ink-400">
+        <p className="mt-3 text-[11px] leading-relaxed text-[var(--app-muted)]">
           Solid arc = logged and hit. Faded arc = logged and missed. Grey arc = never
           logged. A week you did not track shows as gaps rather than as a full ring.
         </p>
@@ -168,10 +168,10 @@ export default function Progress() {
             {phase.name}
           </Pill>
         </div>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-ink-300">{review?.detail}</p>
+        <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--app-ink-soft)]">{review?.detail}</p>
         {review && review.daysRequired > 0 ? (
           <div className="mt-3">
-            <div className="mb-1 flex justify-between text-[11px] text-ink-400">
+            <div className="mb-1 flex justify-between text-[11px] text-[var(--app-muted)]">
               <span>Hold under target</span>
               <span className="tabular">
                 {review.daysHeld}/{review.daysRequired} days
@@ -191,7 +191,7 @@ export default function Progress() {
         <div>
       <SectionTitle
         action={
-          <span className="tabular text-xs text-ink-400">
+          <span className="tabular text-xs text-[var(--app-muted)]">
             {fmt(compliance?.overallHitRatePct ?? null, 0)}% · {fmt(compliance?.overallCoveragePct ?? null, 0)}% logged
           </span>
         }
@@ -207,29 +207,29 @@ export default function Progress() {
             if (m.eligibleDays === 0) {
               return (
                 <div key={metric} className="flex items-center justify-between text-[12px]">
-                  <span className="text-ink-400">{METRIC_LABEL[metric]}</span>
-                  <span className="text-ink-400">not scheduled</span>
+                  <span className="text-[var(--app-muted)]">{METRIC_LABEL[metric]}</span>
+                  <span className="text-[var(--app-muted)]">not scheduled</span>
                 </div>
               )
             }
             return (
               <div key={metric}>
                 <div className="mb-1 flex items-baseline justify-between text-[12px]">
-                  <span className="text-ink-200">{METRIC_LABEL[metric]}</span>
-                  <span className="tabular text-ink-400">
+                  <span className="text-[var(--app-ink)]">{METRIC_LABEL[metric]}</span>
+                  <span className="tabular text-[var(--app-muted)]">
                     {m.hitRatePct === null ? (
-                      <span className="text-ink-400">not logged</span>
+                      <span className="text-[var(--app-muted)]">not logged</span>
                     ) : (
                       <>
                         {Math.round(m.hitRatePct)}%
-                        <span className="text-ink-600">
+                        <span className="text-[var(--app-muted)]">
                           {' '}
                           · {m.knownDays}/{m.eligibleDays} logged
                         </span>
                         {prev?.hitRatePct != null && m.hitRatePct !== prev.hitRatePct ? (
                           <span
                             className={
-                              m.hitRatePct > prev.hitRatePct ? 'text-accent' : 'text-ink-600'
+                              m.hitRatePct > prev.hitRatePct ? 'text-accent' : 'text-[var(--app-muted)]'
                             }
                           >
                             {' '}
@@ -256,7 +256,7 @@ export default function Progress() {
             )
           })}
         </div>
-        <p className="mt-3 text-[11px] leading-relaxed text-ink-400">
+        <p className="mt-3 text-[11px] leading-relaxed text-[var(--app-muted)]">
           Hit rate counts only the days you logged. The second number is how much of the
           week was logged at all — a high hit rate on low coverage is not a good week, and
           the rules engine treats it as unknown rather than good.
@@ -315,10 +315,10 @@ export default function Progress() {
         <div className="space-y-2">
           {training.map((week) => (
             <div key={week.label} className="flex items-center justify-between text-[13px]">
-              <span className="text-ink-300">{week.label}</span>
-              <span className="tabular text-ink-200">
+              <span className="text-[var(--app-ink-soft)]">{week.label}</span>
+              <span className="tabular text-[var(--app-ink)]">
                 {week.sessions} session{week.sessions === 1 ? '' : 's'}
-                <span className="text-ink-600"> · {fmtInt(week.volume)} kg·reps</span>
+                <span className="text-[var(--app-muted)]"> · {fmtInt(week.volume)} kg·reps</span>
               </span>
             </div>
           ))}
@@ -331,14 +331,14 @@ export default function Progress() {
         <div>
           <SectionTitle>The working</SectionTitle>
           <Card>
-            <p className="mb-3 text-[12px] leading-relaxed text-ink-400">
+            <p className="mb-3 text-[12px] leading-relaxed text-[var(--app-muted)]">
               Every number the recommendation engine used to reach{' '}
-              <span className="text-ink-200">
+              <span className="text-[var(--app-ink)]">
                 &ldquo;{dash.recommendation?.headline}&rdquo;
               </span>
               . Nothing here comes from the AI.
             </p>
-            <dl className="glass-inset-deep grid grid-cols-2 gap-x-3 gap-y-1.5 rounded-2xl p-3.5 text-[12px]">
+            <dl className="glass-inset-deep grid grid-cols-2 gap-x-3 gap-y-1.5 radius-control p-3.5 text-[12px]">
               <Row label="Loss rate" value={`${fmt(e.lossKgPerWeek, 2)} kg/wk`} />
               <Row label="Trend weight" value={`${fmt(e.trendWeightKg, 2)} kg`} />
               <Row label="Previous week" value={`${fmt(e.previousTrendWeightKg, 2)} kg`} />
@@ -361,7 +361,7 @@ export default function Progress() {
                   )})`}
                 />
               ) : null}
-              <div className="col-span-2 mt-1 text-[10px] text-ink-600">
+              <div className="col-span-2 mt-1 text-[10px] text-[var(--app-muted)]">
                 rules v{dash.recommendation?.rulesVersion}
               </div>
             </dl>
@@ -377,8 +377,8 @@ export default function Progress() {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <>
-      <dt className="text-ink-400">{label}</dt>
-      <dd className="tabular text-right text-ink-200">{value}</dd>
+      <dt className="text-[var(--app-muted)]">{label}</dt>
+      <dd className="tabular text-right text-[var(--app-ink)]">{value}</dd>
     </>
   )
 }

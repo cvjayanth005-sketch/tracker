@@ -160,7 +160,7 @@ function WelcomePage() {
           </div>
         </header>
 
-        <section className="relative mt-2 min-h-[calc(100dvh-6.5rem)] flex-1 overflow-hidden rounded-lg border border-surface-line bg-surface-raised shadow-[0_24px_80px_-48px_rgba(17,20,17,0.45)]">
+        <section className="relative mt-2 min-h-[calc(100dvh-6.5rem)] flex-1 overflow-hidden radius-control border border-surface-line bg-surface-raised shadow-[0_24px_80px_-48px_rgba(17,20,17,0.45)]">
           {/*
             The LCP element on the one screen that gates the whole app, so it is
             art-directed rather than merely scaled: the landscape frame puts the
@@ -211,7 +211,7 @@ function WelcomePage() {
               </h1>
 
               <div className="w-full max-w-sm lg:ml-auto">
-                <div className="formara-auth-panel rounded-lg p-5 text-surface-ink sm:p-6">
+                <div className="formara-auth-panel radius-control p-5 text-surface-ink sm:p-6">
                   <h2 className="font-heading text-2xl font-semibold leading-tight text-surface-ink">
                     Welcome back
                   </h2>
@@ -268,11 +268,11 @@ function AccountSyncGate({
     <div className="min-h-dvh">
       <Aurora />
       <main className="mx-auto flex min-h-dvh max-w-md items-center px-5 text-center">
-        <div className="glass-strong rounded-3xl p-5">
-          <h1 className="text-lg font-semibold text-ink-50">{title}</h1>
-          <p className="mt-2 text-sm leading-6 text-ink-300">{body}</p>
+        <div className="glass-strong radius-inset p-5">
+          <h1 className="text-lg font-semibold text-[var(--app-ink)]">{title}</h1>
+          <p className="mt-2 text-sm leading-6 text-[var(--app-ink-soft)]">{body}</p>
           {detail ? (
-            <div className="mt-3 rounded-2xl bg-warn/10 px-3 py-2 text-[12px] leading-relaxed text-warn ring-1 ring-inset ring-warn/20">
+            <div className="mt-3 radius-control bg-warn/10 px-3 py-2 text-[12px] leading-relaxed text-warn ring-1 ring-inset ring-warn/20">
               {detail}
             </div>
           ) : null}
@@ -281,7 +281,7 @@ function AccountSyncGate({
               <button
                 type="button"
                 onClick={onUseServer}
-                className="rounded-2xl bg-accent px-3 py-2.5 text-sm font-semibold text-ink-950"
+                className="radius-control bg-accent px-3 py-2.5 text-sm font-semibold text-ink-950"
               >
                 Use server copy
               </button>
@@ -290,7 +290,7 @@ function AccountSyncGate({
               <button
                 type="button"
                 onClick={onReplaceServer}
-                className="rounded-2xl bg-white/8 px-3 py-2.5 text-sm font-semibold text-ink-50 ring-1 ring-inset ring-white/10"
+                className="radius-control bg-[var(--app-inset)] px-3 py-2.5 text-sm font-semibold text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)]"
               >
                 Replace server with this device
               </button>
@@ -298,7 +298,7 @@ function AccountSyncGate({
             <button
               type="button"
               onClick={onRetry}
-              className="rounded-2xl bg-white/6 px-3 py-2.5 text-sm font-semibold text-ink-200 ring-1 ring-inset ring-white/10"
+              className="radius-control bg-[var(--app-inset)] px-3 py-2.5 text-sm font-semibold text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)]"
             >
               Retry sync
             </button>
@@ -474,9 +474,9 @@ export default function App() {
       <div className="min-h-dvh">
         <Aurora />
         <main className="mx-auto flex min-h-dvh max-w-md items-center px-5 text-center">
-          <div className="glass-strong rounded-3xl p-5">
-            <h1 className="text-lg font-semibold text-ink-50">Loading your tracker</h1>
-            <p className="mt-2 text-sm leading-6 text-ink-300">
+          <div className="glass-strong radius-inset p-5">
+            <h1 className="text-lg font-semibold text-[var(--app-ink)]">Loading your tracker</h1>
+            <p className="mt-2 text-sm leading-6 text-[var(--app-ink-soft)]">
               Pulling your account data before opening the dashboard.
             </p>
             {bootError ? <div className="mt-3 text-[12px] text-warn">{bootError}</div> : null}

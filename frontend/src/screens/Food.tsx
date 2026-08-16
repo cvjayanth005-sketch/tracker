@@ -85,7 +85,7 @@ export default function Food() {
       <SectionTitle
         action={
           <div className="flex items-center gap-2">
-            <span className="text-xs text-ink-400">{food.today.mealCount} today</span>
+            <span className="text-xs text-[var(--app-muted)]">{food.today.mealCount} today</span>
             <DayCompleteToggle date={today} complete={food.today.logComplete} />
           </div>
         }
@@ -112,16 +112,16 @@ export default function Food() {
       <Card>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <div className="mb-1.5 flex justify-between text-[12px] text-ink-300">
+            <div className="mb-1.5 flex justify-between text-[12px] text-[var(--app-ink-soft)]">
               <span>Calories on target</span>
-              <span className="tabular font-semibold text-ink-100">{calorieHits}/7</span>
+              <span className="tabular font-semibold text-[var(--app-ink)]">{calorieHits}/7</span>
             </div>
             <Meter value={(calorieHits / 7) * 100} tone={calorieHits >= 5 ? 'accent' : 'warn'} />
           </div>
           <div>
-            <div className="mb-1.5 flex justify-between text-[12px] text-ink-300">
+            <div className="mb-1.5 flex justify-between text-[12px] text-[var(--app-ink-soft)]">
               <span>Protein on target</span>
-              <span className="tabular font-semibold text-ink-100">{proteinHits}/7</span>
+              <span className="tabular font-semibold text-[var(--app-ink)]">{proteinHits}/7</span>
             </div>
             <Meter value={(proteinHits / 7) * 100} tone={proteinHits >= 5 ? 'info' : 'warn'} />
           </div>

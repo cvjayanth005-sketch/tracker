@@ -36,7 +36,7 @@ export function MicroDaySummary({ micros }: { micros: Micros }) {
   const anyLogged = micros && MICRO_DEFS.some((def) => micros[def.key] != null)
   if (!anyLogged) {
     return (
-      <p className="text-[12px] leading-relaxed text-ink-400">
+      <p className="text-[12px] leading-relaxed text-[var(--app-muted)]">
         Log meals with the AI estimator and it captures micronutrients here — potassium, calcium, iron, and more.
       </p>
     )
@@ -47,14 +47,14 @@ export function MicroDaySummary({ micros }: { micros: Micros }) {
         const value = micros?.[def.key] ?? null
         const pct = value === null ? null : Math.min(100, Math.round((value / def.target) * 100))
         return (
-          <div key={def.key} className="rounded-xl bg-white/[0.03] px-2.5 py-2 ring-1 ring-inset ring-white/8">
+          <div key={def.key} className="radius-control bg-[var(--app-inset)] px-2.5 py-2 ring-1 ring-inset ring-[var(--app-line)]">
             <div className="flex items-baseline justify-between gap-1">
-              <span className="text-[11px] text-ink-400">{def.label}</span>
-              {pct !== null ? <span className="tabular text-[10px] text-ink-500">{pct}%</span> : null}
+              <span className="text-[11px] text-[var(--app-muted)]">{def.label}</span>
+              {pct !== null ? <span className="tabular text-[10px] text-[var(--app-muted)]">{pct}%</span> : null}
             </div>
-            <div className="tabular mt-0.5 text-[13px] font-semibold text-ink-50">
-              {value === null ? <span className="text-ink-600">—</span> : Math.round(value)}
-              <span className="ml-0.5 text-[10px] font-normal text-ink-500">{def.unit}</span>
+            <div className="tabular mt-0.5 text-[13px] font-semibold text-[var(--app-ink)]">
+              {value === null ? <span className="text-[var(--app-muted)]">—</span> : Math.round(value)}
+              <span className="ml-0.5 text-[10px] font-normal text-[var(--app-muted)]">{def.unit}</span>
             </div>
           </div>
         )
@@ -68,29 +68,29 @@ export function MicroFields({ value, onSet }: { value: Micros; onSet: (key: stri
   const filled = value ? Object.keys(value).length : 0
   const [open, setOpen] = useState(filled > 0)
   return (
-    <div className="rounded-lg bg-white/[0.03] ring-1 ring-inset ring-white/8">
+    <div className="radius-control bg-[var(--app-inset)] ring-1 ring-inset ring-[var(--app-line)]">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-2.5 py-1.5 text-[11px] font-medium text-ink-300"
+        className="flex w-full items-center justify-between px-2.5 py-1.5 text-[11px] font-medium text-[var(--app-ink-soft)]"
       >
         <span>Micronutrients{filled > 0 ? ` · ${filled}` : ''}</span>
-        <span className={`text-ink-500 transition-transform ${open ? 'rotate-180' : ''}`}>⌄</span>
+        <span className={`text-[var(--app-muted)] transition-transform ${open ? 'rotate-180' : ''}`}>⌄</span>
       </button>
       {open ? (
         <div className="grid grid-cols-2 gap-1.5 px-2 pb-2">
           {MICRO_DEFS.map((def) => (
             <label key={def.key} className="flex items-center gap-1.5">
-              <span className="min-w-0 flex-1 truncate text-[10px] text-ink-400">{def.label}</span>
+              <span className="min-w-0 flex-1 truncate text-[10px] text-[var(--app-muted)]">{def.label}</span>
               <input
                 type="number"
                 inputMode="decimal"
                 defaultValue={value?.[def.key] ?? ''}
                 onBlur={(e) => onSet(def.key, num(e.target.value))}
                 placeholder="—"
-                className="tabular w-12 rounded bg-white/5 px-1 py-1 text-center text-[12px] text-ink-100 outline-none ring-1 ring-inset ring-white/10 placeholder:text-ink-600 focus:ring-accent/60"
+                className="tabular w-12 rounded bg-[var(--app-inset)] px-1 py-1 text-center text-[12px] text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
               />
-              <span className="w-7 text-[9px] text-ink-500">{def.unit}</span>
+              <span className="w-7 text-[9px] text-[var(--app-muted)]">{def.unit}</span>
             </label>
           ))}
         </div>

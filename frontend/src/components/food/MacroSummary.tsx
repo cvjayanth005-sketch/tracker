@@ -10,9 +10,9 @@ const ON_COLOR = '#39ff14'
 /** Trailing adherence dots + current streak — fills the card and rewards consistency. */
 function ConsistencyRow({ strip }: { strip: ConsistencyStrip }) {
   return (
-    <div className="mt-4 border-t border-white/8 pt-3.5">
+    <div className="mt-4 border-t border-[var(--app-line)] pt-3.5">
       <div className="mb-2.5 flex items-center justify-between">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-400">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--app-muted)]">
           Last {strip.days.length} days
         </span>
         {strip.streak > 0 ? (
@@ -20,7 +20,7 @@ function ConsistencyRow({ strip }: { strip: ConsistencyStrip }) {
             🔥 {strip.streak}-day streak
           </span>
         ) : (
-          <span className="text-[11px] text-ink-500">Hit calories + protein to build a streak</span>
+          <span className="text-[11px] text-[var(--app-muted)]">Hit calories + protein to build a streak</span>
         )}
       </div>
       <div className="flex items-center gap-[5px]">
@@ -44,15 +44,15 @@ function ConsistencyRow({ strip }: { strip: ConsistencyStrip }) {
           )
         })}
       </div>
-      <div className="mt-2 flex items-center gap-3 text-[10px] text-ink-500">
+      <div className="mt-2 flex items-center gap-3 text-[10px] text-[var(--app-muted)]">
         <span className="flex items-center gap-1">
           <span className="h-2 w-2 rounded-full" style={{ backgroundColor: ON_COLOR }} /> on target
         </span>
         <span className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-white/16" /> missed
+          <span className="h-2 w-2 rounded-full bg-[var(--app-inset)]" /> missed
         </span>
         <span className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full ring-1 ring-inset ring-white/15" /> not logged
+          <span className="h-2 w-2 rounded-full ring-1 ring-inset ring-[var(--app-line)]" /> not logged
         </span>
       </div>
     </div>
@@ -82,13 +82,13 @@ export function MacroSummary({ food, consistency }: { food: FoodContext; consist
             center={
               today.calories === null ? (
                 <>
-                  <div className="text-sm font-semibold text-ink-300">No food yet</div>
-                  <div className="mt-1 text-[11px] text-ink-500">{targets.calories.toLocaleString()} kcal</div>
+                  <div className="text-sm font-semibold text-[var(--app-ink-soft)]">No food yet</div>
+                  <div className="mt-1 text-[11px] text-[var(--app-muted)]">{targets.calories.toLocaleString()} kcal</div>
                 </>
               ) : (
                 <>
-                  <div className="tabular text-[26px] font-semibold leading-none text-ink-50">{fmtInt(today.calories)}</div>
-                  <div className="mt-1 text-[10px] text-ink-500">of {targets.calories.toLocaleString()} kcal</div>
+                  <div className="tabular text-[26px] font-semibold leading-none text-[var(--app-ink)]">{fmtInt(today.calories)}</div>
+                  <div className="mt-1 text-[10px] text-[var(--app-muted)]">of {targets.calories.toLocaleString()} kcal</div>
                   <div
                     className={`mt-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                       over ? 'bg-alert/15 text-alert' : 'bg-accent/15 text-accent'
@@ -104,10 +104,10 @@ export function MacroSummary({ food, consistency }: { food: FoodContext; consist
         <div>
           <MacroLegend totals={totals} targets={macroTargets} />
           {today.fiberG !== null || today.sugarG !== null || today.satFatG !== null || today.mealCount > 0 ? (
-            <div className="mt-3.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 border-t border-white/8 pt-3 text-[11px] text-ink-500">
+            <div className="mt-3.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 border-t border-[var(--app-line)] pt-3 text-[11px] text-[var(--app-muted)]">
               {today.fiberG !== null ? (
                 <span>
-                  Fiber <span className="font-semibold text-ink-300">{Math.round(today.fiberG)} g</span>
+                  Fiber <span className="font-semibold text-[var(--app-ink-soft)]">{Math.round(today.fiberG)} g</span>
                 </span>
               ) : null}
               {today.sugarG !== null ? (
@@ -120,7 +120,7 @@ export function MacroSummary({ food, consistency }: { food: FoodContext; consist
                   Sat fat <span className="font-semibold" style={{ color: SUBMACRO.satFatG.color }}>{Math.round(today.satFatG)} g</span>
                 </span>
               ) : null}
-              <span className="text-ink-600">·</span>
+              <span className="text-[var(--app-muted)]">·</span>
               <span>
                 {today.mealCount} meal{today.mealCount === 1 ? '' : 's'} logged
               </span>

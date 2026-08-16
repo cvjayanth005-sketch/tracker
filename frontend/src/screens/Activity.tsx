@@ -89,16 +89,16 @@ function WeekSplit({
             onClick={() => onSelectDate(date)}
             aria-pressed={selected}
             title={`Open ${weekdayName(date)} ${formatShort(date)}`}
-            className={`min-h-24 rounded-2xl p-2 text-left ring-1 ring-inset transition-[background-color,box-shadow,transform] active:scale-[0.97] ${
+            className={`min-h-24 radius-control p-2 text-left ring-1 ring-inset transition-[background-color,box-shadow,transform] active:scale-[0.97] ${
               selected
-                ? 'bg-info/12 text-ink-50 ring-info/45 shadow-[0_12px_30px_-24px_rgba(0,240,255,0.8)]'
+                ? 'bg-info/12 text-[var(--app-ink)] ring-info/45 shadow-[0_12px_30px_-24px_rgba(0,240,255,0.8)]'
                 : active
-                  ? 'bg-accent/10 text-ink-50 ring-accent/30'
-                  : 'bg-white/[0.045] text-ink-300 ring-white/8 hover:bg-white/[0.07]'
+                  ? 'bg-accent/10 text-[var(--app-ink)] ring-accent/30'
+                  : 'bg-[var(--app-inset)] text-[var(--app-ink-soft)] ring-[var(--app-line)] hover:bg-[var(--app-inset)]'
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-semibold text-ink-500">
+              <span className="text-[10px] font-semibold text-[var(--app-muted)]">
                 {WEEK_LABELS[dayOfWeek(date)]}
               </span>
               <span
@@ -111,17 +111,17 @@ function WeekSplit({
                         ? 'bg-alert'
                         : active
                           ? 'bg-info'
-                          : 'bg-white/18'
+                          : 'bg-[var(--app-inset)]'
                 }`}
               />
             </div>
-            <div className="mt-1 tabular text-[10px] text-ink-500">
+            <div className="mt-1 tabular text-[10px] text-[var(--app-muted)]">
               {formatShort(date).split(' ')[0]}
             </div>
             <div className="mt-3 text-[11px] font-semibold capitalize leading-tight">
               {day?.gym ? day.sessionType : 'Rest'}
             </div>
-            <div className="mt-1 min-h-7 text-[10px] leading-tight text-ink-500">
+            <div className="mt-1 min-h-7 text-[10px] leading-tight text-[var(--app-muted)]">
               {day?.runKm ? `${day.runKm} km ${day.runType}` : 'No run'}
             </div>
           </button>
@@ -184,13 +184,13 @@ function SelectedDayPanel({
         : 'neutral'
 
   return (
-    <div className="glass-inset mt-3 rounded-2xl p-3.5">
+    <div className="glass-inset mt-3 radius-control p-3.5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="text-[10px] font-semibold uppercase text-ink-400">
+          <div className="text-[10px] font-semibold uppercase text-[var(--app-muted)]">
             Selected day
           </div>
-          <div className="mt-1 text-sm font-semibold text-ink-50">
+          <div className="mt-1 text-sm font-semibold text-[var(--app-ink)]">
             {weekdayName(date)} · {formatShort(date)}
           </div>
         </div>
@@ -199,41 +199,41 @@ function SelectedDayPanel({
 
       <div className="mt-3 grid grid-cols-3 gap-2 text-[11px]">
         <div>
-          <div className="text-ink-500">Strength</div>
-          <div className="mt-1 truncate font-semibold capitalize text-ink-200">
+          <div className="text-[var(--app-muted)]">Strength</div>
+          <div className="mt-1 truncate font-semibold capitalize text-[var(--app-ink)]">
             {schedule?.gym ? schedule.sessionType : 'Rest'}
           </div>
         </div>
         <div>
-          <div className="text-ink-500">Running</div>
-          <div className="mt-1 truncate font-semibold text-ink-200">
+          <div className="text-[var(--app-muted)]">Running</div>
+          <div className="mt-1 truncate font-semibold text-[var(--app-ink)]">
             {schedule?.runKm ? `${schedule.runKm} km` : 'Rest'}
           </div>
         </div>
         <div>
-          <div className="text-ink-500">Recovery</div>
-          <div className="mt-1 truncate font-semibold text-ink-200">
+          <div className="text-[var(--app-muted)]">Recovery</div>
+          <div className="mt-1 truncate font-semibold text-[var(--app-ink)]">
             {log?.sleepHours == null ? 'Not logged' : `${log.sleepHours} h`}
           </div>
         </div>
       </div>
 
       {plannedExercises.length > 0 ? (
-        <div className="mt-3 border-t border-white/8 pt-3">
-          <div className="text-[10px] font-semibold uppercase text-ink-500">
+        <div className="mt-3 border-t border-[var(--app-line)] pt-3">
+          <div className="text-[10px] font-semibold uppercase text-[var(--app-muted)]">
             Session preview · {plannedExercises.length} exercises
           </div>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {plannedExercises.slice(0, 4).map((exercise) => (
               <span
                 key={exercise.id}
-                className="rounded-lg bg-black/25 px-2 py-1 text-[10px] text-ink-300 ring-1 ring-inset ring-white/8"
+                className="radius-control bg-[var(--app-inset)] px-2 py-1 text-[10px] text-[var(--app-ink-soft)] ring-1 ring-inset ring-[var(--app-line)]"
               >
                 {exercise.name}
               </span>
             ))}
             {plannedExercises.length > 4 ? (
-              <span className="px-1 py-1 text-[10px] text-ink-500">
+              <span className="px-1 py-1 text-[10px] text-[var(--app-muted)]">
                 +{plannedExercises.length - 4}
               </span>
             ) : null}
@@ -245,21 +245,21 @@ function SelectedDayPanel({
         {canStartWorkout ? (
           <Link
             to="/workout"
-            className="rounded-xl bg-accent px-3 py-2 text-[11px] font-semibold text-ink-950"
+            className="radius-control bg-accent px-3 py-2 text-[11px] font-semibold text-ink-950"
           >
             Start workout
           </Link>
         ) : null}
         <Link
           to={`/calendar/${date}`}
-          className="rounded-xl bg-white/8 px-3 py-2 text-[11px] font-semibold text-ink-100 ring-1 ring-inset ring-white/10"
+          className="radius-control bg-[var(--app-inset)] px-3 py-2 text-[11px] font-semibold text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)]"
         >
           Open day
         </Link>
         {schedule?.runKm ? (
           <Link
             to={`/calendar/${date}#runs`}
-            className="rounded-xl bg-info/12 px-3 py-2 text-[11px] font-semibold text-info ring-1 ring-inset ring-info/20"
+            className="radius-control bg-info/12 px-3 py-2 text-[11px] font-semibold text-info ring-1 ring-inset ring-info/20"
           >
             Log run
           </Link>
@@ -270,7 +270,7 @@ function SelectedDayPanel({
             onClick={() =>
               void upsertLog(date, { gymDone: log?.gymDone === false ? null : false })
             }
-            className="rounded-xl px-3 py-2 text-[11px] font-semibold text-ink-300 ring-1 ring-inset ring-white/10"
+            className="radius-control px-3 py-2 text-[11px] font-semibold text-[var(--app-ink-soft)] ring-1 ring-inset ring-[var(--app-line)]"
           >
             {log?.gymDone === false ? 'Clear rest mark' : 'Mark rest'}
           </button>
@@ -339,26 +339,26 @@ function MetricChart({
         <div className="px-5 pt-5 sm:px-6 sm:pt-6">
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color, boxShadow: `0 0 14px ${TONE_GLOW[tone]}` }} />
-            <div className="text-sm font-semibold text-ink-50">{title}</div>
+            <div className="text-sm font-semibold text-[var(--app-ink)]">{title}</div>
           </div>
-          <div className="mt-1.5 text-[11px] text-ink-400">
+          <div className="mt-1.5 text-[11px] text-[var(--app-muted)]">
             {known.length}/7 logged · target{' '}
             {targetValue === null ? 'not set' : `${targetValue.toLocaleString()} ${unit}`}
           </div>
         </div>
         <div className="px-5 pt-5 text-right sm:px-6 sm:pt-6">
-          <div className="tabular-display text-2xl font-semibold leading-none text-ink-50">
+          <div className="tabular-display text-2xl font-semibold leading-none text-[var(--app-ink)]">
             {formatMetricValue(average, unit)}
           </div>
-          <div className="mt-1.5 text-[10px] font-semibold uppercase text-ink-500">7-day avg</div>
+          <div className="mt-1.5 text-[10px] font-semibold uppercase text-[var(--app-muted)]">7-day avg</div>
         </div>
       </div>
 
       <div className="relative mt-3 h-56 w-full px-2 sm:h-60 sm:px-4">
         {known.length === 0 ? (
-          <div className="absolute inset-4 flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.025] text-center">
-            <div className="text-sm font-semibold text-ink-200">No {title.toLowerCase()} logged</div>
-            <div className="mt-1 text-[11px] text-ink-500">Your seven-day trend will appear here.</div>
+          <div className="absolute inset-4 flex flex-col items-center justify-center radius-control border border-dashed border-[var(--app-line)] bg-[var(--app-inset)] text-center">
+            <div className="text-sm font-semibold text-[var(--app-ink)]">No {title.toLowerCase()} logged</div>
+            <div className="mt-1 text-[11px] text-[var(--app-muted)]">Your seven-day trend will appear here.</div>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
@@ -416,11 +416,11 @@ function MetricChart({
                   if (!active || !item) return null
                   const pointValue = isFiniteNumber(item.value) ? item.value : null
                   return (
-                    <div className="rounded-xl border border-white/12 bg-ink-900/95 px-3 py-2 shadow-2xl backdrop-blur-xl">
-                      <div className="text-[10px] font-semibold uppercase text-ink-400">
+                    <div className="radius-control border border-[var(--app-line)] bg-[var(--app-ink-raised)]/95 px-3 py-2 shadow-2xl backdrop-blur-xl">
+                      <div className="text-[10px] font-semibold uppercase text-[var(--app-muted)]">
                         {weekdayName(item.date)} · {formatShort(item.date)}
                       </div>
-                      <div className="mt-1 tabular text-sm font-semibold text-ink-50">
+                      <div className="mt-1 tabular text-sm font-semibold text-[var(--app-ink)]">
                         {formatMetricValue(pointValue, unit)}
                       </div>
                       <div className="mt-0.5 text-[10px]" style={{ color }}>
@@ -453,15 +453,15 @@ function MetricChart({
         )}
       </div>
 
-      <div className="border-t border-white/8 px-5 py-4 sm:px-6">
+      <div className="border-t border-[var(--app-line)] px-5 py-4 sm:px-6">
         <div className="mb-2 flex items-center justify-between gap-4 text-[11px]">
           <div className="flex items-center gap-4">
-            <span className="text-ink-400">Consistency</span>
-            <span className="text-ink-500">
-              Best <strong className="font-semibold text-ink-200">{formatMetricValue(best, unit)}</strong>
+            <span className="text-[var(--app-muted)]">Consistency</span>
+            <span className="text-[var(--app-muted)]">
+              Best <strong className="font-semibold text-[var(--app-ink)]">{formatMetricValue(best, unit)}</strong>
             </span>
           </div>
-          <span className="tabular font-semibold text-ink-200">
+          <span className="tabular font-semibold text-[var(--app-ink)]">
             {hits === null ? '—' : `${hits}/7`}
           </span>
         </div>
@@ -530,14 +530,14 @@ function TrainingChecklist({
   return (
     <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
       {items.map((item) => (
-        <div key={item.label} className="glass-inset rounded-2xl p-3">
+        <div key={item.label} className="glass-inset radius-control p-3">
           <div className="flex items-center justify-between gap-2">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-400">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--app-muted)]">
               {item.label}
             </div>
             <Pill tone={item.tone === 'good' ? 'good' : 'neutral'}>{item.state}</Pill>
           </div>
-          <div className="mt-2 truncate text-sm font-semibold text-ink-100">{item.detail}</div>
+          <div className="mt-2 truncate text-sm font-semibold text-[var(--app-ink)]">{item.detail}</div>
         </div>
       ))}
     </div>
@@ -567,8 +567,8 @@ function MoveRing({
       <div>
         <div className="flex items-start justify-between">
           <div>
-            <div className="text-sm font-semibold text-ink-50">Movement Burn</div>
-            <div className="mt-1 text-[11px] text-ink-500">walking + running estimate</div>
+            <div className="text-sm font-semibold text-[var(--app-ink)]">Movement Burn</div>
+            <div className="mt-1 text-[11px] text-[var(--app-muted)]">walking + running estimate</div>
           </div>
           <Pill tone={pct >= 100 ? 'good' : 'info'}>{Math.round(pct)}%</Pill>
         </div>
@@ -607,29 +607,29 @@ function MoveRing({
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-              <div className="tabular-display text-3xl font-semibold leading-none text-ink-50">
+              <div className="tabular-display text-3xl font-semibold leading-none text-[var(--app-ink)]">
                 {Math.round(total)}
               </div>
-              <div className="mt-1 text-[11px] text-ink-500">kcal</div>
+              <div className="mt-1 text-[11px] text-[var(--app-muted)]">kcal</div>
             </div>
           </div>
 
           <div className="space-y-3">
             <div>
-              <div className="flex justify-between text-[12px] text-ink-300">
+              <div className="flex justify-between text-[12px] text-[var(--app-ink-soft)]">
                 <span>Walking</span>
                 <span className="tabular">{Math.round(walkingKcal)} kcal</span>
               </div>
               <Meter value={target > 0 ? (walkingKcal / target) * 100 : null} tone="accent" />
             </div>
             <div>
-              <div className="flex justify-between text-[12px] text-ink-300">
+              <div className="flex justify-between text-[12px] text-[var(--app-ink-soft)]">
                 <span>Running</span>
                 <span className="tabular">{Math.round(runningKcal)} kcal</span>
               </div>
               <Meter value={target > 0 ? (runningKcal / target) * 100 : null} tone="info" />
             </div>
-            <div className="text-[11px] leading-relaxed text-ink-500">
+            <div className="text-[11px] leading-relaxed text-[var(--app-muted)]">
               Estimate uses logged steps and run distance. We can replace it with wearable calories
               later if you connect a source.
             </div>
@@ -728,26 +728,26 @@ export default function Activity() {
                 <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
                   {weekdayName(today)} · {formatShort(today)}
                 </div>
-                <h2 className="mt-2 text-3xl font-semibold tracking-tight text-ink-50">
+                <h2 className="mt-2 text-3xl font-semibold tracking-tight text-[var(--app-ink)]">
                   Day Training
                 </h2>
-                <p className="mt-2 text-sm leading-6 text-ink-300">
+                <p className="mt-2 text-sm leading-6 text-[var(--app-ink-soft)]">
                   {scheduled ? scheduleLabel(scheduled) : 'No training split found for today.'}
                 </p>
               </div>
 
               <div className="lg:w-64">
-                <div className="glass-inset rounded-2xl p-3">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-400">
+                <div className="glass-inset radius-control p-3">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--app-muted)]">
                     Next action
                   </div>
-                  <div className="mt-2 text-sm font-semibold leading-snug text-ink-50">
+                  <div className="mt-2 text-sm font-semibold leading-snug text-[var(--app-ink)]">
                     {nextAction}
                   </div>
                 </div>
                 <Link
                   to="/workout"
-                  className="mt-2 block rounded-2xl bg-accent px-4 py-3 text-center text-sm font-semibold text-ink-950 shadow-[0_18px_40px_-24px_rgba(57,255,20,0.9)]"
+                  className="mt-2 block radius-control bg-accent px-4 py-3 text-center text-sm font-semibold text-ink-950 shadow-[0_18px_40px_-24px_rgba(57,255,20,0.9)]"
                 >
                   Open workout
                 </Link>
@@ -770,8 +770,8 @@ export default function Activity() {
           <Card>
             <div className="mb-3 flex items-baseline justify-between">
               <div>
-                <div className="text-sm font-semibold text-ink-50">Full Week Split</div>
-                <div className="mt-1 text-[11px] text-ink-500">{phase.name}</div>
+                <div className="text-sm font-semibold text-[var(--app-ink)]">Full Week Split</div>
+                <div className="mt-1 text-[11px] text-[var(--app-muted)]">{phase.name}</div>
               </div>
               <Pill tone="info">
                 {weeklyRunTarget > 0 ? `${weeklyRunTarget} km` : 'run optional'}
@@ -849,7 +849,7 @@ export default function Activity() {
         />
 
         <Card>
-          <div className="text-sm font-semibold text-ink-50">Weekly Summary</div>
+          <div className="text-sm font-semibold text-[var(--app-ink)]">Weekly Summary</div>
           <div className="mt-4 grid grid-cols-2 gap-2">
             <Stat label="Avg steps" value={statInt(dash.weekAverages?.steps)} />
             <Stat label="Avg sleep" value={statVal(dash.weekAverages?.sleep, 1)} unit="h" />
@@ -860,7 +860,7 @@ export default function Activity() {
             />
             <Stat label="Step hits" value={`${stepHits}/7`} />
           </div>
-          <div className="mt-4 flex flex-wrap gap-2 border-t border-white/8 pt-4">
+          <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--app-line)] pt-4">
             <Pill tone={stepHits >= 5 ? 'good' : 'warn'}>steps {stepHits}/7</Pill>
             <Pill tone={sleepHits >= 5 ? 'good' : 'info'}>sleep {sleepHits}/7</Pill>
             <Pill tone={weeklyRunTarget > 0 && runTotal >= weeklyRunTarget ? 'good' : 'neutral'}>
@@ -878,10 +878,10 @@ export default function Activity() {
               {training.map((week) => (
                 <div key={week.label}>
                   <div className="mb-1 flex items-center justify-between text-[13px]">
-                    <span className="text-ink-300">{week.label}</span>
-                    <span className="tabular text-ink-200">
+                    <span className="text-[var(--app-ink-soft)]">{week.label}</span>
+                    <span className="tabular text-[var(--app-ink)]">
                       {week.sessions} session{week.sessions === 1 ? '' : 's'}
-                      <span className="text-ink-600">
+                      <span className="text-[var(--app-muted)]">
                         {' '}
                         · {Math.round(week.volume).toLocaleString()} kg·reps
                       </span>

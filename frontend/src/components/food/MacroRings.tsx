@@ -91,15 +91,15 @@ export function MacroLegend({ totals, targets }: { totals: MacroTotals; targets:
         const over = value !== null && value > goal * 1.02
         return (
           <div key={macro} className="flex items-center justify-between gap-3">
-            <span className="flex items-center gap-2 text-[12px] font-medium text-ink-200">
+            <span className="flex items-center gap-2 text-[12px] font-medium text-[var(--app-ink)]">
               <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: meta.color, boxShadow: `0 0 8px ${meta.glow}` }} />
               {meta.label}
             </span>
-            <span className="tabular text-[12px] text-ink-400">
-              <span className={`font-semibold ${over ? 'text-alert' : 'text-ink-50'}`}>
+            <span className="tabular text-[12px] text-[var(--app-muted)]">
+              <span className={`font-semibold ${over ? 'text-alert' : 'text-[var(--app-ink)]'}`}>
                 {value === null ? '—' : Math.round(value)}
               </span>
-              <span className="text-ink-500"> / {Math.round(goal)} {meta.unit}</span>
+              <span className="text-[var(--app-muted)]"> / {Math.round(goal)} {meta.unit}</span>
             </span>
           </div>
         )

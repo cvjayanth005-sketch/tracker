@@ -108,7 +108,7 @@ export default function WorkoutScreen() {
         <div>
           <SectionTitle
             action={
-              <span className="text-[11px] text-ink-500">
+              <span className="text-[11px] text-[var(--app-muted)]">
                 {scheduled?.runKm ? `${scheduled.runKm} km planned` : 'Optional today'}
               </span>
             }
@@ -129,13 +129,13 @@ export default function WorkoutScreen() {
             <Card className="mb-3">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <div className="text-[10px] font-semibold uppercase text-ink-400">
+                  <div className="text-[10px] font-semibold uppercase text-[var(--app-muted)]">
                     Adaptive session applied
                   </div>
-                  <div className="mt-1 text-sm font-semibold text-ink-50">
+                  <div className="mt-1 text-sm font-semibold text-[var(--app-ink)]">
                     {workout.prescription.headline}
                   </div>
-                  <div className="mt-1 text-[11px] text-ink-400">
+                  <div className="mt-1 text-[11px] text-[var(--app-muted)]">
                     {workout.prescription.adjustments.join(' · ') || 'Original progression retained'}
                   </div>
                 </div>
@@ -158,7 +158,7 @@ export default function WorkoutScreen() {
           {!workout ? (
             !pickerOpen ? (
             <Card>
-              <p className="text-[13px] leading-relaxed text-ink-300">
+              <p className="text-[13px] leading-relaxed text-[var(--app-ink-soft)]">
                 {scheduled?.gym
                   ? `Today is a ${scheduled.sessionType} day in ${phase.name}.`
                   : 'No gym session is scheduled today. You can still log one.'}
@@ -181,7 +181,7 @@ export default function WorkoutScreen() {
             </Card>
             ) : (
             <Card>
-              <div className="text-[13px] font-medium text-ink-200">Which session?</div>
+              <div className="text-[13px] font-medium text-[var(--app-ink)]">Which session?</div>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 {SESSION_TYPES.map((type) => (
                   <Button key={type} onClick={() => void begin(type)} className="capitalize">
@@ -233,7 +233,7 @@ export default function WorkoutScreen() {
               placeholder="How it went, niggles, anything to carry forward"
             />
             {workout.finishedAt ? (
-              <p className="px-1 text-[12px] text-ink-400">
+              <p className="px-1 text-[12px] text-[var(--app-muted)]">
                 Finished at {new Date(workout.finishedAt).toLocaleTimeString()}
               </p>
             ) : (
@@ -275,10 +275,10 @@ function RunLogger({
       {runs.length === 0 ? (
         <div className="flex items-center justify-between gap-3">
           <div>
-            <div className="text-sm font-medium text-ink-100">
+            <div className="text-sm font-medium text-[var(--app-ink)]">
               {capitalise(scheduledType)} run
             </div>
-            <p className="mt-0.5 text-[12px] text-ink-400">Log distance and effort when you finish.</p>
+            <p className="mt-0.5 text-[12px] text-[var(--app-muted)]">Log distance and effort when you finish.</p>
           </div>
           <Button variant="primary" onClick={onAdd}>Log run</Button>
         </div>
@@ -305,17 +305,17 @@ function RunEditor({ run }: { run: Run }) {
     <div>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-400">Run type</div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--app-muted)]">Run type</div>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {RUN_TYPES.map((type) => (
               <button
                 key={type}
                 type="button"
                 onClick={() => void updateRun(run.id, { type })}
-                className={`min-h-9 rounded-lg px-2.5 text-[12px] font-medium capitalize transition-colors ${
+                className={`min-h-9 radius-control px-2.5 text-[12px] font-medium capitalize transition-colors ${
                   run.type === type
                     ? 'bg-info text-ink-950'
-                    : 'bg-black/25 text-ink-400 ring-1 ring-inset ring-white/10'
+                    : 'bg-[var(--app-inset)] text-[var(--app-muted)] ring-1 ring-inset ring-[var(--app-line)]'
                 }`}
               >
                 {type}
@@ -328,7 +328,7 @@ function RunEditor({ run }: { run: Run }) {
           title="Delete run"
           aria-label="Delete run"
           onClick={() => void deleteRun(run.id)}
-          className="h-9 w-9 shrink-0 rounded-lg text-xl text-ink-500 transition-colors hover:bg-alert/10 hover:text-alert"
+          className="h-9 w-9 shrink-0 radius-control text-xl text-[var(--app-muted)] transition-colors hover:bg-alert/10 hover:text-alert"
         >
           ×
         </button>
@@ -353,20 +353,20 @@ function RunEditor({ run }: { run: Run }) {
         />
       </div>
 
-      <div className="glass-inset mt-2 flex items-center justify-between rounded-2xl px-3.5 py-3">
+      <div className="glass-inset mt-2 flex items-center justify-between radius-control px-3.5 py-3">
         <div>
-          <div className="text-[13px] font-medium text-ink-200">Live pace</div>
-          <div className="text-[11px] text-ink-400">Computed from distance and duration</div>
+          <div className="text-[13px] font-medium text-[var(--app-ink)]">Live pace</div>
+          <div className="text-[11px] text-[var(--app-muted)]">Computed from distance and duration</div>
         </div>
-        <div className="tabular text-xl font-semibold text-ink-50">
-          {formatPace(pace)} <span className="text-xs font-normal text-ink-400">/km</span>
+        <div className="tabular text-xl font-semibold text-[var(--app-ink)]">
+          {formatPace(pace)} <span className="text-xs font-normal text-[var(--app-muted)]">/km</span>
         </div>
       </div>
 
-      <div className="glass-inset mt-2 rounded-2xl px-3.5 py-3">
+      <div className="glass-inset mt-2 radius-control px-3.5 py-3">
         <div className="flex items-center justify-between">
-          <span className="text-[13px] font-medium text-ink-200">Effort</span>
-          <span className="text-[11px] text-ink-400">RPE 1-10</span>
+          <span className="text-[13px] font-medium text-[var(--app-ink)]">Effort</span>
+          <span className="text-[11px] text-[var(--app-muted)]">RPE 1-10</span>
         </div>
         <div className="mt-2 grid grid-cols-5 gap-1.5 sm:grid-cols-10">
           {Array.from({ length: 10 }, (_, index) => index + 1).map((rpe) => (
@@ -374,10 +374,10 @@ function RunEditor({ run }: { run: Run }) {
               key={rpe}
               type="button"
               onClick={() => void updateRun(run.id, { rpe: run.rpe === rpe ? null : rpe })}
-              className={`tabular h-9 rounded-lg text-sm font-semibold transition-colors ${
+              className={`tabular h-9 radius-control text-sm font-semibold transition-colors ${
                 run.rpe === rpe
                   ? 'bg-info text-ink-950'
-                  : 'bg-black/25 text-ink-400 ring-1 ring-inset ring-white/10'
+                  : 'bg-[var(--app-inset)] text-[var(--app-muted)] ring-1 ring-inset ring-[var(--app-line)]'
               }`}
             >
               {rpe}
@@ -416,8 +416,8 @@ function RunningProgress({ dash }: { dash: ReturnType<typeof useDashboard> }) {
     <Card>
       <div className="flex items-start justify-between gap-2">
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-400">Running progression</div>
-          <div className="mt-1 text-[15px] font-semibold text-ink-100">{progressionLabel}</div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--app-muted)]">Running progression</div>
+          <div className="mt-1 text-[15px] font-semibold text-[var(--app-ink)]">{progressionLabel}</div>
         </div>
         <Pill tone={ramp.status === 'ramp_too_fast' ? 'warn' : 'neutral'}>
           {ramp.status === 'ramp_too_fast' ? 'ramp warning' : 'trend only'}
@@ -442,19 +442,19 @@ function RunningProgress({ dash }: { dash: ReturnType<typeof useDashboard> }) {
           sub={longRun.changeKm === null ? 'Needs 2 measured weeks' : `${longRun.changeKm >= 0 ? '+' : ''}${longRun.changeKm.toFixed(1)} km over measured weeks`}
         />
       </div>
-      <div className="glass-inset mt-3 rounded-2xl px-3.5 py-3">
-        <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-ink-400">Derived target paces</div>
+      <div className="glass-inset mt-3 radius-control px-3.5 py-3">
+        <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--app-muted)]">Derived target paces</div>
         {targets ? (
           <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12px]">
             {(['easy', 'long', 'tempo', 'intervals'] as const).map((type) => (
               <div key={type} className="flex justify-between gap-2">
-                <span className="capitalize text-ink-400">{type}</span>
-                <span className="tabular font-medium text-ink-100">{formatPace(targets[type])}/km</span>
+                <span className="capitalize text-[var(--app-muted)]">{type}</span>
+                <span className="tabular font-medium text-[var(--app-ink)]">{formatPace(targets[type])}/km</span>
               </div>
             ))}
           </div>
         ) : (
-          <p className="mt-1.5 text-[12px] leading-relaxed text-ink-400">Needs 3 easy runs first. No pace is prescribed until your own trend exists.</p>
+          <p className="mt-1.5 text-[12px] leading-relaxed text-[var(--app-muted)]">Needs 3 easy runs first. No pace is prescribed until your own trend exists.</p>
         )}
       </div>
     </Card>
@@ -499,7 +499,7 @@ function ExerciseBlock({
       <div className="flex items-start justify-between gap-2">
         <div>
           <h3 className="text-[15px] font-semibold leading-tight">{exercise.name}</h3>
-          <p className="mt-0.5 text-[11px] text-ink-400">
+          <p className="mt-0.5 text-[11px] text-[var(--app-muted)]">
             {prescription?.targetSets ?? exercise.targetSets} ×{' '}
             {prescription?.repRangeMin ?? exercise.repRangeMin}-
             {prescription?.repRangeMax ?? exercise.repRangeMax} @ RIR{' '}
@@ -509,13 +509,13 @@ function ExerciseBlock({
         <Pill tone={adviceTone}>{advice.headline}</Pill>
       </div>
 
-      <p className="mt-1.5 text-[12px] leading-relaxed text-ink-400">
+      <p className="mt-1.5 text-[12px] leading-relaxed text-[var(--app-muted)]">
         {prescription?.reason ?? advice.detail}
       </p>
 
       {ordered.length > 0 ? (
         <div className="mt-3">
-          <div className="mb-1 grid grid-cols-[1.6rem_1fr_1fr_1fr_1.8rem] gap-1.5 px-1 text-[10px] uppercase tracking-wider text-ink-400">
+          <div className="mb-1 grid grid-cols-[1.6rem_1fr_1fr_1fr_1.8rem] gap-1.5 px-1 text-[10px] uppercase tracking-wider text-[var(--app-muted)]">
             <span>Set</span>
             <span className="text-center">kg</span>
             <span className="text-center">reps</span>
@@ -555,7 +555,7 @@ function ExerciseBlock({
 }
 
 const CELL_CLASS =
-  'tabular w-full rounded-lg bg-ink-900 px-1 py-2 text-center text-[15px] font-semibold text-ink-50 outline-none ring-1 ring-inset ring-ink-700 placeholder:font-normal placeholder:text-ink-600 focus:ring-accent/60'
+  'tabular w-full radius-control bg-[var(--app-inset)] px-1 py-2 text-center text-[15px] font-semibold text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:font-normal placeholder:text-[var(--app-muted)] focus:ring-accent/60'
 
 /**
  * One cell of a set row. Commits on a short debounce as well as on blur, so a
@@ -621,7 +621,7 @@ function SetRow({ set }: { set: WorkoutSet }) {
     <div className="grid grid-cols-[1.6rem_1fr_1fr_1fr_1.8rem] items-center gap-1.5">
       <span
         className={`tabular text-center text-[11px] font-medium ${
-          set.isWarmup ? 'text-ink-600' : 'text-ink-400'
+          set.isWarmup ? 'text-[var(--app-muted)]' : 'text-[var(--app-muted)]'
         }`}
       >
         {set.isWarmup ? 'W' : set.setNumber}
@@ -638,7 +638,7 @@ function SetRow({ set }: { set: WorkoutSet }) {
         type="button"
         onClick={() => void deleteSet(set.id)}
         aria-label={`Delete set ${set.setNumber}`}
-        className="text-center text-[15px] leading-none text-ink-600 active:text-alert"
+        className="text-center text-[15px] leading-none text-[var(--app-muted)] active:text-alert"
       >
         ×
       </button>

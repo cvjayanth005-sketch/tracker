@@ -43,26 +43,26 @@ function FoodAreaChart({
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-full" style={{ backgroundColor: meta.color, boxShadow: `0 0 12px ${meta.glow}` }} />
           <div>
-            <div className="text-sm font-semibold text-ink-50">{meta.label}</div>
-            <div className="mt-0.5 text-[11px] text-ink-500">
+            <div className="text-sm font-semibold text-[var(--app-ink)]">{meta.label}</div>
+            <div className="mt-0.5 text-[11px] text-[var(--app-muted)]">
               {known.length}/7 logged{target ? ` · target ${target.toLocaleString()} ${meta.unit}` : ''}
             </div>
           </div>
         </div>
         <div className="text-right">
-          <div className="tabular text-xl font-semibold leading-none text-ink-50">
+          <div className="tabular text-xl font-semibold leading-none text-[var(--app-ink)]">
             {fmtInt(average)}
-            <span className="ml-1 text-[11px] font-normal text-ink-400">{meta.unit}</span>
+            <span className="ml-1 text-[11px] font-normal text-[var(--app-muted)]">{meta.unit}</span>
           </div>
-          <div className="mt-1 text-[9px] font-semibold uppercase tracking-wide text-ink-500">7-day avg</div>
+          <div className="mt-1 text-[9px] font-semibold uppercase tracking-wide text-[var(--app-muted)]">7-day avg</div>
         </div>
       </div>
 
       <div className="mt-2 h-40 w-full px-1">
         {known.length === 0 ? (
-          <div className="m-4 flex h-28 flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 text-center">
-            <div className="text-[13px] font-medium text-ink-300">No {meta.label.toLowerCase()} logged</div>
-            <div className="mt-1 text-[11px] text-ink-500">Your weekly trend appears here.</div>
+          <div className="m-4 flex h-28 flex-col items-center justify-center radius-control border border-dashed border-[var(--app-line)] text-center">
+            <div className="text-[13px] font-medium text-[var(--app-ink-soft)]">No {meta.label.toLowerCase()} logged</div>
+            <div className="mt-1 text-[11px] text-[var(--app-muted)]">Your weekly trend appears here.</div>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
@@ -105,11 +105,11 @@ function FoodAreaChart({
                   const item = payload?.[0]?.payload as { date: LocalDate; value: number | null } | undefined
                   if (!active || !item) return null
                   return (
-                    <div className="rounded-xl border border-white/12 bg-ink-900/95 px-3 py-2 shadow-2xl backdrop-blur-xl">
-                      <div className="text-[10px] font-semibold uppercase text-ink-400">
+                    <div className="radius-control border border-[var(--app-line)] bg-[var(--app-ink-raised)]/95 px-3 py-2 shadow-2xl backdrop-blur-xl">
+                      <div className="text-[10px] font-semibold uppercase text-[var(--app-muted)]">
                         {weekdayName(item.date)} · {formatShort(item.date)}
                       </div>
-                      <div className="tabular mt-1 text-sm font-semibold text-ink-50">
+                      <div className="tabular mt-1 text-sm font-semibold text-[var(--app-ink)]">
                         {item.value === null ? 'Not logged' : `${Math.round(item.value)} ${meta.unit}`}
                       </div>
                     </div>

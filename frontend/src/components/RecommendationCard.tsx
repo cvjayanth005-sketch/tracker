@@ -40,7 +40,7 @@ export function RecommendationCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <Pill tone={tone}>{recommendation.code.replaceAll('_', ' ')}</Pill>
-          <h2 className="mt-2 text-base font-semibold leading-tight text-ink-50">
+          <h2 className="mt-2 text-base font-semibold leading-tight text-[var(--app-ink)]">
             {recommendation.headline}
           </h2>
         </div>
@@ -50,16 +50,16 @@ export function RecommendationCard({
           </Button>
         </div>
       </div>
-      <p className="mt-2 text-[13px] leading-relaxed text-ink-300">{recommendation.detail}</p>
+      <p className="mt-2 text-[13px] leading-relaxed text-[var(--app-ink-soft)]">{recommendation.detail}</p>
       {recommendation.proposedCalories !== null ? (
-        <div className="mt-3 rounded-xl bg-ink-900 px-3 py-2 text-[13px] text-ink-300">
+        <div className="mt-3 radius-control bg-[var(--app-inset)] px-3 py-2 text-[13px] text-[var(--app-ink-soft)]">
           Suggested target:{' '}
-          <span className="font-semibold text-ink-50">{recommendation.proposedCalories} kcal</span>
+          <span className="font-semibold text-[var(--app-ink)]">{recommendation.proposedCalories} kcal</span>
         </div>
       ) : null}
       {note ? (
-        <div className="mt-3 border-t border-white/7 pt-3">
-          <div className="mb-1 text-[10px] font-medium uppercase tracking-[0.12em] text-ink-400">
+        <div className="mt-3 border-t border-[var(--app-line)] pt-3">
+          <div className="mb-1 text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--app-muted)]">
             {provider === 'groq' ? 'AI coach' : 'Rules coach'}
           </div>
           <p className="text-[13px] leading-relaxed text-info">{note}</p>

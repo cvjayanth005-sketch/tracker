@@ -19,7 +19,7 @@ export function DayCompleteToggle({ date, complete }: { date: LocalDate; complet
     <button
       type="button"
       onClick={() => void setFoodComplete(date, true)}
-      className="inline-flex items-center gap-1 rounded-full bg-white/8 px-2.5 py-1 text-[11px] font-semibold text-ink-200 ring-1 ring-inset ring-white/12 transition-colors hover:bg-white/12 hover:text-ink-50"
+      className="inline-flex items-center gap-1 rounded-full bg-[var(--app-inset)] px-2.5 py-1 text-[11px] font-semibold text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)] transition-colors hover:bg-[var(--app-inset)] hover:text-[var(--app-ink)]"
       title="Mark today's eating as finished"
     >
       Mark day complete

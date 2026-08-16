@@ -34,16 +34,16 @@ export function SevenDayBars({
         const hit = point.value !== null && point.target != null && point.value >= point.target
         return (
           <div key={point.date} className="min-w-0">
-            <div className="relative flex h-24 items-end rounded-xl bg-white/[0.045] px-1.5 pb-1.5 ring-1 ring-inset ring-white/8">
+            <div className="relative flex h-24 items-end radius-control bg-[var(--app-inset)] px-1.5 pb-1.5 ring-1 ring-inset ring-[var(--app-line)]">
               {point.target ? (
                 <span
-                  className="absolute inset-x-1.5 h-px bg-white/28"
+                  className="absolute inset-x-1.5 h-px bg-[var(--app-inset)]"
                   style={{ bottom: `${Math.max(8, Math.min(92, (point.target / maxValue) * 100))}%` }}
                   aria-hidden="true"
                 />
               ) : null}
               {point.value === null ? (
-                <span className="mx-auto mb-1 h-1.5 w-1.5 rounded-full bg-white/18" />
+                <span className="mx-auto mb-1 h-1.5 w-1.5 rounded-full bg-[var(--app-inset)]" />
               ) : (
                 <span
                   className={`w-full rounded-full ${tone} ${hit ? 'shadow-[0_0_16px_-4px_rgba(57,255,20,0.85)]' : ''}`}
@@ -52,14 +52,14 @@ export function SevenDayBars({
                 />
               )}
             </div>
-            <div className="mt-1 truncate text-center text-[9px] font-medium text-ink-500">
+            <div className="mt-1 truncate text-center text-[9px] font-medium text-[var(--app-muted)]">
               {formatShort(point.date).slice(0, 5)}
             </div>
           </div>
         )
       })}
       {known.length === 0 ? (
-        <div className="col-span-7 mt-2 text-center text-[11px] text-ink-500">No logs yet</div>
+        <div className="col-span-7 mt-2 text-center text-[11px] text-[var(--app-muted)]">No logs yet</div>
       ) : null}
     </div>
   )

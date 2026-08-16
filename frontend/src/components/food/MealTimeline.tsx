@@ -23,17 +23,17 @@ function num(raw: string): number | null {
 function MealEditor({ meal, onClose }: { meal: Meal; onClose: () => void }) {
   const [saved, setSaved] = useState(false)
   return (
-    <div className="mt-2 space-y-2 rounded-2xl bg-black/25 p-3 ring-1 ring-inset ring-white/10">
+    <div className="mt-2 space-y-2 radius-control bg-[var(--app-inset)] p-3 ring-1 ring-inset ring-[var(--app-line)]">
       <input
         defaultValue={meal.name}
         onBlur={(e) => {
           const name = e.target.value.trim()
           if (name && name !== meal.name) void updateMeal(meal.id, { name })
         }}
-        className="w-full rounded-xl bg-white/5 px-3 py-2 text-sm font-medium text-ink-50 outline-none ring-1 ring-inset ring-white/10 focus:ring-accent/60"
+        className="w-full radius-control bg-[var(--app-inset)] px-3 py-2 text-sm font-medium text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] focus:ring-accent/60"
       />
       <div className="flex items-center gap-2">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-500">Portion</span>
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--app-muted)]">Portion</span>
         <input
           type="number"
           inputMode="decimal"
@@ -43,7 +43,7 @@ function MealEditor({ meal, onClose }: { meal: Meal; onClose: () => void }) {
             if (next !== (meal.quantity ?? null)) void updateMeal(meal.id, { quantity: next })
           }}
           placeholder="—"
-          className="tabular w-16 rounded-lg bg-white/5 px-2 py-1.5 text-center text-[13px] text-ink-50 outline-none ring-1 ring-inset ring-white/10 placeholder:text-ink-600 focus:ring-accent/60"
+          className="tabular w-16 radius-control bg-[var(--app-inset)] px-2 py-1.5 text-center text-[13px] text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
         />
         <input
           defaultValue={meal.unit ?? ''}
@@ -52,7 +52,7 @@ function MealEditor({ meal, onClose }: { meal: Meal; onClose: () => void }) {
             if (next !== (meal.unit ?? null)) void updateMeal(meal.id, { unit: next })
           }}
           placeholder="g / cup / piece"
-          className="min-w-0 flex-1 rounded-lg bg-white/5 px-2.5 py-1.5 text-[13px] text-ink-100 outline-none ring-1 ring-inset ring-white/10 placeholder:text-ink-600 focus:ring-accent/60"
+          className="min-w-0 flex-1 radius-control bg-[var(--app-inset)] px-2.5 py-1.5 text-[13px] text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
         />
       </div>
       <div className="grid grid-cols-4 gap-1.5">
@@ -70,14 +70,14 @@ function MealEditor({ meal, onClose }: { meal: Meal; onClose: () => void }) {
                 if (next !== (meal[field.key] ?? null)) void updateMeal(meal.id, { [field.key]: next })
               }}
               placeholder="—"
-              className="tabular w-full rounded-lg bg-white/5 px-2 py-1.5 text-center text-[13px] font-semibold text-ink-50 outline-none ring-1 ring-inset ring-white/10 placeholder:font-normal placeholder:text-ink-600 focus:ring-accent/60"
+              className="tabular w-full radius-control bg-[var(--app-inset)] px-2 py-1.5 text-center text-[13px] font-semibold text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:font-normal placeholder:text-[var(--app-muted)] focus:ring-accent/60"
             />
           </label>
         ))}
       </div>
       <div className="grid grid-cols-2 gap-1.5">
         {(Object.keys(SUBMACRO) as SubMacroKey[]).map((key) => (
-          <label key={key} className="flex items-center gap-2 rounded-lg bg-white/[0.03] px-2 py-1">
+          <label key={key} className="flex items-center gap-2 radius-control bg-[var(--app-inset)] px-2 py-1">
             <span className="text-[10px] font-semibold" style={{ color: SUBMACRO[key].color }}>
               {SUBMACRO[key].label}
             </span>
@@ -90,9 +90,9 @@ function MealEditor({ meal, onClose }: { meal: Meal; onClose: () => void }) {
                 if (next !== (meal[key] ?? null)) void updateMeal(meal.id, { [key]: next })
               }}
               placeholder="—"
-              className="tabular ml-auto w-14 rounded bg-white/5 px-1.5 py-1 text-center text-[12px] text-ink-100 outline-none ring-1 ring-inset ring-white/10 placeholder:text-ink-600 focus:ring-accent/60"
+              className="tabular ml-auto w-14 rounded bg-[var(--app-inset)] px-1.5 py-1 text-center text-[12px] text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
             />
-            <span className="text-[9px] text-ink-500">g</span>
+            <span className="text-[9px] text-[var(--app-muted)]">g</span>
           </label>
         ))}
       </div>
@@ -116,13 +116,13 @@ function MealEditor({ meal, onClose }: { meal: Meal; onClose: () => void }) {
                 setSaved(true)
               }}
               disabled={!meal.name.trim()}
-              className="text-[12px] font-medium text-ink-300 hover:text-accent disabled:opacity-40"
+              className="text-[12px] font-medium text-[var(--app-ink-soft)] hover:text-accent disabled:opacity-40"
               title="Save to your quick-add library"
             >
               ☆ Save food
             </button>
           )}
-          <button type="button" onClick={onClose} className="text-[12px] font-medium text-ink-300 hover:text-ink-100">
+          <button type="button" onClick={onClose} className="text-[12px] font-medium text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]">
             Done
           </button>
         </div>
@@ -149,7 +149,7 @@ function MacroChips({
     ),
   )
   if (chips.every((chip) => chip === null)) {
-    return <span className="text-[11px] text-ink-500">No macros yet — tap to add</span>
+    return <span className="text-[11px] text-[var(--app-muted)]">No macros yet — tap to add</span>
   }
   return <>{chips}</>
 }
@@ -160,16 +160,16 @@ function MealRow({ meal, nested = false }: { meal: Meal; nested?: boolean }) {
     <div
       className={
         nested
-          ? 'rounded-xl bg-black/20 p-2.5 ring-1 ring-inset ring-white/6'
-          : 'rounded-2xl bg-white/[0.03] p-3 ring-1 ring-inset ring-white/8'
+          ? 'radius-control bg-[var(--app-inset)] p-2.5 ring-1 ring-inset ring-[var(--app-line)]'
+          : 'radius-control bg-[var(--app-inset)] p-3 ring-1 ring-inset ring-[var(--app-line)]'
       }
     >
       <button type="button" onClick={() => setEditing((v) => !v)} className="flex w-full items-start justify-between gap-3 text-left">
         <div className="min-w-0">
-          <div className={`truncate font-medium text-ink-50 ${nested ? 'text-[13px]' : 'text-sm'}`}>
+          <div className={`truncate font-medium text-[var(--app-ink)] ${nested ? 'text-[13px]' : 'text-sm'}`}>
             {meal.name || 'Untitled meal'}
             {meal.quantity !== null ? (
-              <span className="ml-1.5 text-[11px] font-normal text-ink-500">
+              <span className="ml-1.5 text-[11px] font-normal text-[var(--app-muted)]">
                 {meal.quantity}
                 {meal.unit ? ` ${meal.unit}` : ''}
               </span>
@@ -179,7 +179,7 @@ function MealRow({ meal, nested = false }: { meal: Meal; nested?: boolean }) {
             <MacroChips values={meal} />
           </div>
         </div>
-        {!nested && meal.time ? <span className="tabular shrink-0 text-[11px] text-ink-400">{meal.time}</span> : null}
+        {!nested && meal.time ? <span className="tabular shrink-0 text-[11px] text-[var(--app-muted)]">{meal.time}</span> : null}
       </button>
       {editing ? <MealEditor meal={meal} onClose={() => setEditing(false)} /> : null}
     </div>
@@ -194,21 +194,21 @@ function MealGroupCard({ group }: { group: MealGroup }) {
   }
   const totals = groupMacroTotals(group.meals)
   return (
-    <div className="rounded-2xl bg-white/[0.03] p-3 ring-1 ring-inset ring-white/8">
+    <div className="radius-control bg-[var(--app-inset)] p-3 ring-1 ring-inset ring-[var(--app-line)]">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
         className="flex w-full items-start justify-between gap-3 text-left"
       >
         <div className="min-w-0">
-          <div className="truncate text-sm font-medium text-ink-50">{groupName(group.meals)}</div>
+          <div className="truncate text-sm font-medium text-[var(--app-ink)]">{groupName(group.meals)}</div>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             <MacroChips values={totals} />
           </div>
         </div>
         <span className="flex shrink-0 items-center gap-2">
-          {group.time ? <span className="tabular text-[11px] text-ink-400">{group.time}</span> : null}
-          <span className={`text-ink-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>⌄</span>
+          {group.time ? <span className="tabular text-[11px] text-[var(--app-muted)]">{group.time}</span> : null}
+          <span className={`text-[var(--app-muted)] transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>⌄</span>
         </span>
       </button>
       {open ? (
@@ -227,8 +227,8 @@ export function MealTimeline({ meals }: { meals: Meal[] }) {
   if (meals.length === 0) {
     return (
       <Card className="text-center">
-        <div className="text-sm font-medium text-ink-200">No meals logged today</div>
-        <p className="mx-auto mt-1 max-w-xs text-[13px] leading-relaxed text-ink-400">
+        <div className="text-sm font-medium text-[var(--app-ink)]">No meals logged today</div>
+        <p className="mx-auto mt-1 max-w-xs text-[13px] leading-relaxed text-[var(--app-muted)]">
           Use the logger above to describe what you ate — the coach reads every meal you add.
         </p>
       </Card>
@@ -244,8 +244,8 @@ export function MealTimeline({ meals }: { meals: Meal[] }) {
           <div key={slot}>
             <div className="mb-2 flex items-center gap-2 px-1">
               <span>{SLOT_META[slot].icon}</span>
-              <span className="text-[12px] font-semibold text-ink-200">{SLOT_META[slot].label}</span>
-              <span className="text-[11px] text-ink-500">
+              <span className="text-[12px] font-semibold text-[var(--app-ink)]">{SLOT_META[slot].label}</span>
+              <span className="text-[11px] text-[var(--app-muted)]">
                 {groups.length} meal{groups.length === 1 ? '' : 's'}
               </span>
             </div>

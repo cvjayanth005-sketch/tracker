@@ -70,7 +70,7 @@ export function NumberField({
   }
 
   return (
-    <label className="glass-tile flex items-center justify-between gap-3 radius-inset px-4 py-3.5 transition-colors focus-within:bg-white/[0.07]">
+    <label className="glass-tile flex items-center justify-between gap-3 radius-inset px-4 py-3.5 transition-colors focus-within:bg-[var(--app-inset)]">
       <span className="min-w-0 flex-1">
         <span className="block text-[13px] font-medium text-[var(--app-ink)]">{label}</span>
         {target ? <span className="block text-[11px] text-[var(--app-muted)]">{target}</span> : null}
@@ -132,7 +132,7 @@ export function TriToggle({
   }
 
   return (
-    <div className="glass-tile flex items-center justify-between gap-3 radius-inset px-4 py-3.5 transition-colors focus-within:bg-white/[0.07]">
+    <div className="glass-tile flex items-center justify-between gap-3 radius-inset px-4 py-3.5 transition-colors focus-within:bg-[var(--app-inset)]">
       <span className="min-w-0 flex-1">
         <span className="block text-[13px] font-medium text-[var(--app-ink)]">{label}</span>
         {sub ? <span className="block text-[11px] text-[var(--app-muted)]">{sub}</span> : null}
@@ -172,7 +172,7 @@ export function RatingField({
             key={n}
             type="button"
             onClick={() => onChange(value === n ? null : n)}
-            className={`tabular h-9 flex-1 rounded-lg text-sm font-semibold transition-colors ${
+            className={`tabular h-9 flex-1 radius-control text-sm font-semibold transition-colors ${
               value === n
                 ? 'bg-info text-ink-950 shadow-[0_10px_26px_-10px] shadow-info/70'
                 : 'bg-[var(--app-inset)] text-[var(--app-muted)] ring-1 ring-inset ring-[var(--app-line)]'
@@ -183,7 +183,7 @@ export function RatingField({
         ))}
       </div>
       {lowLabel && highLabel ? (
-        <div className="mt-1 flex justify-between text-[10px] text-ink-600">
+        <div className="mt-1 flex justify-between text-[10px] text-[var(--app-muted)]">
           <span>{lowLabel}</span>
           <span>{highLabel}</span>
         </div>
@@ -226,7 +226,7 @@ export function TextArea({
           dirty.current = false
           onCommit(text.trim() === '' ? null : text)
         }}
-        className="w-full resize-none radius-control bg-[var(--app-inset)] px-3 py-2 text-sm text-[var(--app-ink)] outline-none ring-1 ring-inset ring-white/10 placeholder:text-ink-600 focus:ring-accent/60"
+        className="w-full resize-none radius-control bg-[var(--app-inset)] px-3 py-2 text-sm text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
       />
     </label>
   )

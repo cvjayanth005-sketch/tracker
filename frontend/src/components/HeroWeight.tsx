@@ -56,15 +56,15 @@ export function HeroWeight({
   const vsTrend = value !== null && trendKg !== null ? value - trendKg : null
 
   return (
-    <div className="glass rounded-3xl p-4 sm:p-5">
+    <div className="glass radius-inset p-4 sm:p-5">
       <div className="flex items-baseline justify-between">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">
           Morning weight
         </span>
         {value !== null ? (
           <span className="text-[11px] text-accent">saved</span>
         ) : (
-          <span className="text-[11px] text-ink-400">not logged</span>
+          <span className="text-[11px] text-[var(--app-muted)]">not logged</span>
         )}
       </div>
 
@@ -87,12 +87,12 @@ export function HeroWeight({
             window.clearTimeout(timer.current)
             commit(e.target.value)
           }}
-          className="tabular-display w-full min-w-0 bg-transparent text-5xl font-semibold tracking-tight text-ink-50 outline-none placeholder:text-ink-700 sm:text-6xl"
+          className="tabular-display w-full min-w-0 bg-transparent text-5xl font-semibold tracking-tight text-[var(--app-ink)] outline-none placeholder:text-[var(--app-muted)] sm:text-6xl"
         />
-        <span className="pb-1.5 text-lg font-medium text-ink-400">kg</span>
+        <span className="pb-1.5 text-lg font-medium text-[var(--app-muted)]">kg</span>
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-400">
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[var(--app-muted)]">
         {delta !== null && previous ? (
           <span>
             <span className={delta <= 0 ? 'text-accent' : 'text-warn'}>
@@ -105,7 +105,7 @@ export function HeroWeight({
           <span>Fasted, after the bathroom, before food</span>
         )}
         {vsTrend !== null ? (
-          <span className="text-ink-300/70">
+          <span className="text-[var(--app-ink-soft)]/70">
             {vsTrend > 0 ? '+' : ''}
             {vsTrend.toFixed(2)} vs 7-day trend
           </span>

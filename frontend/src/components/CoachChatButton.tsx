@@ -337,23 +337,23 @@ export function CoachChatButton({
     <section
       className={
         cardMode
-          ? `surface flex min-h-[26rem] flex-col rounded-3xl p-4 sm:p-5 ${
+          ? `surface flex min-h-[26rem] flex-col radius-inset p-4 sm:p-5 ${
               fillHeight ? 'xl:flex-1' : ''
             }`
-          : 'fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+10rem)] z-50 mx-auto flex max-h-[70dvh] max-w-lg flex-col rounded-3xl border border-white/18 bg-[linear-gradient(180deg,rgba(20,24,34,0.94),rgba(6,8,16,0.88))] p-3 shadow-[0_28px_90px_-46px_rgba(0,240,255,0.9),inset_0_1px_1px_rgba(255,255,255,0.28),inset_0_0_0_1px_rgba(255,255,255,0.08)] backdrop-blur-2xl backdrop-saturate-150 lg:inset-x-auto lg:bottom-auto lg:right-6 lg:top-20 lg:w-[27rem]'
+          : 'fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+10rem)] z-50 mx-auto flex max-h-[70dvh] max-w-lg flex-col radius-inset border border-[var(--app-line)] bg-[linear-gradient(180deg,rgba(20,24,34,0.94),rgba(6,8,16,0.88))] p-3 shadow-[0_28px_90px_-46px_rgba(0,240,255,0.9),inset_0_1px_1px_rgba(255,255,255,0.28),inset_0_0_0_1px_rgba(255,255,255,0.08)] backdrop-blur-2xl backdrop-saturate-150 lg:inset-x-auto lg:bottom-auto lg:right-6 lg:top-20 lg:w-[27rem]'
       }
     >
-      <div className="flex items-start justify-between gap-3 border-b border-white/12 px-1 pb-3">
+      <div className="flex items-start justify-between gap-3 border-b border-[var(--app-line)] px-1 pb-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-[10px] font-black text-ink-950">
+            <span className="flex h-7 w-7 items-center justify-center radius-control bg-accent text-[10px] font-black text-ink-950">
               AI
             </span>
-            <div className="text-sm font-semibold text-ink-50">
+            <div className="text-sm font-semibold text-[var(--app-ink)]">
               {cardMode ? (title ?? 'Training Coach') : 'AI coach'}
             </div>
           </div>
-          <div className="mt-2 text-[11px] text-ink-400">
+          <div className="mt-2 text-[11px] text-[var(--app-muted)]">
             {subtitle ?? (
               <>
                 {dash.phase?.name ?? 'Current plan'} · {recentWorkouts?.length ?? 0} sessions ·{' '}
@@ -366,7 +366,7 @@ export function CoachChatButton({
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/8 text-lg text-ink-200 ring-1 ring-inset ring-white/10"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--app-inset)] text-lg text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)]"
             aria-label="Close AI coach chat"
             title="Close"
           >
@@ -403,24 +403,24 @@ export function CoachChatButton({
         {messages.map((message, index) => (
           <div
             key={`${message.role}-${index}`}
-            className={`max-w-[88%] rounded-2xl px-3 py-2 text-[13px] leading-relaxed shadow-[0_10px_28px_-20px_rgba(0,0,0,0.8)] ${
+            className={`max-w-[88%] radius-control px-3 py-2 text-[13px] leading-relaxed shadow-[0_10px_28px_-20px_rgba(0,0,0,0.8)] ${
               cardMode ? 'lg:max-w-3xl ' : ''
             }${
               message.role === 'user'
                 ? 'ml-auto bg-accent text-ink-950'
-                : 'bg-white/10 text-ink-100 ring-1 ring-inset ring-white/10'
+                : 'bg-[var(--app-inset)] text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)]'
             }`}
           >
             {message.content}
           </div>
         ))}
         {busy ? (
-          <div className="max-w-[70%] rounded-2xl bg-white/10 px-3 py-2 text-[13px] text-ink-300 ring-1 ring-inset ring-white/10">
+          <div className="max-w-[70%] radius-control bg-[var(--app-inset)] px-3 py-2 text-[13px] text-[var(--app-ink-soft)] ring-1 ring-inset ring-[var(--app-line)]">
             Reading your training history...
           </div>
         ) : null}
         {error ? (
-          <div className="rounded-2xl bg-alert/12 px-3 py-2 text-[12px] text-alert ring-1 ring-inset ring-alert/25">
+          <div className="radius-control bg-alert/12 px-3 py-2 text-[12px] text-alert ring-1 ring-inset ring-alert/25">
             {error}
           </div>
         ) : null}
@@ -434,7 +434,7 @@ export function CoachChatButton({
               type="button"
               onClick={() => void submit(starter)}
               disabled={busy}
-              className="shrink-0 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-medium text-ink-100 ring-1 ring-inset ring-white/12 transition-colors hover:bg-white/15 active:bg-white/20 disabled:opacity-40"
+              className="shrink-0 rounded-full bg-[var(--app-inset)] px-3 py-1.5 text-[11px] font-medium text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)] transition-colors hover:bg-[var(--app-inset)] active:bg-[var(--app-inset)] disabled:opacity-40"
             >
               {starter}
             </button>
@@ -443,7 +443,7 @@ export function CoachChatButton({
       ) : null}
 
       <form
-        className="flex gap-2 border-t border-white/12 pt-3"
+        className="flex gap-2 border-t border-[var(--app-line)] pt-3"
         onSubmit={(event) => {
           event.preventDefault()
           void submit()
@@ -461,12 +461,12 @@ export function CoachChatButton({
           }}
           rows={cardMode ? 2 : 1}
           placeholder="Ask about your next workout, recovery, sets, or progression..."
-          className="min-h-11 flex-1 resize-none rounded-2xl bg-black/45 px-3 py-3 text-sm text-ink-50 outline-none ring-1 ring-inset ring-white/14 placeholder:text-ink-500 focus:ring-accent/60"
+          className="min-h-11 flex-1 resize-none radius-control bg-[var(--app-inset)] px-3 py-3 text-sm text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
         />
         <button
           type="submit"
           disabled={busy || !input.trim()}
-          className="min-h-11 self-end rounded-2xl bg-accent px-4 text-sm font-semibold text-ink-950 transition-transform active:scale-[0.97] disabled:opacity-40"
+          className="min-h-11 self-end radius-control bg-accent px-4 text-sm font-semibold text-ink-950 transition-transform active:scale-[0.97] disabled:opacity-40"
         >
           Send
         </button>
@@ -483,8 +483,8 @@ export function CoachChatButton({
         onClick={() => setOpen((value) => !value)}
         className={
           placement === 'floating'
-            ? 'fixed bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-sm font-black text-ink-950 shadow-[0_22px_48px_-22px_rgba(57,255,20,0.9)] ring-1 ring-inset ring-white/45 transition-transform active:scale-95 lg:bottom-auto lg:right-6 lg:top-5 lg:h-12 lg:w-auto lg:gap-2 lg:rounded-2xl lg:px-4 lg:text-[13px]'
-            : 'flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-accent px-4 text-[13px] font-black text-ink-950 shadow-[0_18px_40px_-24px_rgba(57,255,20,0.9)] ring-1 ring-inset ring-white/45 transition-transform active:scale-95'
+            ? 'fixed bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-sm font-black text-ink-950 shadow-[0_22px_48px_-22px_rgba(57,255,20,0.9)] ring-1 ring-inset ring-[var(--app-line)] transition-transform active:scale-95 lg:bottom-auto lg:right-6 lg:top-5 lg:h-12 lg:w-auto lg:gap-2 lg:radius-control lg:px-4 lg:text-[13px]'
+            : 'flex min-h-11 items-center justify-center gap-2 radius-control bg-accent px-4 text-[13px] font-black text-ink-950 shadow-[0_18px_40px_-24px_rgba(57,255,20,0.9)] ring-1 ring-inset ring-[var(--app-line)] transition-transform active:scale-95'
         }
         aria-label="Open AI coach chat"
         title="AI coach chat"
@@ -513,9 +513,9 @@ function CompactRating({
 }) {
   return (
     <div>
-      <div className="mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase text-ink-400">
+      <div className="mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase text-[var(--app-muted)]">
         <span>{label}</span>
-        <span className="tabular text-ink-500">{value ?? '—'}/5</span>
+        <span className="tabular text-[var(--app-muted)]">{value ?? '—'}/5</span>
       </div>
       <div className="grid grid-cols-5 gap-1" role="group" aria-label={label}>
         {READINESS_VALUES.map((option) => (
@@ -523,10 +523,10 @@ function CompactRating({
             key={option}
             type="button"
             onClick={() => onChange(value === option ? null : option)}
-            className={`tabular h-8 rounded-lg text-[11px] font-semibold transition-colors ${
+            className={`tabular h-8 radius-control text-[11px] font-semibold transition-colors ${
               value === option
                 ? 'bg-info text-ink-950'
-                : 'bg-black/25 text-ink-400 ring-1 ring-inset ring-white/10'
+                : 'bg-[var(--app-inset)] text-[var(--app-muted)] ring-1 ring-inset ring-[var(--app-line)]'
             }`}
           >
             {option}
@@ -548,7 +548,7 @@ function ConstraintField({
   useEffect(() => setText(value ?? ''), [value])
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[10px] font-semibold uppercase text-ink-400">
+      <span className="mb-1.5 block text-[10px] font-semibold uppercase text-[var(--app-muted)]">
         Training constraint
       </span>
       <input
@@ -556,7 +556,7 @@ function ConstraintField({
         onChange={(event) => setText(event.target.value)}
         onBlur={() => onCommit(text.trim() || null)}
         placeholder="None, or note discomfort / equipment limits"
-        className="h-9 w-full rounded-xl bg-black/25 px-3 text-[12px] text-ink-100 outline-none ring-1 ring-inset ring-white/10 placeholder:text-ink-600 focus:ring-info/50"
+        className="h-9 w-full radius-control bg-[var(--app-inset)] px-3 text-[12px] text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-info/50"
       />
     </label>
   )
@@ -575,11 +575,11 @@ function CompactSleepField({
   useEffect(() => setText(value == null ? '' : String(value)), [value])
   return (
     <label className="block">
-      <span className="mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase text-ink-400">
+      <span className="mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase text-[var(--app-muted)]">
         <span>Sleep</span>
-        <span className="normal-case text-ink-500">target {target ?? '—'}h</span>
+        <span className="normal-case text-[var(--app-muted)]">target {target ?? '—'}h</span>
       </span>
-      <span className="flex h-8 items-center rounded-lg bg-black/25 px-2.5 ring-1 ring-inset ring-white/10 focus-within:ring-info/50">
+      <span className="flex h-8 items-center radius-control bg-[var(--app-inset)] px-2.5 ring-1 ring-inset ring-[var(--app-line)] focus-within:ring-info/50">
         <input
           type="number"
           inputMode="decimal"
@@ -597,9 +597,9 @@ function CompactSleepField({
             )
           }}
           placeholder="—"
-          className="tabular min-w-0 flex-1 bg-transparent text-center text-[12px] font-semibold text-ink-100 outline-none placeholder:text-ink-600"
+          className="tabular min-w-0 flex-1 bg-transparent text-center text-[12px] font-semibold text-[var(--app-ink)] outline-none placeholder:text-[var(--app-muted)]"
         />
-        <span className="text-[10px] text-ink-500">h</span>
+        <span className="text-[10px] text-[var(--app-muted)]">h</span>
       </span>
     </label>
   )
@@ -635,11 +635,11 @@ function AdaptiveReadinessPanel({
           : 'neutral'
 
   return (
-    <div className="border-b border-white/12 py-4">
+    <div className="border-b border-[var(--app-line)] py-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="text-[10px] font-semibold uppercase text-ink-400">Readiness</div>
-          <div className="mt-1 text-base font-semibold text-ink-50">
+          <div className="text-[10px] font-semibold uppercase text-[var(--app-muted)]">Readiness</div>
+          <div className="mt-1 text-base font-semibold text-[var(--app-ink)]">
             {prescription?.headline ?? (scheduled ? 'Complete today\'s check-in' : 'Recovery day')}
           </div>
         </div>
@@ -647,7 +647,7 @@ function AdaptiveReadinessPanel({
           <Pill tone={tone}>
             {prescription?.readinessScore == null ? 'score pending' : `${prescription.readinessScore}/100`}
           </Pill>
-          <span className="text-[10px] uppercase text-ink-500">
+          <span className="text-[10px] uppercase text-[var(--app-muted)]">
             {prescription?.confidence ?? 'low'} confidence
           </span>
           <button
@@ -655,7 +655,7 @@ function AdaptiveReadinessPanel({
             onClick={() => setExpanded((value) => !value)}
             aria-expanded={expanded}
             aria-controls="coach-readiness-details"
-            className="rounded-lg bg-white/8 px-2.5 py-1 text-[10px] font-semibold text-ink-200 ring-1 ring-inset ring-white/12 transition-colors hover:bg-white/12"
+            className="radius-control bg-[var(--app-inset)] px-2.5 py-1 text-[10px] font-semibold text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)] transition-colors hover:bg-[var(--app-inset)]"
           >
             {expanded ? 'Done' : 'Update'}
           </button>
@@ -663,19 +663,19 @@ function AdaptiveReadinessPanel({
       </div>
 
       {prescription ? (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white/5 px-3 py-2.5 ring-1 ring-inset ring-white/8">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 radius-control bg-[var(--app-inset)] px-3 py-2.5 ring-1 ring-inset ring-[var(--app-line)]">
           <div className="min-w-0">
-            <div className="text-[10px] font-semibold uppercase text-ink-400">
+            <div className="text-[10px] font-semibold uppercase text-[var(--app-muted)]">
               Adaptive session · {prescription.exercises.length} exercises
             </div>
-            <div className="mt-1 truncate text-[11px] text-ink-300">
+            <div className="mt-1 truncate text-[11px] text-[var(--app-ink-soft)]">
               {prescription.adjustments[0] ?? 'Current plan and progression retained'}
             </div>
           </div>
           <button
             type="button"
             onClick={onApply}
-            className="min-h-9 shrink-0 rounded-xl bg-accent px-3 text-[11px] font-semibold text-ink-950 transition-transform active:scale-[0.97]"
+            className="min-h-9 shrink-0 radius-control bg-accent px-3 text-[11px] font-semibold text-ink-950 transition-transform active:scale-[0.97]"
           >
             {workoutFinished
               ? 'Open completed workout'
@@ -687,7 +687,7 @@ function AdaptiveReadinessPanel({
       ) : null}
 
       {expanded ? (
-        <div id="coach-readiness-details" className="mt-4 border-t border-white/8 pt-4">
+        <div id="coach-readiness-details" className="mt-4 border-t border-[var(--app-line)] pt-4">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <CompactSleepField
               value={log?.sleepHours ?? null}
@@ -713,7 +713,7 @@ function AdaptiveReadinessPanel({
 
           <div className="mt-3 grid items-end gap-3 sm:grid-cols-[auto_minmax(0,1fr)]">
             <div>
-              <div className="mb-1.5 text-[10px] font-semibold uppercase text-ink-400">Time</div>
+              <div className="mb-1.5 text-[10px] font-semibold uppercase text-[var(--app-muted)]">Time</div>
               <div className="flex gap-1" role="group" aria-label="Minutes available">
                 {TIME_OPTIONS.map((minutes) => (
                   <button
@@ -725,10 +725,10 @@ function AdaptiveReadinessPanel({
                           log?.trainingMinutesAvailable === minutes ? null : minutes,
                       })
                     }
-                    className={`h-9 rounded-lg px-2.5 text-[11px] font-semibold transition-colors ${
+                    className={`h-9 radius-control px-2.5 text-[11px] font-semibold transition-colors ${
                       log?.trainingMinutesAvailable === minutes
                         ? 'bg-accent text-ink-950'
-                        : 'bg-black/25 text-ink-400 ring-1 ring-inset ring-white/10'
+                        : 'bg-[var(--app-inset)] text-[var(--app-muted)] ring-1 ring-inset ring-[var(--app-line)]'
                     }`}
                   >
                     {minutes}m
@@ -743,21 +743,21 @@ function AdaptiveReadinessPanel({
           </div>
 
           {prescription ? (
-            <div className="mt-4 border-t border-white/8 pt-3">
-              <div className="text-[10px] font-semibold uppercase text-ink-400">Session detail</div>
-              <div className="mt-3 divide-y divide-white/8 border-y border-white/8">
+            <div className="mt-4 border-t border-[var(--app-line)] pt-3">
+              <div className="text-[10px] font-semibold uppercase text-[var(--app-muted)]">Session detail</div>
+              <div className="mt-3 divide-y divide-[var(--app-line)] border-y border-[var(--app-line)]">
                 {prescription.exercises.slice(0, 4).map((exercise) => (
                   <div
                     key={exercise.exerciseId}
                     className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-2 text-[11px]"
                   >
                     <div className="min-w-0">
-                      <div className="truncate font-semibold text-ink-200">{exercise.exerciseName}</div>
-                      <div className="truncate text-ink-500">{exercise.reason}</div>
+                      <div className="truncate font-semibold text-[var(--app-ink)]">{exercise.exerciseName}</div>
+                      <div className="truncate text-[var(--app-muted)]">{exercise.reason}</div>
                     </div>
-                    <div className="tabular text-right text-ink-300">
+                    <div className="tabular text-right text-[var(--app-ink-soft)]">
                       {exercise.targetSets} × {exercise.repRangeMin}-{exercise.repRangeMax}
-                      <span className="ml-2 text-ink-500">RIR {exercise.targetRir}</span>
+                      <span className="ml-2 text-[var(--app-muted)]">RIR {exercise.targetRir}</span>
                     </div>
                   </div>
                 ))}

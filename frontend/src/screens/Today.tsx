@@ -72,12 +72,12 @@ function TodayCalendar({
   return (
     <Card>
       <div className="mb-3 flex items-baseline justify-between">
-        <div className="text-sm font-semibold text-ink-50">{monthLabel}</div>
+        <div className="text-sm font-semibold text-[var(--app-ink)]">{monthLabel}</div>
         <Link to="/calendar" className="text-[11px] font-medium text-accent">
           Full calendar
         </Link>
       </div>
-      <div className="grid grid-cols-7 gap-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+      <div className="grid grid-cols-7 gap-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--app-muted)]">
         {WEEKDAYS.map((day) => (
           <div key={day}>{day}</div>
         ))}
@@ -100,18 +100,18 @@ function TodayCalendar({
             ? 'bg-alert/18 text-alert ring-alert/25'
             : allHit
               ? 'bg-accent/18 text-accent ring-accent/25'
-              : 'bg-white/6 text-ink-300 ring-white/10'
+              : 'bg-[var(--app-inset)] text-[var(--app-ink-soft)] ring-[var(--app-line)]'
 
           return (
             <Link
               key={date}
               to={`/calendar/${date}`}
-              className={`relative aspect-square rounded-2xl p-2 text-left ring-1 ring-inset transition-transform active:scale-95 ${classes}`}
+              className={`relative aspect-square radius-control p-2 text-left ring-1 ring-inset transition-transform active:scale-95 ${classes}`}
               aria-label={formatShort(date, true)}
             >
               <span className="tabular text-sm font-semibold">{Number(date.slice(8, 10))}</span>
               {week && dayOfWeek(date) === 1 ? (
-                <span className="absolute bottom-1.5 left-2 text-[9px] text-ink-500">W{week}</span>
+                <span className="absolute bottom-1.5 left-2 text-[9px] text-[var(--app-muted)]">W{week}</span>
               ) : null}
               {isToday ? (
                 <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-info" />
@@ -120,12 +120,12 @@ function TodayCalendar({
           )
         })}
       </div>
-      <div className="mt-4 grid grid-cols-3 text-[11px] font-medium text-ink-300">
+      <div className="mt-4 grid grid-cols-3 text-[11px] font-medium text-[var(--app-ink-soft)]">
         <span className="flex items-center gap-2">
           <span className="h-2.5 w-2.5 rounded-full bg-accent" /> Hit
         </span>
         <span className="flex items-center justify-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-full bg-white/30" /> Open
+          <span className="h-2.5 w-2.5 rounded-full bg-[var(--app-inset)]" /> Open
         </span>
         <span className="flex items-center justify-end gap-2">
           <span className="h-2.5 w-2.5 rounded-full bg-alert" /> Miss
@@ -235,16 +235,16 @@ export default function Today() {
 
           <div className="grid items-start gap-4 xl:grid-cols-[1fr_1.05fr]">
             <details className="group">
-              <summary className="surface flex min-h-20 cursor-pointer list-none items-center justify-between gap-4 rounded-3xl px-4 py-4 sm:px-5">
+              <summary className="surface flex min-h-20 cursor-pointer list-none items-center justify-between gap-4 radius-inset px-4 py-4 sm:px-5">
                 <span>
-                  <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">
+                  <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">
                     More insights
                   </span>
-                  <span className="mt-1 block text-[12px] text-ink-500">
+                  <span className="mt-1 block text-[12px] text-[var(--app-muted)]">
                     Plan signal, trend, and weekly averages
                   </span>
                 </span>
-                <span className="text-lg text-ink-400 transition-transform group-open:rotate-45">+</span>
+                <span className="text-lg text-[var(--app-muted)] transition-transform group-open:rotate-45">+</span>
               </summary>
               <div className="mt-4 space-y-4">
                 {dash.recommendation ? (
@@ -252,7 +252,7 @@ export default function Today() {
                 ) : null}
                 <Card className="hidden lg:block">
                   <div className="mb-1 flex items-baseline justify-between">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">
                       Last 30 days
                     </span>
                     <Link to="/progress" className="text-[11px] text-accent">
@@ -263,10 +263,10 @@ export default function Today() {
                 </Card>
                 <Card>
                   <div className="mb-3 flex items-baseline justify-between px-1">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">
                       Last 7 days
                     </div>
-                    <span className="text-[11px] text-ink-500">{coverage}% coverage</span>
+                    <span className="text-[11px] text-[var(--app-muted)]">{coverage}% coverage</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <Stat label="Avg calories" value={statInt(dash.weekAverages?.calories)} unit="kcal" />
@@ -280,10 +280,10 @@ export default function Today() {
 
             <div>
               <div className="mb-2.5 flex items-baseline justify-between px-1">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">
                   Calendar
                 </div>
-                <span className="text-[11px] text-ink-500">This month</span>
+                <span className="text-[11px] text-[var(--app-muted)]">This month</span>
               </div>
               <TodayCalendar
                 today={today}
@@ -302,8 +302,8 @@ export default function Today() {
 
           <Card className="overflow-hidden">
             <div className="mb-3 flex items-baseline justify-between px-1">
-              <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">Log</h2>
-              <span className="text-[11px] text-ink-500">Today</span>
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">Log</h2>
+              <span className="text-[11px] text-[var(--app-muted)]">Today</span>
             </div>
             <div className="space-y-2.5">
               <NumberField
@@ -335,11 +335,11 @@ export default function Today() {
               <Link
                 id="today-log-run"
                 to="/workout"
-                className="glass-tile flex scroll-mt-6 items-center justify-between gap-3 rounded-3xl px-4 py-3.5 transition-colors active:bg-white/8"
+                className="glass-tile flex scroll-mt-6 items-center justify-between gap-3 radius-inset px-4 py-3.5 transition-colors active:bg-[var(--app-inset)]"
               >
                 <span className="min-w-0">
-                  <span className="block text-[13px] font-medium text-ink-200">Run</span>
-                  <span className="block truncate text-[11px] text-ink-400">
+                  <span className="block text-[13px] font-medium text-[var(--app-ink)]">Run</span>
+                  <span className="block truncate text-[11px] text-[var(--app-muted)]">
                     {todayRunSummary ??
                       (todaySchedule?.runKm
                         ? `Planned ${todaySchedule.runKm} km`
@@ -375,15 +375,15 @@ export default function Today() {
             <details className="group">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-1">
                 <span>
-                  <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">
+                  <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">
                     How it felt
                   </span>
-                  <span className="mt-1 block text-[12px] text-ink-500">
+                  <span className="mt-1 block text-[12px] text-[var(--app-muted)]">
                     Energy {todayLog?.energy ?? '—'} · Hunger {todayLog?.hunger ?? '—'} · Soreness{' '}
                     {todayLog?.soreness ?? '—'}
                   </span>
                 </span>
-                <span className="glass-inset flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-300 transition-transform group-open:rotate-180">
+                <span className="glass-inset flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--app-ink-soft)] transition-transform group-open:rotate-180">
                   ↓
                 </span>
               </summary>

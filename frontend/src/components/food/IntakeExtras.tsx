@@ -35,22 +35,22 @@ export function IntakeExtras({
   return (
     <Card>
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-[13px] font-semibold text-ink-100">Hydration &amp; extras</span>
+        <span className="text-[13px] font-semibold text-[var(--app-ink)]">Hydration &amp; extras</span>
         {eatingWindow ? (
-          <span className="tabular text-[11px] text-ink-500">
+          <span className="tabular text-[11px] text-[var(--app-muted)]">
             Eating window {eatingWindow.firstMealTime}–{eatingWindow.lastMealTime} · {eatingWindow.windowHours}h
           </span>
         ) : null}
       </div>
 
       <div className="mb-2 flex items-baseline justify-between">
-        <span className="flex items-center gap-2 text-[12px] font-medium text-ink-200">
+        <span className="flex items-center gap-2 text-[12px] font-medium text-[var(--app-ink)]">
           <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: MACRO_BLUE, boxShadow: `0 0 8px ${MACRO_BLUE}66` }} />
           Water
         </span>
-        <span className="tabular text-[12px] text-ink-300">
-          <span className="font-semibold text-ink-50">{water}</span>
-          <span className="text-ink-500"> / {waterTargetMl} ml</span>
+        <span className="tabular text-[12px] text-[var(--app-ink-soft)]">
+          <span className="font-semibold text-[var(--app-ink)]">{water}</span>
+          <span className="text-[var(--app-muted)]"> / {waterTargetMl} ml</span>
         </span>
       </div>
       <div style={{ ['--tw-shadow-color' as string]: MACRO_BLUE }}>
@@ -60,14 +60,14 @@ export function IntakeExtras({
         <button
           type="button"
           onClick={() => void addWater(date, WATER_STEP_ML)}
-          className="flex-1 rounded-xl bg-white/8 py-2 text-[12px] font-semibold text-ink-100 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/12"
+          className="flex-1 radius-control bg-[var(--app-inset)] py-2 text-[12px] font-semibold text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)] transition-colors hover:bg-[var(--app-inset)]"
         >
           +250 ml
         </button>
         <button
           type="button"
           onClick={() => void addWater(date, WATER_STEP_ML * 2)}
-          className="flex-1 rounded-xl bg-white/8 py-2 text-[12px] font-semibold text-ink-100 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/12"
+          className="flex-1 radius-control bg-[var(--app-inset)] py-2 text-[12px] font-semibold text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)] transition-colors hover:bg-[var(--app-inset)]"
         >
           +500 ml
         </button>
@@ -75,7 +75,7 @@ export function IntakeExtras({
           type="button"
           onClick={() => void addWater(date, -WATER_STEP_ML)}
           disabled={water <= 0}
-          className="rounded-xl bg-white/8 px-3 py-2 text-[12px] font-semibold text-ink-300 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/12 disabled:opacity-40"
+          className="radius-control bg-[var(--app-inset)] px-3 py-2 text-[12px] font-semibold text-[var(--app-ink-soft)] ring-1 ring-inset ring-[var(--app-line)] transition-colors hover:bg-[var(--app-inset)] disabled:opacity-40"
           aria-label="Remove 250 ml of water"
         >
           −

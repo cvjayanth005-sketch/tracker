@@ -36,21 +36,21 @@ export function NutritionCoachCard({ food }: { food: FoodContext }) {
 
   return (
     <div className="space-y-3">
-      <div className="relative overflow-hidden rounded-3xl border border-white/12 bg-[linear-gradient(135deg,rgba(57,255,20,0.14),rgba(0,240,255,0.10)_45%,rgba(185,139,255,0.12))] p-4 sm:p-5">
+      <div className="relative overflow-hidden radius-inset border border-[var(--app-line)] bg-[linear-gradient(135deg,rgba(57,255,20,0.14),rgba(0,240,255,0.10)_45%,rgba(185,139,255,0.12))] p-4 sm:p-5">
         <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-accent/20 blur-3xl" />
         <div className="relative flex items-start gap-3">
           <span
-            className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[11px] font-black ${
+            className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center radius-control text-[11px] font-black ${
               insight.tone === 'warn' ? 'bg-warn text-ink-950' : 'bg-accent text-ink-950'
             }`}
           >
             AI
           </span>
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-300">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--app-ink-soft)]">
               Nutrition coach · tuned for {goalWord}
             </div>
-            <p className="mt-1 text-[15px] font-medium leading-snug text-ink-50">{insight.text}</p>
+            <p className="mt-1 text-[15px] font-medium leading-snug text-[var(--app-ink)]">{insight.text}</p>
           </div>
         </div>
       </div>

@@ -130,10 +130,10 @@ export function DayTargetRing({
             })}
           </svg>
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-            <span className="tabular-display text-2xl font-semibold leading-none text-ink-50">
+            <span className="tabular-display text-2xl font-semibold leading-none text-[var(--app-ink)]">
               {count.hit}/{count.applicable}
             </span>
-            <span className="mt-1 text-[10px] uppercase tracking-[0.12em] text-ink-500">targets</span>
+            <span className="mt-1 text-[10px] uppercase tracking-[0.12em] text-[var(--app-muted)]">targets</span>
           </div>
     </div>
   )
@@ -146,18 +146,18 @@ export function DayTargetRing({
         {graphic}
 
         <div className="min-w-0 flex-1 text-center sm:text-left">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">
             Today at a glance
           </div>
-          <p className="mt-2 text-[13px] leading-relaxed text-ink-300">
+          <p className="mt-2 text-[13px] leading-relaxed text-[var(--app-ink-soft)]">
             Open arcs still need attention. Tap one to jump to the matching log.
           </p>
-          <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-2 text-[11px] text-ink-400 sm:justify-start">
+          <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-2 text-[11px] text-[var(--app-muted)] sm:justify-start">
             <span className="flex items-center gap-1.5">
               <span className="h-2.5 w-2.5 rounded-full bg-accent shadow-[0_0_7px] shadow-accent/60" /> Hit
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-white/30" /> Logged short
+              <span className="h-2.5 w-2.5 rounded-full bg-[var(--app-inset)]" /> Logged short
             </span>
             <span className="flex items-center gap-1.5">
               <span className="h-2.5 w-2.5 rounded-full bg-[repeating-linear-gradient(45deg,rgba(255,255,255,0.05),rgba(255,255,255,0.05)_2px,rgba(255,255,255,0.24)_2px,rgba(255,255,255,0.24)_4px)]" /> Not logged

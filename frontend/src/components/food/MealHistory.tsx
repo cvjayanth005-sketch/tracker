@@ -25,7 +25,7 @@ function DayCard({ entry, targets }: { entry: DayEntry; targets: MacroTargets })
   const [open, setOpen] = useState(false)
   const { totals, meals } = entry
   return (
-    <div className="rounded-2xl bg-white/[0.03] ring-1 ring-inset ring-white/8">
+    <div className="radius-control bg-[var(--app-inset)] ring-1 ring-inset ring-[var(--app-line)]">
       <button type="button" onClick={() => setOpen((v) => !v)} className="flex w-full items-center gap-3 p-3 text-left">
         <MacroRings
           totals={totals}
@@ -33,11 +33,11 @@ function DayCard({ entry, targets }: { entry: DayEntry; targets: MacroTargets })
           size={54}
           stroke={5}
           gap={2}
-          center={<span className="tabular text-[10px] font-semibold text-ink-200">{mealGroupCount(meals)}</span>}
+          center={<span className="tabular text-[10px] font-semibold text-[var(--app-ink)]">{mealGroupCount(meals)}</span>}
         />
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold text-ink-50">
-            {weekdayName(entry.date)} <span className="font-normal text-ink-400">· {formatShort(entry.date)}</span>
+          <div className="text-sm font-semibold text-[var(--app-ink)]">
+            {weekdayName(entry.date)} <span className="font-normal text-[var(--app-muted)]">· {formatShort(entry.date)}</span>
           </div>
           <div className="mt-0.5 flex flex-wrap gap-1.5">
             {MACRO_CHIPS.map((field) =>
@@ -50,24 +50,24 @@ function DayCard({ entry, targets }: { entry: DayEntry; targets: MacroTargets })
             )}
           </div>
         </div>
-        <span className="tabular shrink-0 text-right text-[11px] text-ink-500">
-          <span className="block font-semibold text-ink-200">{fmtInt(totals.calories)}</span>
+        <span className="tabular shrink-0 text-right text-[11px] text-[var(--app-muted)]">
+          <span className="block font-semibold text-[var(--app-ink)]">{fmtInt(totals.calories)}</span>
           kcal
         </span>
-        <span className={`shrink-0 text-ink-500 transition-transform ${open ? 'rotate-180' : ''}`}>⌄</span>
+        <span className={`shrink-0 text-[var(--app-muted)] transition-transform ${open ? 'rotate-180' : ''}`}>⌄</span>
       </button>
       {open ? (
-        <div className="space-y-1.5 border-t border-white/8 px-3 pb-3 pt-2">
+        <div className="space-y-1.5 border-t border-[var(--app-line)] px-3 pb-3 pt-2">
           {meals.length === 0 ? (
-            <div className="text-[12px] text-ink-500">Daily totals only — no itemized meals for this day.</div>
+            <div className="text-[12px] text-[var(--app-muted)]">Daily totals only — no itemized meals for this day.</div>
           ) : (
             SLOT_ORDER.map((slot) => {
               const groups = groupMeals(meals.filter((meal) => meal.slot === slot))
               if (groups.length === 0) return null
               return (
                 <div key={slot} className="flex gap-2 text-[12px]">
-                  <span className="w-16 shrink-0 text-ink-500">{SLOT_META[slot].label}</span>
-                  <span className="min-w-0 text-ink-200">
+                  <span className="w-16 shrink-0 text-[var(--app-muted)]">{SLOT_META[slot].label}</span>
+                  <span className="min-w-0 text-[var(--app-ink)]">
                     {groups.map((group, i) => {
                       const calories = groupMacroTotals(group.meals).calories
                       return (
@@ -75,7 +75,7 @@ function DayCard({ entry, targets }: { entry: DayEntry; targets: MacroTargets })
                           {i > 0 ? '; ' : ''}
                           {groupName(group.meals)}
                           {calories !== null ? (
-                            <span className="text-ink-500"> ({Math.round(calories)})</span>
+                            <span className="text-[var(--app-muted)]"> ({Math.round(calories)})</span>
                           ) : null}
                         </span>
                       )
@@ -135,8 +135,8 @@ export function MealHistory({
   if (entries.length === 0) {
     return (
       <Card className="text-center">
-        <div className="text-sm font-medium text-ink-200">No history yet</div>
-        <p className="mx-auto mt-1 max-w-xs text-[13px] leading-relaxed text-ink-400">
+        <div className="text-sm font-medium text-[var(--app-ink)]">No history yet</div>
+        <p className="mx-auto mt-1 max-w-xs text-[13px] leading-relaxed text-[var(--app-muted)]">
           As you log meals each day, they stack up here so you can watch your macros over time.
         </p>
       </Card>

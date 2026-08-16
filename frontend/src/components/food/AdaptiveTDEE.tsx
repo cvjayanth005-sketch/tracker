@@ -37,17 +37,17 @@ export function AdaptiveTDEE({
     const { calorieDays, weightDays, needDays } = result
     return (
       <Card>
-        <div className="text-sm font-semibold text-ink-50">Measured maintenance</div>
-        <p className="mt-1 text-[12px] leading-relaxed text-ink-400">
+        <div className="text-sm font-semibold text-[var(--app-ink)]">Measured maintenance</div>
+        <p className="mt-1 text-[12px] leading-relaxed text-[var(--app-muted)]">
           Log calories and weigh-ins for about two weeks and I&apos;ll measure your real maintenance
           calories from the data — more accurate than any formula.
         </p>
-        <div className="mt-3 flex gap-2 text-[11px] text-ink-500">
-          <span className="rounded-lg bg-white/5 px-2 py-1 ring-1 ring-inset ring-white/10">
-            Weigh-ins <span className="tabular font-semibold text-ink-200">{weightDays}</span>/{needDays}
+        <div className="mt-3 flex gap-2 text-[11px] text-[var(--app-muted)]">
+          <span className="radius-control bg-[var(--app-inset)] px-2 py-1 ring-1 ring-inset ring-[var(--app-line)]">
+            Weigh-ins <span className="tabular font-semibold text-[var(--app-ink)]">{weightDays}</span>/{needDays}
           </span>
-          <span className="rounded-lg bg-white/5 px-2 py-1 ring-1 ring-inset ring-white/10">
-            Calorie days <span className="tabular font-semibold text-ink-200">{calorieDays}</span>/{needDays}
+          <span className="radius-control bg-[var(--app-inset)] px-2 py-1 ring-1 ring-inset ring-[var(--app-line)]">
+            Calorie days <span className="tabular font-semibold text-[var(--app-ink)]">{calorieDays}</span>/{needDays}
           </span>
         </div>
       </Card>
@@ -63,42 +63,42 @@ export function AdaptiveTDEE({
     <Card>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-sm font-semibold text-ink-50">Measured maintenance</div>
-          <div className="mt-0.5 text-[11px] text-ink-500">from your last {est.windowDays} days of intake + weight</div>
+          <div className="text-sm font-semibold text-[var(--app-ink)]">Measured maintenance</div>
+          <div className="mt-0.5 text-[11px] text-[var(--app-muted)]">from your last {est.windowDays} days of intake + weight</div>
         </div>
         <ConfidenceBadge confidence={est.confidence} />
       </div>
 
       <div className="mt-3 flex items-baseline gap-2">
         <span className="tabular-display text-3xl font-semibold leading-none text-accent">{fmtInt(est.tdeeKcal)}</span>
-        <span className="text-[12px] text-ink-400">kcal/day</span>
-        <span className="tabular ml-auto text-[11px] text-ink-500">
+        <span className="text-[12px] text-[var(--app-muted)]">kcal/day</span>
+        <span className="tabular ml-auto text-[11px] text-[var(--app-muted)]">
           range {fmtInt(est.lowKcal)}–{fmtInt(est.highKcal)}
         </span>
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
-        <div className="rounded-lg bg-white/5 px-2.5 py-2 ring-1 ring-inset ring-white/10">
-          <div className="text-ink-500">Avg intake</div>
-          <div className="tabular mt-0.5 font-semibold text-ink-100">{fmtInt(est.avgIntakeKcal)} kcal</div>
+        <div className="radius-control bg-[var(--app-inset)] px-2.5 py-2 ring-1 ring-inset ring-[var(--app-line)]">
+          <div className="text-[var(--app-muted)]">Avg intake</div>
+          <div className="tabular mt-0.5 font-semibold text-[var(--app-ink)]">{fmtInt(est.avgIntakeKcal)} kcal</div>
         </div>
-        <div className="rounded-lg bg-white/5 px-2.5 py-2 ring-1 ring-inset ring-white/10">
-          <div className="text-ink-500">Weight trend</div>
-          <div className="tabular mt-0.5 font-semibold text-ink-100">
+        <div className="radius-control bg-[var(--app-inset)] px-2.5 py-2 ring-1 ring-inset ring-[var(--app-line)]">
+          <div className="text-[var(--app-muted)]">Weight trend</div>
+          <div className="tabular mt-0.5 font-semibold text-[var(--app-ink)]">
             {est.weightChangePerWeekKg > 0 ? '+' : ''}
             {est.weightChangePerWeekKg.toFixed(2)} kg/wk
           </div>
         </div>
       </div>
 
-      <div className="mt-3 rounded-xl bg-white/[0.03] px-3 py-2.5 text-[12px] leading-relaxed text-ink-300 ring-1 ring-inset ring-white/8">
-        Your <span className="font-semibold text-ink-100">{fmtInt(targetKcal)}</span> target is about{' '}
-        <span className="font-semibold text-ink-100">{fmtInt(Math.abs(dailyDeltaKcal))} kcal/day {deltaWord}</span>{' '}
+      <div className="mt-3 radius-control bg-[var(--app-inset)] px-3 py-2.5 text-[12px] leading-relaxed text-[var(--app-ink-soft)] ring-1 ring-inset ring-[var(--app-line)]">
+        Your <span className="font-semibold text-[var(--app-ink)]">{fmtInt(targetKcal)}</span> target is about{' '}
+        <span className="font-semibold text-[var(--app-ink)]">{fmtInt(Math.abs(dailyDeltaKcal))} kcal/day {deltaWord}</span>{' '}
         maintenance
         {direction !== 'maintenance' ? (
           <>
             {' '}— roughly{' '}
-            <span className="font-semibold text-ink-100">
+            <span className="font-semibold text-[var(--app-ink)]">
               {Math.abs(weeklyChangeKg).toFixed(2)} kg/week {direction}
             </span>
           </>

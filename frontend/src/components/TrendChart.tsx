@@ -122,7 +122,7 @@ export function TrendChart({
     <div ref={hostRef} className={className}>
       {!model ? (
         <div
-          className="glass-inset flex items-center justify-center rounded-2xl text-[13px] text-ink-400"
+          className="glass-inset flex items-center justify-center radius-control text-[13px] text-[var(--app-muted)]"
           style={{ height }}
         >
           No weigh-ins yet
@@ -267,7 +267,7 @@ export function TrendChart({
           </svg>
 
           <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px]">
-            <span className="flex items-center gap-3 text-ink-400">
+            <span className="flex items-center gap-3 text-[var(--app-muted)]">
               <span className="flex items-center gap-1.5">
                 <span className="h-0.5 w-3 rounded-full bg-accent" />
                 7-day average
@@ -278,7 +278,7 @@ export function TrendChart({
               </span>
             </span>
             {point ? (
-              <span className="tabular text-ink-200">
+              <span className="tabular text-[var(--app-ink)]">
                 {formatShort(point.date)} ·{' '}
                 {point.trendKg !== null ? `${point.trendKg.toFixed(2)} kg` : 'no trend'}
                 {point.rawKg !== null ? ` · raw ${point.rawKg.toFixed(1)}` : ''}

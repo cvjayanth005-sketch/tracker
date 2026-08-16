@@ -75,25 +75,25 @@ export default function Calendar() {
           : {})}
         title="Calendar"
         action={
-          <div className="glass-inset flex gap-1 rounded-xl p-1">
+          <div className="glass-inset flex gap-1 radius-control p-1">
             <button
               type="button"
               onClick={() => setCursor((value) => shiftMonths(value, -1))}
-              className="rounded-lg px-3 py-1.5 text-[12px] font-semibold text-ink-200"
+              className="radius-control px-3 py-1.5 text-[12px] font-semibold text-[var(--app-ink)]"
             >
               Prev
             </button>
             <button
               type="button"
               onClick={() => setCursor(monthStart(today))}
-              className="rounded-lg px-3 py-1.5 text-[12px] font-semibold text-ink-200"
+              className="radius-control px-3 py-1.5 text-[12px] font-semibold text-[var(--app-ink)]"
             >
               Today
             </button>
             <button
               type="button"
               onClick={() => setCursor((value) => shiftMonths(value, 1))}
-              className="rounded-lg px-3 py-1.5 text-[12px] font-semibold text-ink-200"
+              className="radius-control px-3 py-1.5 text-[12px] font-semibold text-[var(--app-ink)]"
             >
               Next
             </button>
@@ -103,7 +103,7 @@ export default function Calendar() {
 
       <SectionTitle
         action={
-          <span className="text-xs text-ink-400">
+          <span className="text-xs text-[var(--app-muted)]">
             {monthCompliance?.overallHitRatePct == null ? 'Start logging' : `${Math.round(monthCompliance.overallHitRatePct)}% hit rate`}
           </span>
         }
@@ -112,7 +112,7 @@ export default function Calendar() {
       </SectionTitle>
 
       <Card>
-        <div className="grid grid-cols-7 gap-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+        <div className="grid grid-cols-7 gap-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--app-muted)]">
           {WEEKDAYS.map((day) => (
             <div key={day}>{day}</div>
           ))}
@@ -130,18 +130,18 @@ export default function Calendar() {
             const classes = {
               hit: 'bg-accent/18 text-accent ring-accent/25',
               miss: 'bg-alert/18 text-alert ring-alert/25',
-              open: 'bg-white/6 text-ink-300 ring-white/10',
+              open: 'bg-[var(--app-inset)] text-[var(--app-ink-soft)] ring-[var(--app-line)]',
             } as const
             return (
               <Link
                 key={date}
                 to={`/calendar/${date}`}
-                className={`relative aspect-square rounded-2xl p-2 text-left ring-1 ring-inset transition-transform active:scale-95 ${classes[status]}`}
+                className={`relative aspect-square radius-control p-2 text-left ring-1 ring-inset transition-transform active:scale-95 ${classes[status]}`}
                 aria-label={`${formatShort(date, true)} ${status}`}
               >
                 <span className="tabular text-sm font-semibold">{Number(date.slice(8, 10))}</span>
                 {week && dayOfWeek(date) === 1 ? (
-                  <span className="absolute bottom-1.5 left-2 text-[9px] text-ink-500">W{week}</span>
+                  <span className="absolute bottom-1.5 left-2 text-[9px] text-[var(--app-muted)]">W{week}</span>
                 ) : null}
                 {isToday ? (
                   <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-info" />
@@ -158,8 +158,8 @@ export default function Calendar() {
           <Card key={phase.id}>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-sm font-semibold text-ink-50">{phase.name}</div>
-                <div className="mt-1 text-[12px] text-ink-400">
+                <div className="text-sm font-semibold text-[var(--app-ink)]">{phase.name}</div>
+                <div className="mt-1 text-[12px] text-[var(--app-muted)]">
                   {phase.startWeightKg} to {phase.targetWeightKg} kg · {phase.calories} kcal
                 </div>
               </div>
@@ -173,10 +173,10 @@ export default function Calendar() {
 
       <SectionTitle>Legend</SectionTitle>
       <Card>
-        <div className="grid gap-2 text-[12px] text-ink-300 sm:grid-cols-3">
+        <div className="grid gap-2 text-[12px] text-[var(--app-ink-soft)] sm:grid-cols-3">
           <div><span className="mr-2 inline-block h-2 w-2 rounded-full bg-accent" />Hit day</div>
           <div><span className="mr-2 inline-block h-2 w-2 rounded-full bg-alert" />Missed target</div>
-          <div><span className="mr-2 inline-block h-2 w-2 rounded-full bg-white/30" />Open / not fully logged</div>
+          <div><span className="mr-2 inline-block h-2 w-2 rounded-full bg-[var(--app-inset)]" />Open / not fully logged</div>
         </div>
       </Card>
     </div>

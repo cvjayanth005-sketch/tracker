@@ -25,17 +25,17 @@ function Chip({
   onRemove?: () => void
 }) {
   return (
-    <div className="flex shrink-0 items-center overflow-hidden rounded-xl bg-white/8 ring-1 ring-inset ring-white/10">
+    <div className="flex shrink-0 items-center overflow-hidden radius-control bg-[var(--app-inset)] ring-1 ring-inset ring-[var(--app-line)]">
       <button
         type="button"
         onClick={onAdd}
-        className="flex items-center gap-2 py-2 pl-3 pr-2.5 text-left transition-colors hover:bg-white/12 active:bg-white/16"
+        className="flex items-center gap-2 py-2 pl-3 pr-2.5 text-left transition-colors hover:bg-[var(--app-inset)] active:bg-[var(--app-inset)]"
         title={`Add ${name} to ${SLOT_META[slot].label}`}
       >
         <span className="text-[13px]">{SLOT_META[slot].icon}</span>
         <span className="min-w-0">
-          <span className="block max-w-[10rem] truncate text-[12px] font-medium text-ink-50">{name}</span>
-          {sub ? <span className="block text-[10px] text-ink-500">{sub}</span> : null}
+          <span className="block max-w-[10rem] truncate text-[12px] font-medium text-[var(--app-ink)]">{name}</span>
+          {sub ? <span className="block text-[10px] text-[var(--app-muted)]">{sub}</span> : null}
         </span>
         <span className="ml-1 text-sm font-semibold text-accent">＋</span>
       </button>
@@ -43,7 +43,7 @@ function Chip({
         <button
           type="button"
           onClick={onRemove}
-          className="self-stretch border-l border-white/10 px-2 text-[11px] text-ink-500 hover:text-alert"
+          className="self-stretch border-l border-[var(--app-line)] px-2 text-[11px] text-[var(--app-muted)] hover:text-alert"
           aria-label={`Remove ${name} from saved`}
         >
           ✕
@@ -71,7 +71,7 @@ export function QuickAddFoods({ date }: { date: LocalDate }) {
     <Card>
       {hasFavourites ? (
         <div className={hasRecents ? 'mb-3' : ''}>
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-400">Saved</div>
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--app-muted)]">Saved</div>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {(favourites ?? []).map((food) => (
               <Chip
@@ -89,7 +89,7 @@ export function QuickAddFoods({ date }: { date: LocalDate }) {
 
       {hasRecents ? (
         <div>
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-400">Recent</div>
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--app-muted)]">Recent</div>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {(recents ?? []).map((template) => (
               <Chip

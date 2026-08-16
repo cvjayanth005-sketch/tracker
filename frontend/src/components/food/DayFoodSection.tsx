@@ -45,8 +45,8 @@ export function DayFoodSection({
       {hasMeals ? (
         <Card className="!p-4">
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-[13px] font-semibold text-ink-100">Totals from meals</span>
-            <span className="text-[11px] text-ink-500">
+            <span className="text-[13px] font-semibold text-[var(--app-ink)]">Totals from meals</span>
+            <span className="text-[11px] text-[var(--app-muted)]">
               {meals.length}
               {phase ? ` / ${phase.mealsPerDay}` : ''} meal{meals.length === 1 ? '' : 's'}
             </span>
@@ -57,7 +57,7 @@ export function DayFoodSection({
               return (
                 <span
                   key={field.key}
-                  className="tabular rounded-lg px-2.5 py-1 text-[12px] font-semibold"
+                  className="tabular radius-control px-2.5 py-1 text-[12px] font-semibold"
                   style={{ color: field.color, backgroundColor: `${field.color}1a` }}
                 >
                   {value == null ? '—' : Math.round(value)}
@@ -84,7 +84,7 @@ export function DayFoodSection({
             {...(phase ? { target: `Target ${phase.proteinG}` } : {})}
             onCommit={(proteinG) => save({ proteinG })}
           />
-          <p className="px-1 text-[11px] leading-relaxed text-ink-500">
+          <p className="px-1 text-[11px] leading-relaxed text-[var(--app-muted)]">
             Enter totals, or add a meal below to track this day item by item — meals fill these in for you.
           </p>
         </>

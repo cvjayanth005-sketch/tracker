@@ -34,7 +34,7 @@ export function TodayFocusCard({
     focus.action?.kind === 'workout' ? (
       <Link
         to="/workout"
-        className="inline-flex min-h-11 items-center justify-center rounded-xl bg-accent px-5 text-sm font-semibold text-ink-950 shadow-[0_8px_24px_-8px] shadow-accent/50 active:bg-accent-dim"
+        className="inline-flex min-h-11 items-center justify-center radius-control bg-accent px-5 text-sm font-semibold text-ink-950 shadow-[0_8px_24px_-8px] shadow-accent/50 active:bg-accent-dim"
       >
         {focus.actionLabel}
       </Link>
@@ -42,7 +42,7 @@ export function TodayFocusCard({
       <button
         type="button"
         onClick={() => onActivate(metricAction)}
-        className="min-h-11 rounded-xl bg-accent px-5 text-sm font-semibold text-ink-950 shadow-[0_8px_24px_-8px] shadow-accent/50 active:bg-accent-dim"
+        className="min-h-11 radius-control bg-accent px-5 text-sm font-semibold text-ink-950 shadow-[0_8px_24px_-8px] shadow-accent/50 active:bg-accent-dim"
       >
         {focus.actionLabel}
       </button>
@@ -55,10 +55,10 @@ export function TodayFocusCard({
           <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
             Today&apos;s focus · {focus.eyebrow}
           </div>
-          <h2 className="mt-2 text-2xl font-semibold leading-tight text-ink-50 sm:text-3xl">
+          <h2 className="mt-2 text-2xl font-semibold leading-tight text-[var(--app-ink)] sm:text-3xl">
             {focus.title}
           </h2>
-          <p className="mt-2 max-w-2xl text-[13px] leading-6 text-ink-300">{focus.detail}</p>
+          <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[var(--app-ink-soft)]">{focus.detail}</p>
           {action ? <div className="mt-4">{action}</div> : null}
         </div>
 
@@ -68,16 +68,16 @@ export function TodayFocusCard({
       </div>
 
       {attentionMetrics.length > 0 || recommendation ? (
-        <div className="mt-5 flex flex-col gap-3 border-t border-white/8 pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-5 flex flex-col gap-3 border-t border-[var(--app-line)] pt-4 sm:flex-row sm:items-center sm:justify-between">
           {attentionMetrics.length > 0 ? (
             <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 text-[12px]">
-              <span className="text-ink-500">Also open</span>
+              <span className="text-[var(--app-muted)]">Also open</span>
               {attentionMetrics.map((metric) => (
                 <button
                   key={metric}
                   type="button"
                   onClick={() => onActivate(metric)}
-                  className="min-h-11 text-left font-medium text-ink-200 underline decoration-white/15 underline-offset-4 transition-colors hover:text-ink-50"
+                  className="min-h-11 text-left font-medium text-[var(--app-ink)] underline decoration-white/15 underline-offset-4 transition-colors hover:text-[var(--app-ink)]"
                 >
                   {LABEL[metric]}
                 </button>
@@ -87,9 +87,9 @@ export function TodayFocusCard({
             <span />
           )}
           {recommendation ? (
-            <div className="min-w-0 text-[12px] text-ink-400 sm:max-w-[46%] sm:text-right">
-              <span className="text-ink-500">Plan signal </span>
-              <span className="font-medium text-ink-200">{recommendation.headline}</span>
+            <div className="min-w-0 text-[12px] text-[var(--app-muted)] sm:max-w-[46%] sm:text-right">
+              <span className="text-[var(--app-muted)]">Plan signal </span>
+              <span className="font-medium text-[var(--app-ink)]">{recommendation.headline}</span>
             </div>
           ) : null}
         </div>

@@ -120,12 +120,12 @@ export function ActivityRings({
                   className="h-2 w-2 shrink-0 rounded-full"
                   style={{ background: ring.color }}
                 />
-                <span className="text-ink-200">{ring.label}</span>
-                <span className="tabular ml-auto pl-3 font-medium text-ink-50">
+                <span className="text-[var(--app-ink)]">{ring.label}</span>
+                <span className="tabular ml-auto pl-3 font-medium text-[var(--app-ink)]">
                   {m?.hitRatePct == null ? '—' : `${Math.round(m.hitRatePct)}%`}
                 </span>
               </div>
-              <div className="tabular ml-4 text-[11px] text-ink-400">
+              <div className="tabular ml-4 text-[11px] text-[var(--app-muted)]">
                 {m
                   ? [
                       `${m.hitDays} hit`,

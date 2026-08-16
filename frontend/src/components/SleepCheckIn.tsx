@@ -34,7 +34,7 @@ function SleepHoursField({
   return (
     <label className="block min-w-0">
       <span className="mb-1.5 flex justify-between text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--app-muted)]">
-        Sleep hours <span className="normal-case tracking-normal text-[var(--app-ink)]0">target {targetHours}h</span>
+        Sleep hours <span className="normal-case tracking-normal text-[var(--app-muted)]">target {targetHours}h</span>
       </span>
       <div className="flex h-11 items-center radius-control bg-[var(--app-inset)] px-3 ring-1 ring-inset ring-[var(--app-line)] focus-within:ring-info/60">
         <input
@@ -89,7 +89,7 @@ export function SleepCheckIn({
 
   return (
     <Card className="mt-4 overflow-hidden lg:mt-6">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/8 pb-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--app-line)] pb-3">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-info">Last night</div>
           {/* Semantic h2: card titles built as divs silently miss the heading face. */}
@@ -100,7 +100,7 @@ export function SleepCheckIn({
             <div className="tabular-display text-2xl font-semibold leading-none text-[var(--app-ink)]">
               {score.score ?? '—'}
             </div>
-            <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--app-ink)]0">
+            <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--app-muted)]">
               Sleep score
             </div>
           </div>
@@ -116,7 +116,7 @@ export function SleepCheckIn({
         />
         <div className="min-w-0">
           <div className="mb-1.5 flex justify-between text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--app-muted)]">
-            Sleep quality <span className="normal-case tracking-normal text-[var(--app-ink)]0">1–5</span>
+            Sleep quality <span className="normal-case tracking-normal text-[var(--app-muted)]">1–5</span>
           </div>
           <div className="grid h-11 grid-cols-5 gap-1">
             {([1, 2, 3, 4, 5] as Rating[]).map((value) => (
@@ -153,7 +153,7 @@ export function SleepCheckIn({
         </label>
         <div className="min-w-0">
           <div className="mb-1.5 flex justify-between text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--app-muted)]">
-            Awakenings <span className="normal-case tracking-normal text-[var(--app-ink)]0">overnight</span>
+            Awakenings <span className="normal-case tracking-normal text-[var(--app-muted)]">overnight</span>
           </div>
           <div className="grid h-11 grid-cols-5 gap-1">
             {AWAKENING_OPTIONS.map((value) => (
@@ -171,7 +171,7 @@ export function SleepCheckIn({
           </div>
         </div>
       </div>
-      <p className="mt-3 text-[11px] leading-relaxed text-[var(--app-ink)]0">
+      <p className="mt-3 text-[11px] leading-relaxed text-[var(--app-muted)]">
         Duration and quality create the score. Timing learns your rhythm after three nights; awakenings improve confidence when logged.
       </p>
     </Card>
