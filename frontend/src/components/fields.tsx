@@ -70,10 +70,10 @@ export function NumberField({
   }
 
   return (
-    <label className="glass-tile flex items-center justify-between gap-3 rounded-3xl px-4 py-3.5 transition-colors focus-within:bg-white/[0.07]">
+    <label className="glass-tile flex items-center justify-between gap-3 radius-inset px-4 py-3.5 transition-colors focus-within:bg-white/[0.07]">
       <span className="min-w-0 flex-1">
-        <span className="block text-[13px] font-medium text-ink-200">{label}</span>
-        {target ? <span className="block text-[11px] text-ink-400">{target}</span> : null}
+        <span className="block text-[13px] font-medium text-[var(--app-ink)]">{label}</span>
+        {target ? <span className="block text-[11px] text-[var(--app-muted)]">{target}</span> : null}
       </span>
       <span className="flex shrink-0 items-baseline gap-1">
         <input
@@ -88,10 +88,10 @@ export function NumberField({
             window.clearTimeout(timer.current)
             commit(e.target.value)
           }}
-          className="tabular w-24 rounded-2xl bg-black/25 px-3 py-2 text-right text-base font-semibold text-ink-50 outline-none ring-1 ring-inset ring-white/10 placeholder:font-normal placeholder:text-ink-600 focus:ring-accent/60"
+          className="tabular w-24 radius-control bg-[var(--app-inset)] px-3 py-2 text-right text-base font-semibold text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:font-normal placeholder:text-[var(--app-muted)] focus:ring-accent/60"
         />
         {/* Always rendered, so inputs with and without a unit stay aligned. */}
-        <span className="w-8 text-xs text-ink-400">{unit ?? ''}</span>
+        <span className="w-8 text-xs text-[var(--app-muted)]">{unit ?? ''}</span>
       </span>
     </label>
   )
@@ -122,8 +122,8 @@ export function TriToggle({
       <button
         type="button"
         onClick={() => onChange(active ? null : optionValue)}
-        className={`min-h-10 rounded-2xl px-3 text-[13px] font-medium transition-colors ${
-          active ? activeClass : 'bg-black/25 text-ink-400 ring-1 ring-inset ring-white/10'
+        className={`min-h-10 radius-control px-3 text-[13px] font-medium transition-colors ${
+          active ? activeClass : 'bg-[var(--app-inset)] text-[var(--app-muted)] ring-1 ring-inset ring-[var(--app-line)]'
         }`}
       >
         {text}
@@ -132,10 +132,10 @@ export function TriToggle({
   }
 
   return (
-    <div className="glass-tile flex items-center justify-between gap-3 rounded-3xl px-4 py-3.5 transition-colors focus-within:bg-white/[0.07]">
+    <div className="glass-tile flex items-center justify-between gap-3 radius-inset px-4 py-3.5 transition-colors focus-within:bg-white/[0.07]">
       <span className="min-w-0 flex-1">
-        <span className="block text-[13px] font-medium text-ink-200">{label}</span>
-        {sub ? <span className="block text-[11px] text-ink-400">{sub}</span> : null}
+        <span className="block text-[13px] font-medium text-[var(--app-ink)]">{label}</span>
+        {sub ? <span className="block text-[11px] text-[var(--app-muted)]">{sub}</span> : null}
       </span>
       <span className="flex shrink-0 gap-1.5">
         {option(true, yesLabel, 'bg-accent text-ink-950 shadow-[0_6px_18px_-6px] shadow-accent/60')}
@@ -161,10 +161,10 @@ export function RatingField({
   highLabel?: string
 }) {
   return (
-    <div className="glass-tile rounded-3xl px-4 py-3.5">
+    <div className="glass-tile radius-inset px-4 py-3.5">
       <div className="flex items-baseline justify-between">
-        <span className="text-[13px] font-medium text-ink-200">{label}</span>
-        {sub ? <span className="text-[11px] text-ink-400">{sub}</span> : null}
+        <span className="text-[13px] font-medium text-[var(--app-ink)]">{label}</span>
+        {sub ? <span className="text-[11px] text-[var(--app-muted)]">{sub}</span> : null}
       </div>
       <div className="mt-2 flex gap-1.5">
         {([1, 2, 3, 4, 5] as Rating[]).map((n) => (
@@ -175,7 +175,7 @@ export function RatingField({
             className={`tabular h-9 flex-1 rounded-lg text-sm font-semibold transition-colors ${
               value === n
                 ? 'bg-info text-ink-950 shadow-[0_10px_26px_-10px] shadow-info/70'
-                : 'bg-black/25 text-ink-400 ring-1 ring-inset ring-white/10'
+                : 'bg-[var(--app-inset)] text-[var(--app-muted)] ring-1 ring-inset ring-[var(--app-line)]'
             }`}
           >
             {n}
@@ -212,8 +212,8 @@ export function TextArea({
   }, [value])
 
   return (
-    <label className="glass-tile block rounded-3xl px-4 py-3.5">
-      <span className="mb-1.5 block text-[13px] font-medium text-ink-200">{label}</span>
+    <label className="glass-tile block radius-inset px-4 py-3.5">
+      <span className="mb-1.5 block text-[13px] font-medium text-[var(--app-ink)]">{label}</span>
       <textarea
         value={text}
         rows={3}
@@ -226,7 +226,7 @@ export function TextArea({
           dirty.current = false
           onCommit(text.trim() === '' ? null : text)
         }}
-        className="w-full resize-none rounded-2xl bg-black/25 px-3 py-2 text-sm text-ink-50 outline-none ring-1 ring-inset ring-white/10 placeholder:text-ink-600 focus:ring-accent/60"
+        className="w-full resize-none radius-control bg-[var(--app-inset)] px-3 py-2 text-sm text-[var(--app-ink)] outline-none ring-1 ring-inset ring-white/10 placeholder:text-ink-600 focus:ring-accent/60"
       />
     </label>
   )

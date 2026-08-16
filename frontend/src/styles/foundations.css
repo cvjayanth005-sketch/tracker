@@ -1,0 +1,142 @@
+/*
+ * Radius, spacing, and motion.
+ *
+ * The companion to the type scale. The app carried six radius variants in the
+ * JSX plus four more in CSS, and 36 distinct padding and gap values — improvised
+ * per component, so correct type still landed on arbitrary space and read as
+ * unconsidered. Type and space are one system; fixing only one of them fixes
+ * neither.
+ */
+
+:root {
+  /* --- Radius ------------------------------------------------------------
+   * Four steps, and the relationship between them matters more than the values.
+   *
+   * A rounded box inside another rounded box must use a SMALLER radius, equal
+   * to the parent's radius minus the gap between them, or the two curves run
+   * out of parallel and the inner corner looks pinched. This is the concentric
+   * radius rule, and it is the single most common tell of hand-rolled UI: at a
+   * 32px outer radius, an inner element left at 32px looks visibly wrong.
+   *
+   * Panel 32, inset 20, control 12 — each step is roughly the one above minus a
+   * step of padding, so nesting stays optically parallel.
+   */
+  --radius-panel: 32px;
+  --radius-inset: 20px;
+  --radius-control: 12px;
+  --radius-pill: 999px;
+
+  /* The design system's own token, retuned so existing consumers follow. */
+  --app-radius: var(--radius-panel);
+
+  /* --- Spacing -----------------------------------------------------------
+   * 4px base. The steps double and then widen, matching how the type scale
+   * behaves, so vertical rhythm and type sizes stay related rather than each
+   * drifting on its own.
+   */
+  --space-1: 0.25rem; /* 4px  — hairline gaps, chip padding */
+  --space-2: 0.5rem;  /* 8px  — between tightly related items */
+  --space-3: 0.75rem; /* 12px — inside controls */
+  --space-4: 1rem;    /* 16px — default block gap */
+  --space-5: 1.5rem;  /* 24px — panel padding */
+  --space-6: 2rem;    /* 32px — between panels */
+  --space-7: 3rem;    /* 48px — between major regions */
+
+  /* --- Motion ------------------------------------------------------------
+   * Motion exists to explain a change, never to decorate one. Durations are
+   * short enough to feel like response rather than animation, and the easing is
+   * asymmetric — quick to leave, slow to settle — which is how physical objects
+   * actually move.
+   */
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-spring: cubic-bezier(0.34, 1.3, 0.64, 1);
+  --duration-fast: 140ms;
+  --duration-base: 220ms;
+  --duration-slow: 420ms;
+}
+
+/* ---------------------------------------------------------------------------
+   Radius roles
+--------------------------------------------------------------------------- */
+
+.radius-panel { border-radius: var(--radius-panel); }
+.radius-inset { border-radius: var(--radius-inset); }
+.radius-control { border-radius: var(--radius-control); }
+.radius-pill { border-radius: var(--radius-pill); }
+
+/*
+ * A large radius clips its own children. Panels that contain edge-to-edge
+ * content need the overflow rule or corners show square content bleeding past
+ * the curve.
+ */
+.app-panel {
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------------------
+   Motion
+
+   Applied to the moments that represent a real state change: a target being
+   met, a value being logged, a row settling into place. Everything else stays
+   still, which is what makes these read as meaningful rather than as an effect.
+--------------------------------------------------------------------------- */
+
+/* A number that just changed. Brief lift, then settle. */
+@keyframes value-settle {
+  0% { transform: translateY(0.15em); opacity: 0.4; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.motion-value {
+  animation: value-settle var(--duration-base) var(--ease-out);
+}
+
+/* A target crossing into "hit". The overshoot is what makes it feel earned. */
+@keyframes target-met {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+.motion-met {
+  animation: target-met var(--duration-slow) var(--ease-spring);
+}
+
+/* Progress bars and ring arcs grow into place rather than appearing filled. */
+.motion-fill {
+  transition: width var(--duration-slow) var(--ease-out),
+              stroke-dasharray var(--duration-slow) var(--ease-out);
+}
+
+/* Interactive surfaces acknowledge the pointer without moving the layout. */
+.motion-press {
+  transition: transform var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out),
+              background-color var(--duration-fast) var(--ease-out);
+}
+
+.motion-press:active {
+  transform: scale(0.985);
+}
+
+/*
+ * Honour the OS setting. Motion that explains a change is exactly the motion a
+ * vestibular-sensitive user needs removed, so this disables it outright rather
+ * than merely shortening it.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .motion-value,
+  .motion-met {
+    animation: none;
+  }
+
+  .motion-fill,
+  .motion-press {
+    transition: none;
+  }
+
+  .motion-press:active {
+    transform: none;
+  }
+}

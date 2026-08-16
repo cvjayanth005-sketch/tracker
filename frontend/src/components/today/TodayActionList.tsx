@@ -51,7 +51,7 @@ export function TodayActionList({
           return (
             <li
               key={action.lane}
-              className={`rounded-lg border p-3 sm:p-3.5 ${
+              className={`radius-inset motion-press border p-3 sm:p-3.5 ${
                 done ? 'today-action-done border-transparent' : 'border-[var(--app-line)]'
               }`}
             >
@@ -67,7 +67,7 @@ export function TodayActionList({
                 </div>
 
                 <span
-                  className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusClass(
+                  className={`radius-pill shrink-0 border px-2 py-0.5 text-[11px] font-semibold ${statusClass(
                     action.status,
                   )}`}
                 >
@@ -79,7 +79,7 @@ export function TodayActionList({
                 <div className="mt-3">
                   <button
                     type="button"
-                    className="app-button app-button-secondary text-[13px]"
+                    className="app-button app-button-secondary radius-control motion-press text-[13px]"
                     onClick={() =>
                       action.command!.kind === 'workout'
                         ? onOpenWorkout()

@@ -18,6 +18,7 @@ import Account from '@/screens/Account'
 import './index.css'
 import './styles/design-system.css'
 import './styles/typography.css'
+import './styles/foundations.css'
 
 const updateServiceWorker = registerSW({
   immediate: true,

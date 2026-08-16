@@ -119,14 +119,14 @@ export function TodayProgress({
           <li key={target.metric}>
             <button
               type="button"
-              className="today-metric w-full p-3"
+              className="today-metric radius-inset motion-press w-full p-3"
               onClick={() => onFocusMetric(target.metric)}
               aria-label={`${target.label}: ${OUTCOME_LABEL[target.outcome] ?? 'unknown'}. Jump to its logger.`}
             >
               <span className="flex items-baseline justify-between gap-2">
                 <span className="type-micro text-[var(--app-muted)]">{target.label}</span>
                 <span
-                  className={`rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${
+                  className={`radius-pill border px-1.5 py-0.5 text-[10px] font-semibold ${
                     OUTCOME_CLASS[target.outcome] ?? 'today-outcome-unknown'
                   }`}
                 >
@@ -135,7 +135,12 @@ export function TodayProgress({
               </span>
 
               <span className="mt-1.5 flex items-baseline gap-1">
-                <span className="type-metric type-optical-left text-[var(--app-ink)]">
+                <span
+                  key={`${target.metric}-${target.actual}`}
+                  className={`type-metric type-optical-left motion-value text-[var(--app-ink)] ${
+                    target.outcome === 'hit' ? 'motion-met' : ''
+                  }`}
+                >
                   {formatActual(target.actual, target.metric)}
                 </span>
                 <span className="type-caption text-[var(--app-muted)]">
@@ -145,7 +150,7 @@ export function TodayProgress({
 
               <span className="today-bar mt-2 block">
                 <span
-                  className={`today-bar-fill block ${
+                  className={`today-bar-fill motion-fill block ${
                     target.outcome === 'hit'
                       ? 'today-bar-fill--hit'
                       : target.outcome === 'missed'
