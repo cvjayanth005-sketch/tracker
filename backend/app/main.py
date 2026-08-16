@@ -8,6 +8,7 @@ import logging
 import os
 from pathlib import Path
 import re
+import secrets
 import time
 import traceback
 from urllib.parse import quote
@@ -76,6 +77,9 @@ from .services import (
 )
 
 
+# Shared with the Vercel edge function so it can attribute a redirect sign-in
+# to the real visitor. Unset means the header is ignored entirely.
+TRUSTED_PROXY_SECRET = os.environ.get("TRUSTED_PROXY_SECRET", "")
 AUTH_RATE_LIMIT = int(os.environ.get("AUTH_RATE_LIMIT", "20"))
 AUTH_RATE_WINDOW_SECONDS = int(os.environ.get("AUTH_RATE_WINDOW_SECONDS", "900"))
 AI_RATE_LIMIT = int(os.environ.get("AI_RATE_LIMIT", "40"))
@@ -114,6 +118,30 @@ def redact_secrets(text: str) -> str:
 
 
 def client_ip(request: Request) -> str:
+    """
+    Best available client address for rate limiting.
+
+    `x-forwarded-for` is read right-to-left because only the rightmost entry is
+    appended by our own proxy; everything to its left is client-supplied and can
+    be forged, so trusting the leftmost value would let one caller rotate fake
+    addresses and sidestep the limit entirely.
+
+    That breaks down for the redirect sign-in, which reaches us through our
+    Vercel edge function rather than straight from the browser: the rightmost
+    entry is then the edge itself, so every phone sign-in would share one bucket
+    and a handful of testers could lock each other out. The edge forwards the
+    real address in `x-tracker-client-ip`, trusted only when the request also
+    carries the shared secret — without that check the header would be exactly
+    the forgeable input we just refused to trust.
+    """
+    if TRUSTED_PROXY_SECRET:
+        supplied = request.headers.get("x-tracker-proxy-secret") or ""
+        # Constant-time: a timing oracle here would leak the secret bit by bit.
+        if secrets.compare_digest(supplied, TRUSTED_PROXY_SECRET):
+            forwarded = (request.headers.get("x-tracker-client-ip") or "").strip()
+            if forwarded:
+                return forwarded
+
     forwarded_for = request.headers.get("x-forwarded-for")
     if forwarded_for:
         parts = [part.strip() for part in forwarded_for.split(",") if part.strip()]

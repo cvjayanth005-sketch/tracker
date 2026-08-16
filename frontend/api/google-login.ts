@@ -42,11 +42,25 @@ export default async function handler(request: Request): Promise<Response> {
     return redirectHome(url.origin, `google_error=${encodeURIComponent('Google sign-in failed.')}`)
   }
 
+  /*
+   * Sign-in rate limiting is per client address, but every redirect sign-in
+   * reaches the backend from this function rather than from the visitor, so the
+   * address it would otherwise see is the edge itself and all phone users would
+   * share one bucket. Pass the real address through, signed with the shared
+   * secret — the backend ignores the header without it, since an unauthenticated
+   * caller could otherwise name any address it liked.
+   */
+  const visitorIp = (request.headers.get('x-forwarded-for') || '').split(',')[0]?.trim() || ''
+  const proxySecret = process.env.TRUSTED_PROXY_SECRET || ''
+
   const res = await fetch(`${apiBase}/api/auth/google`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       'x-forwarded-for': request.headers.get('x-forwarded-for') || '',
+      ...(visitorIp && proxySecret
+        ? { 'x-tracker-client-ip': visitorIp, 'x-tracker-proxy-secret': proxySecret }
+        : {}),
     },
     body: JSON.stringify({ credential }),
   })

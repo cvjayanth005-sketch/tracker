@@ -813,3 +813,55 @@ def test_food_parse_endpoint_returns_groq_estimate(tmp_path, monkeypatch) -> Non
     assert data["model"] == "openai/gpt-oss-20b"
     assert data["meals"][0]["calories"] == 80
     assert data["needsManual"] is False
+
+
+def _ip_request(headers: dict[str, str]):
+    """Minimal stand-in for a Request: client_ip only reads headers and .client."""
+    from types import SimpleNamespace
+
+    return SimpleNamespace(headers=headers, client=SimpleNamespace(host="203.0.113.9"))
+
+
+def test_client_ip_uses_rightmost_forwarded_entry(monkeypatch):
+    from app import main
+
+    # Leftmost entries are caller-supplied; only the rightmost is appended by our
+    # own proxy, so a forged prefix must not change the bucket.
+    monkeypatch.setattr(main, "TRUSTED_PROXY_SECRET", "")
+    request = _ip_request({"x-forwarded-for": "1.1.1.1, 2.2.2.2, 9.9.9.9"})
+    assert main.client_ip(request) == "9.9.9.9"
+
+
+def test_client_ip_trusts_forwarded_visitor_only_with_the_shared_secret(monkeypatch):
+    from app import main
+
+    monkeypatch.setattr(main, "TRUSTED_PROXY_SECRET", "s3cret")
+    signed = _ip_request(
+        {
+            "x-forwarded-for": "8.8.8.8, 5.5.5.5",
+            "x-tracker-client-ip": "70.70.70.70",
+            "x-tracker-proxy-secret": "s3cret",
+        }
+    )
+    assert main.client_ip(signed) == "70.70.70.70"
+
+    # Same headers, wrong secret: the claim is ignored rather than believed.
+    forged = _ip_request(
+        {
+            "x-forwarded-for": "8.8.8.8, 5.5.5.5",
+            "x-tracker-client-ip": "70.70.70.70",
+            "x-tracker-proxy-secret": "wrong",
+        }
+    )
+    assert main.client_ip(forged) == "5.5.5.5"
+
+
+def test_client_ip_ignores_the_visitor_header_when_no_secret_is_configured(monkeypatch):
+    from app import main
+
+    # Unconfigured deployments must not become spoofable by adding a header.
+    monkeypatch.setattr(main, "TRUSTED_PROXY_SECRET", "")
+    request = _ip_request(
+        {"x-forwarded-for": "8.8.8.8, 5.5.5.5", "x-tracker-client-ip": "70.70.70.70"}
+    )
+    assert main.client_ip(request) == "5.5.5.5"

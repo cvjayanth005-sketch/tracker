@@ -29,6 +29,7 @@ SUPABASE_DATABASE_URL=postgresql://...
 GOOGLE_CLIENT_ID=your-google-oauth-web-client-id.apps.googleusercontent.com
 AUTH_RATE_LIMIT=20
 AUTH_RATE_WINDOW_SECONDS=900
+TRUSTED_PROXY_SECRET=any-long-random-string
 GROQ_API_KEY=optional
 GROQ_MODEL=openai/gpt-oss-20b
 SESSION_DAYS=30
@@ -67,6 +68,24 @@ Then open:
 
 ```text
 http://localhost:8000
+```
+
+### Sign-in rate limiting behind the edge function
+
+Redirect sign-in reaches the backend from the Vercel edge function rather than
+from the visitor, so the address the backend would otherwise see is the edge
+itself and every phone user shares one rate-limit bucket — a few testers signing
+in together can lock each other out.
+
+Set the **same** `TRUSTED_PROXY_SECRET` on Render and on Vercel and the edge
+function passes the real address through, signed. Leave it unset and nothing
+breaks; sign-ins just keep sharing a bucket. The header is ignored unless the
+secret matches, so it cannot be used to forge an address.
+
+Generate one with:
+
+```bash
+python3 -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
 ## 3. Google OAuth
