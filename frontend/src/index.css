@@ -1,10 +1,30 @@
 @import 'tailwindcss';
 
+/*
+ * Both sans families are variable fonts. The declared `font-weight` range must
+ * match what the file actually carries (Archivo and DM Sans both ship a 100-900
+ * wght axis) — a narrower declaration does not "restrict" anything, it just
+ * clamps: asking for 300 on a `600 800` face silently renders 600, so lighter
+ * weights become unreachable and `font-black` looks identical to `font-semibold`.
+ */
 @font-face {
   font-family: 'Archivo';
   src: url('./assets/fonts/archivo-latin.woff2') format('woff2');
   font-style: normal;
-  font-weight: 600 800;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+/*
+ * Genuine italic outlines (italicAngle -10°), not a browser-synthesised slant.
+ * Because a real italic face exists for Archivo only, `font-synthesis-style` is
+ * disabled globally below — an oblique DM Sans or Plex Mono would not match it.
+ */
+@font-face {
+  font-family: 'Archivo';
+  src: url('./assets/fonts/archivo-italic-latin.woff2') format('woff2');
+  font-style: italic;
+  font-weight: 100 900;
   font-display: swap;
 }
 
@@ -12,7 +32,7 @@
   font-family: 'DM Sans';
   src: url('./assets/fonts/dm-sans-latin.woff2') format('woff2');
   font-style: normal;
-  font-weight: 400 600;
+  font-weight: 100 1000;
   font-display: swap;
 }
 
@@ -89,6 +109,13 @@
     background: transparent;
     color: var(--color-ink-50);
     font-family: var(--font-sans);
+    /*
+     * Only Archivo has a real italic face. Without this, `italic` on a DM Sans
+     * or Plex Mono element renders a mechanically-slanted fake that clashes with
+     * the true italic next to it — worst of all on tabular numerals. Disabled,
+     * those elements simply stay upright, which is the honest fallback.
+     */
+    font-synthesis-style: none;
     overscroll-behavior-y: none;
   }
 
@@ -690,6 +717,21 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
+}
+
+/*
+ * Repeated class name purely to raise specificity to (0,2,0).
+ *
+ * `tracking-tight` and friends are single-class utilities, so at equal
+ * specificity they win on source order and re-introduce negative tracking on
+ * monospaced numerals — which defeats the point of tabular figures and makes a
+ * value like "90.4" render with a lurching decimal. Nothing should be able to
+ * letter-space a tabular number, so this is deliberately hard to override.
+ */
+@layer utilities {
+  .tabular.tabular {
+    letter-spacing: 0;
+  }
 }
 
 @utility safe-bottom {
