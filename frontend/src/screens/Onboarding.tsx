@@ -9,6 +9,7 @@ import {
 import { todayIn } from '@/domain/date'
 import { EQUIPMENT, defaultEquipmentFor } from '@/domain/onboarding/catalog/equipment'
 import { EXERCISES } from '@/domain/onboarding/catalog/exercises'
+import { maintenanceCalories } from '@/domain/onboarding/baseline'
 import { emptyDraft } from '@/domain/onboarding/chapters'
 import { requestProposal } from '@/domain/onboarding/proposalSource'
 import { proposalToPlanDraft } from '@/domain/onboarding/toPlanDraft'
@@ -16,6 +17,7 @@ import type {
   ChapterId,
   ExerciseFamiliarity,
   GeneratedProposal,
+  MuscleGroup,
   OnboardingDraft,
   TrainingEnvironment,
 } from '@/domain/onboarding/types'
@@ -33,7 +35,12 @@ type StepId =
   | 'goals-direction'
   | 'training-place'
   | 'training-equipment'
-  | 'training-familiarity'
+  | 'training-chest'
+  | 'training-back'
+  | 'training-biceps'
+  | 'training-shoulders'
+  | 'training-legs'
+  | 'training-abs'
   | 'food-rhythm'
   | 'food-preferences'
   | 'review'
@@ -126,11 +133,46 @@ const FLOW: FlowStep[] = [
     description: 'Select equipment available most weeks. Your plan will not prescribe anything else.',
   },
   {
-    id: 'training-familiarity',
+    id: 'training-chest',
     chapter: 'training',
-    eyebrow: 'Training',
-    title: 'Make the exercise list feel like yours.',
-    description: 'Mark movements you know or want excluded. Unmarked exercises stay neutral.',
+    eyebrow: 'Training · Chest 1 of 6',
+    title: 'Which chest movements do you know?',
+    description: 'Mark what feels familiar, new, or uncomfortable. Unmarked movements stay neutral.',
+  },
+  {
+    id: 'training-back',
+    chapter: 'training',
+    eyebrow: 'Training · Back 2 of 6',
+    title: 'Which back movements do you know?',
+    description: 'We will use this to choose pulling and hinge variations that suit your experience.',
+  },
+  {
+    id: 'training-biceps',
+    chapter: 'training',
+    eyebrow: 'Training · Biceps 3 of 6',
+    title: 'Which biceps movements do you know?',
+    description: 'Choose only what you have actually performed. It is fine to leave everything neutral.',
+  },
+  {
+    id: 'training-shoulders',
+    chapter: 'training',
+    eyebrow: 'Training · Shoulders 4 of 6',
+    title: 'Which shoulder movements do you know?',
+    description: 'Tell Formara what feels comfortable and flag any movement you prefer to avoid.',
+  },
+  {
+    id: 'training-legs',
+    chapter: 'training',
+    eyebrow: 'Training · Legs 5 of 6',
+    title: 'Which leg movements do you know?',
+    description: 'Squats, hinges, lunges, and machine work are grouped here for an easier review.',
+  },
+  {
+    id: 'training-abs',
+    chapter: 'training',
+    eyebrow: 'Training · Abs 6 of 6',
+    title: 'Which core movements do you know?',
+    description: 'Finish with the movements you use for bracing, flexion, and rotation.',
   },
   {
     id: 'food-rhythm',
@@ -171,6 +213,34 @@ const FAMILIARITY: Array<{ value: ExerciseFamiliarity; label: string }> = [
   { value: 'unfamiliar', label: 'New' },
   { value: 'avoid', label: 'Avoid' },
   { value: 'discomfort', label: 'Discomfort' },
+]
+
+type TrainingMuscleStep = Extract<
+  StepId,
+  | 'training-chest'
+  | 'training-back'
+  | 'training-biceps'
+  | 'training-shoulders'
+  | 'training-legs'
+  | 'training-abs'
+>
+
+const MUSCLES_BY_STEP: Record<TrainingMuscleStep, MuscleGroup[]> = {
+  'training-chest': ['chest'],
+  'training-back': ['lats', 'upper_back', 'traps', 'lower_back'],
+  'training-biceps': ['biceps'],
+  'training-shoulders': ['front_delts', 'side_delts', 'rear_delts'],
+  'training-legs': ['quads', 'hamstrings', 'glutes', 'calves', 'hip_flexors'],
+  'training-abs': ['abs', 'obliques'],
+}
+
+const MUSCLE_STEP_LABELS: Array<{ id: TrainingMuscleStep; label: string }> = [
+  { id: 'training-chest', label: 'Chest' },
+  { id: 'training-back', label: 'Back' },
+  { id: 'training-biceps', label: 'Biceps' },
+  { id: 'training-shoulders', label: 'Shoulders' },
+  { id: 'training-legs', label: 'Legs' },
+  { id: 'training-abs', label: 'Abs' },
 ]
 
 function arraysFromText(value: string): string[] {
@@ -687,28 +757,52 @@ function StepFields({
       )
     }
 
-    case 'training-familiarity': {
+    case 'training-chest':
+    case 'training-back':
+    case 'training-biceps':
+    case 'training-shoulders':
+    case 'training-legs':
+    case 'training-abs': {
       const availableIds = new Set(draft.training.equipmentIds)
+      const muscleGroups = MUSCLES_BY_STEP[step.id]
+      const currentMuscleIndex = MUSCLE_STEP_LABELS.findIndex((item) => item.id === step.id)
       const exercises = EXERCISES.filter(
         (exercise) =>
+          exercise.primaryMuscles.some((muscle) => muscleGroups.includes(muscle)) &&
           exercise.requiredEquipment.some((equipment) =>
             equipment === 'bodyweight' || availableIds.has(equipment),
-          ) && exercise.name.toLowerCase().includes(exerciseSearch.toLowerCase()),
-      ).slice(0, 14)
+          ) &&
+          (exercise.alsoRequires?.every((equipment) => availableIds.has(equipment)) ?? true) &&
+          exercise.name.toLowerCase().includes(exerciseSearch.toLowerCase()),
+      )
       return (
         <div className="onboarding-form-stack">
+          <div className="onboarding-muscle-sequence" aria-label="Exercise muscle groups">
+            {MUSCLE_STEP_LABELS.map((muscle, index) => {
+              return (
+                <span
+                  key={muscle.id}
+                  className={index === currentMuscleIndex ? 'is-current' : index < currentMuscleIndex ? 'is-complete' : ''}
+                  aria-current={index === currentMuscleIndex ? 'step' : undefined}
+                >
+                  <i aria-hidden="true">{index < currentMuscleIndex ? '✓' : index + 1}</i>
+                  {muscle.label}
+                </span>
+              )
+            })}
+          </div>
           <TextField
-            label="Find an exercise"
+            label={`Find a ${MUSCLE_STEP_LABELS.find((item) => item.id === step.id)?.label.toLowerCase()} exercise`}
             value={exerciseSearch}
             onChange={setExerciseSearch}
-            placeholder="Squat, row, press"
+            placeholder="Search this muscle group"
           />
           <div className="onboarding-exercise-list">
             {exercises.map((exercise) => (
               <div key={exercise.id}>
                 <span>
                   <strong>{exercise.name}</strong>
-                  <small>{exercise.pattern.replace(/_/g, ' ')}</small>
+                  <small>{exercise.compound ? 'Compound' : 'Isolation'} · {exercise.pattern.replace(/_/g, ' ')}</small>
                 </span>
                 <select
                   value={draft.training.familiarity[exercise.id] ?? ''}
@@ -729,6 +823,9 @@ function StepFields({
                 </select>
               </div>
             ))}
+            {exercises.length === 0 ? (
+              <p className="onboarding-empty-list">No matching exercises are available with your selected equipment.</p>
+            ) : null}
           </div>
         </div>
       )
@@ -828,34 +925,221 @@ function stepIsComplete(step: FlowStep, draft: OnboardingDraft): boolean {
   }
 }
 
-function ReviewPlan({ proposal }: { proposal: GeneratedProposal | null }) {
+const GOAL_STRATEGY = {
+  fat_loss: {
+    label: 'Fat loss',
+    summary: 'Create a controlled energy deficit while protecting strength, recovery, and lean mass.',
+  },
+  muscle_gain: {
+    label: 'Muscle gain',
+    summary: 'Use progressive resistance training with a modest energy surplus and reliable recovery.',
+  },
+  recomposition: {
+    label: 'Body recomposition',
+    summary: 'Build strength and muscle while gradually reducing fat through consistency rather than an aggressive cut.',
+  },
+  performance: {
+    label: 'Performance',
+    summary: 'Support repeatable training quality, progression, and recovery before chasing scale changes.',
+  },
+  maintenance: {
+    label: 'Maintenance',
+    summary: 'Build a stable routine that preserves your current weight while improving fitness and consistency.',
+  },
+} as const
+
+const MACRO_REASON = {
+  calories: 'A flexible energy range based on your body data, activity, goal, and selected pace.',
+  protein: 'Supports training recovery and helps preserve or build lean tissue.',
+  carbs: 'Supplies training energy after protein and essential fat needs are covered.',
+  fat: 'Keeps an essential intake floor while leaving room for foods you enjoy.',
+  fiber: 'Supports fullness, digestion, and a more nutrient-dense food pattern.',
+  hydration: 'A practical daily range scaled from your current body weight.',
+} as const
+
+function readable(value: string | null | undefined): string {
+  return value ? value.replace(/_/g, ' ') : 'Not specified'
+}
+
+function familiarityLabel(value: ExerciseFamiliarity | undefined): string {
+  if (value === 'regular') return 'Regular lift'
+  if (value === 'comfortable') return 'Comfortable'
+  if (value === 'unfamiliar') return 'New to explore'
+  if (value === 'avoid') return 'Avoid'
+  if (value === 'discomfort') return 'Discomfort flagged'
+  return 'Equipment match'
+}
+
+function ReviewPlan({ proposal, draft }: { proposal: GeneratedProposal | null; draft: OnboardingDraft }) {
   if (!proposal) {
     return <div className="onboarding-review-loading" role="status">Building the safe baseline…</div>
   }
   const nutrition = proposal.nutrition
+  const goal = draft.goals.primaryGoal ?? 'maintenance'
+  const strategy = GOAL_STRATEGY[goal]
+  const maintenance = maintenanceCalories(draft)
+  const familiarities = Object.values(draft.training.familiarity)
+  const knownCount = familiarities.filter((value) => value === 'regular' || value === 'comfortable').length
+  const newCount = familiarities.filter((value) => value === 'unfamiliar').length
+  const blockedCount = familiarities.filter((value) => value === 'avoid' || value === 'discomfort').length
+  const weightUnit = draft.about.units === 'imperial' ? 'lb' : 'kg'
+  const displayWeight = (weightKg: number) => {
+    const value = draft.about.units === 'imperial' ? kgToLb(weightKg) : weightKg
+    return `${value === null ? '—' : Math.round(value * 10) / 10} ${weightUnit}`
+  }
+
   return (
-    <div className="onboarding-review-grid">
-      <section>
-        <span>Nutrition range</span>
-        <strong className="tabular">{nutrition.calories.min}–{nutrition.calories.max} kcal</strong>
-        <p>{nutrition.proteinG.min}–{nutrition.proteinG.max} g protein · {nutrition.mealsPerDay} meals</p>
+    <div className="onboarding-plan-review">
+      <section className="onboarding-plan-section">
+        <header>
+          <span>01 · Goal strategy</span>
+          <h2>{strategy.label}, approached deliberately.</h2>
+          <p>{strategy.summary}</p>
+        </header>
+        <div className="onboarding-strategy-grid">
+          <div>
+            <span>Starting point</span>
+            <strong className="tabular">{draft.about.currentWeightKg === null ? '—' : displayWeight(draft.about.currentWeightKg)}</strong>
+            <p>{readable(draft.activity.activityLevel)} daily activity</p>
+          </div>
+          <div>
+            <span>Direction</span>
+            <strong>{draft.goals.goalWeightKg === null ? 'Progress-led' : displayWeight(draft.goals.goalWeightKg)}</strong>
+            <p>{readable(draft.goals.pace)} pace</p>
+          </div>
+          <div>
+            <span>Plan structure</span>
+            <strong>{proposal.phases.length} {proposal.phases.length === 1 ? 'phase' : 'phases'}</strong>
+            <p>Reviewed against logged progress</p>
+          </div>
+        </div>
+        <div className="onboarding-plan-explanation">
+          <strong>How this plan moves you forward</strong>
+          <p>
+            Train {proposal.training.daysPerWeek} days each week, work within the nutrition ranges below,
+            and use trend data rather than a single day to decide whether anything should change.
+            Formara will suggest adjustments, but you confirm them.
+          </p>
+        </div>
       </section>
-      <section>
-        <span>Training split</span>
-        <strong>{proposal.training.name}</strong>
-        <p>{proposal.training.sessionMinutes} minutes · {proposal.training.days.length} sessions</p>
+
+      <section className="onboarding-plan-section">
+        <header>
+          <span>02 · Training recommendation</span>
+          <h2>{proposal.training.name}, built around your answers.</h2>
+          <p>
+            You selected {readable(draft.training.environment)}, {proposal.training.sessionMinutes}-minute sessions,
+            and {proposal.training.daysPerWeek} training days. We found {knownCount} familiar movements,
+            {newCount} you are open to exploring, and excluded {blockedCount} you marked to avoid or as uncomfortable.
+          </p>
+        </header>
+        <div className="onboarding-training-days">
+          {proposal.training.days.map((day) => (
+            <article key={`${day.dow}-${day.name}`}>
+              <div className="onboarding-training-day-heading">
+                <span>Day {day.dow === 0 ? 7 : day.dow}</span>
+                <h3>{day.name}</h3>
+                <p>{day.focus.map(readable).join(' · ')}</p>
+              </div>
+              <div className="onboarding-plan-exercises">
+                {day.exercises.map((exercise) => (
+                  <div key={exercise.exerciseId}>
+                    <span>
+                      <strong>{exercise.exerciseName}</strong>
+                      <small>{exercise.rationale}</small>
+                    </span>
+                    <span className="onboarding-exercise-dose">
+                      <strong className="tabular">{exercise.sets.min}–{exercise.sets.max} × {exercise.reps.min}–{exercise.reps.max}</strong>
+                      <small>{familiarityLabel(draft.training.familiarity[exercise.exerciseId])}</small>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
       </section>
-      <section>
-        <span>Confidence</span>
-        <strong>{proposal.confidence}</strong>
-        <p>{proposal.provider === 'rules' ? 'Built from Formara’s safety rules.' : 'AI-personalized and safety checked.'}</p>
+
+      <section className="onboarding-plan-section">
+        <header>
+          <span>03 · Food and recovery framework</span>
+          <h2>Nutrition that supports the goal.</h2>
+          <p>
+            This framework respects a {readable(draft.food.dietStyle)} eating style and your preference for
+            {` ${nutrition.mealsPerDay}`} meals per day. It uses ranges so normal day-to-day variation does not feel like failure.
+          </p>
+        </header>
+        <div className="onboarding-macro-grid">
+          <div>
+            <span>Calories</span>
+            <strong className="tabular">{nutrition.calories.min}–{nutrition.calories.max}</strong>
+            <small>kcal / day</small>
+            <p>{MACRO_REASON.calories}{maintenance ? ` Estimated maintenance is about ${maintenance} kcal.` : ''}</p>
+          </div>
+          <div>
+            <span>Protein</span>
+            <strong className="tabular">{nutrition.proteinG.min}–{nutrition.proteinG.max}</strong>
+            <small>g / day</small>
+            <p>{MACRO_REASON.protein}</p>
+          </div>
+          <div>
+            <span>Carbohydrates</span>
+            <strong className="tabular">{nutrition.carbsG.min}–{nutrition.carbsG.max}</strong>
+            <small>g / day</small>
+            <p>{MACRO_REASON.carbs}</p>
+          </div>
+          <div>
+            <span>Fat</span>
+            <strong className="tabular">{nutrition.fatG.min}–{nutrition.fatG.max}</strong>
+            <small>g / day</small>
+            <p>{MACRO_REASON.fat}</p>
+          </div>
+          <div>
+            <span>Fiber</span>
+            <strong className="tabular">{nutrition.fiberG.min}–{nutrition.fiberG.max}</strong>
+            <small>g / day</small>
+            <p>{MACRO_REASON.fiber}</p>
+          </div>
+          <div>
+            <span>Hydration</span>
+            <strong className="tabular">{nutrition.hydrationMl.min}–{nutrition.hydrationMl.max}</strong>
+            <small>ml / day</small>
+            <p>{MACRO_REASON.hydration}</p>
+          </div>
+        </div>
+        <div className="onboarding-food-context">
+          <div>
+            <span>Foods to build around</span>
+            <p>{draft.food.foodsLiked.length ? draft.food.foodsLiked.join(', ') : 'No preferred foods recorded yet.'}</p>
+          </div>
+          <div>
+            <span>Must avoid</span>
+            <p>
+              {[...draft.food.allergies, ...draft.food.intolerances, ...draft.food.foodsAvoided].length
+                ? [...draft.food.allergies, ...draft.food.intolerances, ...draft.food.foodsAvoided].join(', ')
+                : 'No exclusions recorded.'}
+            </p>
+          </div>
+        </div>
       </section>
-      {proposal.cautions.length > 0 ? (
-        <section className="onboarding-review-wide">
-          <span>Worth knowing</span>
-          <p>{proposal.cautions.join(' ')}</p>
-        </section>
-      ) : null}
+
+      <section className="onboarding-plan-section onboarding-plan-transparency">
+        <header>
+          <span>04 · Before you confirm</span>
+          <h2>{proposal.confidence} confidence, with the reasoning visible.</h2>
+          <p>
+            {proposal.provider === 'rules'
+              ? 'This version was built from Formara’s deterministic safety rules.'
+              : 'This version was personalized by AI and then checked against Formara’s safety rules.'}
+          </p>
+        </header>
+        {proposal.assumptions.length ? <div><strong>Assumptions</strong><p>{proposal.assumptions.join(' ')}</p></div> : null}
+        {proposal.missingInformation.length ? <div><strong>Still unknown</strong><p>{proposal.missingInformation.join(' ')}</p></div> : null}
+        {proposal.cautions.length ? <div><strong>Worth knowing</strong><p>{proposal.cautions.join(' ')}</p></div> : null}
+        {!proposal.assumptions.length && !proposal.missingInformation.length && !proposal.cautions.length ? (
+          <div><strong>No unresolved plan notes</strong><p>The proposal can be activated as shown and adjusted later from Plan.</p></div>
+        ) : null}
+      </section>
     </div>
   )
 }
@@ -879,7 +1163,10 @@ export function Onboarding({ preview = false }: { preview?: boolean }) {
     void ensureOnboardingDraft(timezone).then((stored) => {
       if (cancelled) return
       setDraft(stored)
-      const resumeIndex = FLOW.findIndex((item) => item.id === stored.resume.questionKey)
+      const resumeQuestion = stored.resume.questionKey === 'training-familiarity'
+        ? 'training-chest'
+        : stored.resume.questionKey
+      const resumeIndex = FLOW.findIndex((item) => item.id === resumeQuestion)
       setStepIndex(resumeIndex >= 0 ? resumeIndex : 0)
       setReady(true)
     })
@@ -1026,7 +1313,7 @@ export function Onboarding({ preview = false }: { preview?: boolean }) {
 
           <div className="onboarding-stage-content">
             {step.id === 'review' ? (
-              <ReviewPlan proposal={proposal} />
+              <ReviewPlan proposal={proposal} draft={draft} />
             ) : (
               <StepFields step={step} draft={draft} update={update} />
             )}

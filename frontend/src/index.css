@@ -1131,6 +1131,51 @@
   color: white;
 }
 
+.onboarding-muscle-sequence {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.onboarding-muscle-sequence > span {
+  display: grid;
+  min-width: 0;
+  justify-items: center;
+  gap: 0.35rem;
+  color: var(--color-surface-ink-muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.onboarding-muscle-sequence i {
+  display: grid;
+  width: 1.85rem;
+  height: 1.85rem;
+  place-items: center;
+  border: 1px solid var(--onboarding-edge);
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.6);
+  font: 600 0.65rem/1 var(--font-mono);
+  font-style: normal;
+}
+
+.onboarding-muscle-sequence > span.is-current {
+  color: var(--color-surface-ink);
+}
+
+.onboarding-muscle-sequence > span.is-current i {
+  border-color: var(--color-surface-ink);
+  background: var(--color-surface-ink);
+  color: white;
+}
+
+.onboarding-muscle-sequence > span.is-complete i {
+  border-color: rgb(32 204 0 / 0.42);
+  background: rgb(57 255 20 / 0.1);
+  color: #168f00;
+}
+
 .onboarding-exercise-list {
   display: grid;
   gap: 0.55rem;
@@ -1169,7 +1214,7 @@
 }
 
 .onboarding-exercise-list select {
-  min-height: 2.5rem;
+  min-height: 2.75rem;
   max-width: 8rem;
   border: 1px solid var(--onboarding-edge);
   border-radius: 6px;
@@ -1177,6 +1222,20 @@
   padding: 0 0.55rem;
   color: var(--color-surface-ink);
   font: 650 0.7rem/1 var(--font-sans);
+}
+
+.onboarding-empty-list {
+  min-height: 8rem;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  border: 1px dashed var(--onboarding-edge);
+  border-radius: 8px;
+  padding: 1rem;
+  color: var(--color-surface-ink-muted);
+  font-size: 0.76rem;
+  line-height: 1.55;
+  text-align: center;
 }
 
 .onboarding-review-loading {
@@ -1189,44 +1248,226 @@
   font-size: 0.85rem;
 }
 
-.onboarding-review-grid {
+.onboarding-plan-review {
+  display: grid;
+  gap: clamp(3rem, 7vw, 5.5rem);
+}
+
+.onboarding-plan-section {
+  min-width: 0;
+}
+
+.onboarding-plan-section > header {
+  max-width: 47rem;
+  margin-bottom: 1.5rem;
+}
+
+.onboarding-plan-section > header > span {
+  display: block;
+  margin-bottom: 0.65rem;
+  color: #178d05;
+  font-size: 0.66rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.onboarding-plan-section > header h2 {
+  max-width: 23ch;
+  margin: 0;
+  color: var(--color-surface-ink-strong);
+  font-family: var(--font-heading);
+  font-size: clamp(1.55rem, 3vw, 2.35rem);
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.onboarding-plan-section > header p,
+.onboarding-plan-explanation p,
+.onboarding-training-day-heading p,
+.onboarding-plan-exercises small,
+.onboarding-macro-grid p,
+.onboarding-food-context p,
+.onboarding-plan-transparency > div p {
+  margin: 0.55rem 0 0;
+  color: var(--color-surface-ink-muted);
+  font-size: 0.76rem;
+  line-height: 1.6;
+}
+
+.onboarding-strategy-grid,
+.onboarding-macro-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.75rem;
+  gap: 0.7rem;
 }
 
-.onboarding-review-grid section {
+.onboarding-strategy-grid > div,
+.onboarding-macro-grid > div {
   min-width: 0;
-  border-top: 1px solid var(--onboarding-edge);
-  padding: 1rem 0.2rem;
+  border: 1px solid var(--onboarding-edge);
+  border-radius: 8px;
+  background: var(--onboarding-frost);
+  padding: 1rem;
+  box-shadow: inset 0 1px rgb(255 255 255 / 0.88);
+  backdrop-filter: blur(22px) saturate(120%);
+  -webkit-backdrop-filter: blur(22px) saturate(120%);
 }
 
-.onboarding-review-grid section > span {
+.onboarding-strategy-grid span,
+.onboarding-macro-grid > div > span,
+.onboarding-food-context span {
   display: block;
-  margin-bottom: 0.55rem;
   color: var(--color-surface-ink-muted);
-  font-size: 0.68rem;
+  font-size: 0.64rem;
   font-weight: 700;
   text-transform: uppercase;
 }
 
-.onboarding-review-grid strong {
+.onboarding-strategy-grid strong,
+.onboarding-macro-grid strong {
   display: block;
+  margin-top: 0.35rem;
   overflow-wrap: anywhere;
+  color: var(--color-surface-ink-strong);
   font-family: var(--font-heading);
-  font-size: 1.25rem;
+  font-size: 1.15rem;
+  line-height: 1.1;
   text-transform: capitalize;
 }
 
-.onboarding-review-grid p {
-  margin: 0.45rem 0 0;
+.onboarding-strategy-grid p {
+  margin: 0.35rem 0 0;
   color: var(--color-surface-ink-muted);
-  font-size: 0.74rem;
-  line-height: 1.55;
+  font-size: 0.68rem;
+  line-height: 1.45;
+  text-transform: capitalize;
 }
 
-.onboarding-review-grid .onboarding-review-wide {
-  grid-column: 1 / -1;
+.onboarding-plan-explanation {
+  max-width: 47rem;
+  margin-top: 1rem;
+  border-left: 2px solid rgb(32 204 0 / 0.5);
+  padding: 0.15rem 0 0.15rem 1rem;
+}
+
+.onboarding-plan-explanation strong,
+.onboarding-plan-transparency > div strong {
+  font-size: 0.78rem;
+}
+
+.onboarding-training-days {
+  display: grid;
+  gap: 1rem;
+}
+
+.onboarding-training-days article {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.32fr) minmax(0, 1fr);
+  gap: 1.25rem;
+  border-top: 1px solid var(--onboarding-edge);
+  padding-top: 1rem;
+}
+
+.onboarding-training-day-heading > span {
+  color: #178d05;
+  font: 600 0.66rem/1 var(--font-mono);
+  text-transform: uppercase;
+}
+
+.onboarding-training-day-heading h3 {
+  margin: 0.35rem 0 0;
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  line-height: 1.15;
+}
+
+.onboarding-training-day-heading p {
+  text-transform: capitalize;
+}
+
+.onboarding-plan-exercises {
+  display: grid;
+}
+
+.onboarding-plan-exercises > div {
+  display: flex;
+  min-width: 0;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid rgb(17 20 17 / 0.08);
+  padding: 0.7rem 0;
+}
+
+.onboarding-plan-exercises > div:first-child {
+  padding-top: 0;
+}
+
+.onboarding-plan-exercises > div > span {
+  display: grid;
+  min-width: 0;
+  gap: 0.1rem;
+}
+
+.onboarding-plan-exercises strong {
+  font-size: 0.78rem;
+}
+
+.onboarding-plan-exercises small {
+  margin: 0;
+  font-size: 0.66rem;
+}
+
+.onboarding-exercise-dose {
+  flex: 0 0 auto;
+  justify-items: end;
+  text-align: right;
+}
+
+.onboarding-exercise-dose strong {
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.onboarding-exercise-dose small {
+  color: #178d05;
+  font-weight: 700;
+}
+
+.onboarding-macro-grid > div {
+  min-height: 10rem;
+}
+
+.onboarding-macro-grid strong {
+  margin-top: 0.7rem;
+  font-size: 1.65rem;
+}
+
+.onboarding-macro-grid small {
+  color: var(--color-surface-ink-muted);
+  font: 500 0.62rem/1 var(--font-mono);
+}
+
+.onboarding-macro-grid p {
+  font-size: 0.68rem;
+}
+
+.onboarding-food-context {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+  border-top: 1px solid var(--onboarding-edge);
+  padding-top: 1rem;
+}
+
+.onboarding-food-context p {
+  overflow-wrap: anywhere;
+}
+
+.onboarding-plan-transparency > div {
+  max-width: 47rem;
+  border-top: 1px solid var(--onboarding-edge);
+  padding: 0.9rem 0;
 }
 
 .onboarding-footer {
@@ -1380,17 +1621,44 @@
 
   .onboarding-measure-grid,
   .onboarding-measure-grid--three,
-  .onboarding-review-grid {
+  .onboarding-strategy-grid,
+  .onboarding-macro-grid,
+  .onboarding-food-context {
     grid-template-columns: 1fr;
   }
 
-  .onboarding-measure-grid--three > :last-child,
-  .onboarding-review-grid .onboarding-review-wide {
+  .onboarding-measure-grid--three > :last-child {
     grid-column: auto;
+  }
+
+  .onboarding-training-days article {
+    grid-template-columns: 1fr;
+    gap: 0.9rem;
+  }
+
+  .onboarding-plan-exercises > div {
+    gap: 0.75rem;
+  }
+
+  .onboarding-macro-grid > div {
+    min-height: auto;
   }
 
   .onboarding-equipment-grid {
     grid-template-columns: 1fr;
+  }
+
+  .onboarding-muscle-sequence {
+    gap: 0.2rem;
+  }
+
+  .onboarding-muscle-sequence > span {
+    font-size: 0.55rem;
+  }
+
+  .onboarding-muscle-sequence i {
+    width: 1.65rem;
+    height: 1.65rem;
   }
 
   .onboarding-footer {
