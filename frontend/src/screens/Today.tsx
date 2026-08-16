@@ -1,19 +1,22 @@
 import { useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { resolvePhaseForDate, upsertLog } from '@/db/repo'
 import { outcomeFor, type MetricKey } from '@/domain/compliance'
 import { asLocalDate, dateRange, dayOfWeek, formatShort, weekdayName } from '@/domain/date'
 import { planWeek } from '@/domain/plan'
 import { paceMinPerKm } from '@/domain/running'
+import './today.css'
 import { useDashboard } from '@/hooks/useDashboard'
 import { NumberField, RatingField, TextArea, TriToggle } from '@/components/fields'
 import { HeroWeight } from '@/components/HeroWeight'
 import { SleepCheckIn } from '@/components/SleepCheckIn'
 import { RecommendationCard } from '@/components/RecommendationCard'
 import { TrendChart } from '@/components/TrendChart'
-import { TodayFocusCard } from '@/components/today/TodayFocusCard'
+import { TodayActionList } from '@/components/today/TodayActionList'
+import { TodayProgress } from '@/components/today/TodayProgress'
 import { targetSegmentsForDay } from '@/components/today/dayTargetRingModel'
-import { attentionMetricsForToday, buildTodayFocus } from '@/components/today/todayFocusModel'
+import { buildTodayActions } from '@/components/today/todayActions'
+import { buildInsight, buildTodayTargets } from '@/components/today/todayTargets'
 import { Card, EmptyState, Pill, Stat } from '@/components/ui'
 import { statInt, statVal } from '@/components/format'
 import type { DailyLog, LocalDate, Phase, Run } from '@/domain/types'
@@ -133,6 +136,7 @@ function TodayCalendar({
 }
 
 export default function Today() {
+  const navigate = useNavigate()
   const dash = useDashboard(30)
   const { today, phase, settings, phases, todayLog, index, change, review } = dash
 
@@ -159,8 +163,13 @@ export default function Today() {
 
   const checklist: MetricKey[] = ['calories', 'protein', 'steps', 'run', 'gym', 'sleep', 'meals']
   const targetSegments = targetSegmentsForDay(checklist, todayLog, phase, today)
-  const todayFocus = buildTodayFocus(phase, todaySchedule, todayLog, targetSegments)
-  const attentionMetrics = attentionMetricsForToday(targetSegments, todayFocus)
+  const todayActions = buildTodayActions(phase, todaySchedule, todayLog, today)
+  const todayTargets = buildTodayTargets(phase, todayLog, today)
+  const insight = buildInsight(
+    dash.compliance?.overallHitRatePct ?? null,
+    dash.compliance?.overallCoveragePct ?? null,
+    settings.goodCompliancePct,
+  )
   const todayRuns = dash.runs.filter((run) => run.date === today)
   const todayRunSummary = runSummary(todayRuns)
   const coverage = Math.round(dash.compliance?.overallCoveragePct ?? 0)
@@ -183,7 +192,7 @@ export default function Today() {
   )
 
   return (
-    <div className="pb-4">
+    <div className="today-root pb-4">
       <header className="flex items-start justify-between gap-4 pt-4 sm:pt-6">
         <div>
           <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink-400">
@@ -211,12 +220,17 @@ export default function Today() {
       <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(21rem,.74fr)] lg:items-start lg:gap-5">
         {/* ---------------- Dashboard column ---------------- */}
         <div className="space-y-4">
-          <TodayFocusCard
-            focus={todayFocus}
+          <TodayActionList
+            actions={todayActions}
+            onOpenWorkout={() => navigate('/workout')}
+            onFocusMetric={focusLogField}
+          />
+
+          <TodayProgress
             segments={targetSegments}
-            attentionMetrics={attentionMetrics}
-            recommendation={dash.recommendation ?? null}
-            onActivate={focusLogField}
+            targets={todayTargets}
+            insight={insight}
+            onFocusMetric={focusLogField}
           />
 
           <div className="grid items-start gap-4 xl:grid-cols-[1fr_1.05fr]">
