@@ -101,10 +101,8 @@ function GoogleMark() {
 
 export function GoogleSlideSignIn({
   onStatus,
-  appearance = 'dark',
 }: {
   onStatus?: (status: string | null) => void
-  appearance?: 'dark' | 'light'
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null)
   const onStatusRef = useRef(onStatus)
@@ -201,17 +199,13 @@ export function GoogleSlideSignIn({
 
   if (googleClientId === null) {
     return (
-      <div
-        className={`mt-4 h-12 animate-pulse rounded-full ${
-          appearance === 'light' ? 'bg-black/8 ring-1 ring-inset ring-black/10' : 'bg-white/8 ring-1 ring-inset ring-white/10'
-        }`}
-      />
+      <div className="mt-4 h-12 animate-pulse rounded-full bg-white/8 ring-1 ring-inset ring-white/10" />
     )
   }
 
   if (!googleClientId) {
     return (
-      <div className="mt-4 rounded-lg bg-[#fff4cf] px-3 py-3 text-xs leading-relaxed text-[#745500] ring-1 ring-inset ring-[#d7ad2b]/30">
+      <div className="mt-4 rounded-2xl bg-warn/10 px-3 py-3 text-[12px] leading-relaxed text-warn ring-1 ring-inset ring-warn/20">
         Google sign-in is not configured. Set GOOGLE_CLIENT_ID on the backend.
       </div>
     )
@@ -223,20 +217,13 @@ export function GoogleSlideSignIn({
         className={`group relative h-12 w-full cursor-pointer ${signing ? 'pointer-events-none' : ''}`}
       >
         <div
-          className={`pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-3 rounded-full transition-[transform,filter] duration-150 ease-out group-hover:brightness-[1.08] group-active:scale-[0.985] ${
-            appearance === 'light'
-              ? 'bg-[#111411] text-white shadow-[0_16px_32px_-20px_rgba(17,20,17,0.7)] ring-1 ring-inset ring-black/80'
-              : 'bg-ink-50 text-ink-950 shadow-[0_18px_42px_-22px_rgba(255,255,255,0.8)] ring-1 ring-inset ring-white/90'
-          }`}
+          className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-3 rounded-full bg-ink-50 shadow-[0_18px_42px_-22px_rgba(255,255,255,0.8)] ring-1 ring-inset ring-white/90 transition-[transform,filter] duration-150 ease-out group-hover:brightness-[0.97] group-active:scale-[0.985]"
         >
-          <span
-            className={`absolute inset-x-4 top-0 h-px ${appearance === 'light' ? 'bg-white/20' : 'bg-white/90'}`}
-            aria-hidden="true"
-          />
+          <span className="absolute inset-x-4 top-0 h-px bg-white/90" aria-hidden="true" />
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-[inset_0_0_0_1px_rgba(15,23,42,0.06)]">
             <GoogleMark />
           </span>
-          <span className="text-sm font-semibold">
+          <span className="text-[14px] font-semibold tracking-[-0.01em] text-ink-950">
             {signing ? 'Signing in...' : ready ? 'Continue with Google' : 'Loading Google...'}
           </span>
         </div>
@@ -247,15 +234,11 @@ export function GoogleSlideSignIn({
         />
       </div>
       {redirectMode ? (
-        <p className={`mt-2 text-xs leading-relaxed ${appearance === 'light' ? 'text-[#697169]' : 'text-ink-400'}`}>
+        <p className="mt-2 text-[12px] leading-relaxed text-ink-400">
           This device will open Google in this tab, then return here signed in.
         </p>
       ) : null}
-      {loadError ? (
-        <p className={`mt-2 text-xs ${appearance === 'light' ? 'text-[#b42318]' : 'text-alert'}`}>
-          {loadError}
-        </p>
-      ) : null}
+      {loadError ? <p className="mt-2 text-[12px] text-alert">{loadError}</p> : null}
     </div>
   )
 }

@@ -194,60 +194,67 @@ function WelcomePage() {
   const [status, setStatus] = useState<string | null>(() => takeGoogleRedirectError())
 
   return (
-    <div className="min-h-dvh bg-[#f3f5f1] text-[#111411]">
-      <main className="mx-auto flex min-h-dvh w-full max-w-[1600px] flex-col p-3 safe-top sm:p-5 lg:p-6">
-        <header className="flex min-h-16 shrink-0 items-center justify-between px-2 sm:px-3">
+    <div className="min-h-dvh">
+      <Aurora />
+
+      <main className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-5 py-6 safe-top sm:px-8 lg:px-10">
+        <header className="flex items-center justify-between">
           <div>
-            <div className="font-heading text-2xl font-bold leading-none text-[#111411] sm:text-3xl">
-              Formara
-            </div>
-            <div className="mt-1.5 text-xs font-medium text-[#5f675f] sm:text-sm">
+            <div className="font-heading text-3xl font-semibold leading-none text-ink-50">Formara</div>
+            <div className="mt-2 text-sm font-medium text-ink-400">
               Your body. Your data. Your next move.
             </div>
           </div>
-          <div className="hidden items-center gap-2 text-xs font-medium text-[#5f675f] sm:flex">
-            <span className="h-2 w-2 rounded-full bg-[#43ef36]" aria-hidden="true" />
-            Private by design
-          </div>
         </header>
 
-        <section className="relative mt-2 min-h-[calc(100dvh-6.5rem)] flex-1 overflow-hidden rounded-lg border border-black/10 bg-white shadow-[0_24px_80px_-48px_rgba(17,20,17,0.45)]">
-          <img
-            src="/formara-login-hero.jpg"
-            alt="Athlete checking her recovery after a run"
-            className="absolute inset-0 h-full w-full object-cover object-[64%_center] sm:object-[60%_center]"
-          />
-          <div className="absolute inset-x-0 top-0 h-[42%] bg-white/78 sm:h-[36%] lg:h-[34%]" aria-hidden="true" />
+        <section className="grid flex-1 items-center gap-8 py-10 lg:grid-cols-[minmax(0,1.1fr)_24rem] lg:gap-12">
+          <div className="max-w-3xl">
+            <div className="mb-5 inline-flex rounded-full border border-white/10 bg-white/6 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
+              Rules decide. AI narrates.
+            </div>
+            <h1 className="text-5xl font-semibold leading-[0.95] tracking-tight text-ink-50 sm:text-6xl lg:text-7xl">
+              Your cut, training, and recovery in one calm place.
+            </h1>
+            <p className="mt-5 max-w-2xl text-base leading-7 text-ink-200 sm:text-lg">
+              Log the day, watch the trend, and keep decisions grounded in the plan instead of
+              noise from one weigh-in.
+            </p>
 
-          <div className="relative z-10 flex min-h-[calc(100dvh-6.5rem)] flex-col p-5 sm:p-8 lg:p-12">
-            <div className="max-w-[44rem]">
-              <div className="mb-4 text-[11px] font-semibold uppercase text-[#576057]">
-                Personal fitness, made clear
+            <div className="mt-8 grid max-w-2xl gap-3 sm:grid-cols-3">
+              {[
+                ['Today', 'Calories, protein, training, recovery'],
+                ['Progress', 'Trend weight and adherence'],
+                ['Plan', 'Phase targets and reviews'],
+              ].map(([title, body]) => (
+                <div key={title} className="glass-inset rounded-2xl p-4">
+                  <div className="text-sm font-semibold text-ink-50">{title}</div>
+                  <div className="mt-1 text-[12px] leading-relaxed text-ink-400">{body}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="glass-strong rounded-3xl p-5 shadow-[0_30px_90px_-52px_rgba(0,240,255,0.75)]">
+            <div>
+              <div>
+                <h2 className="text-lg font-semibold text-ink-50">Welcome back</h2>
+                <p className="mt-1 text-[13px] leading-relaxed text-ink-400">
+                  Sign in to open the tracker and sync this device.
+                </p>
               </div>
-              <h1 className="font-heading max-w-[12ch] text-5xl font-bold leading-[0.94] text-[#0b0d0b] sm:text-6xl lg:text-7xl xl:text-8xl">
-                Make your next move count.
-              </h1>
             </div>
 
-            <div className="mt-auto w-full max-w-sm pt-8">
-              <div className="formara-auth-panel rounded-lg p-5 text-[#111411] sm:p-6">
-                <h2 className="font-heading text-2xl font-semibold leading-tight text-[#111411]">
-                  Welcome back
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-[#596159]">
-                  Sign in to continue with your training, recovery, and nutrition data.
-                </p>
+            <GoogleSlideSignIn onStatus={setStatus} />
+            {status ? <div className="mt-3 text-[12px] text-ink-300">{status}</div> : null}
 
-                <GoogleSlideSignIn appearance="light" onStatus={setStatus} />
-                {status ? (
-                  <div className="mt-3 text-xs leading-relaxed text-[#4f574f]" role="status">
-                    {status}
-                  </div>
-                ) : null}
-
-                <p className="mt-4 border-t border-black/10 pt-4 text-xs leading-5 text-[#697169]">
-                  Your account keeps this device synced. Your fitness data stays private.
-                </p>
+            <div className="mt-5 grid grid-cols-2 gap-2 text-[11px] text-ink-400">
+              <div className="rounded-2xl bg-white/5 p-3 ring-1 ring-inset ring-white/8">
+                <span className="block text-ink-200">Account-backed</span>
+                Private to your Google sign-in
+              </div>
+              <div className="rounded-2xl bg-white/5 p-3 ring-1 ring-inset ring-white/8">
+                <span className="block text-ink-200">Offline-capable</span>
+                Works after your plan loads
               </div>
             </div>
           </div>
