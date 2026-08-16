@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { formatShort } from '@/domain/date'
 import type { TrendPoint } from '@/domain/trend'
+import type { LocalDate } from '@/domain/types'
 
 /**
  * Weight over time.
@@ -22,11 +23,14 @@ const PAD = { top: 14, right: 12, bottom: 22, left: 40 }
 export function TrendChart({
   series,
   targetKg,
+  phaseStarts,
   height = 180,
   className = '',
 }: {
   series: TrendPoint[]
   targetKg?: number | null
+  /** Dates a new phase began, marked on the axis so trend shifts have context. */
+  phaseStarts?: Array<{ date: LocalDate; name: string }>
   height?: number
   className?: string
 }) {
@@ -86,6 +90,19 @@ export function TrendChart({
       PAD.left + (series.length <= 1 ? innerW / 2 : (i / (series.length - 1)) * innerW)
     const y = (v: number) => PAD.top + innerH - ((v - min) / span) * innerH
 
+    /*
+     * Phase boundaries, placed by matching the date to its index in the series.
+     * A phase change usually moves calories, so an inflection in the trend right
+     * after one is expected rather than alarming — without the marker the reader
+     * has no way to tell a deliberate change from a stall.
+     */
+    const marks = (phaseStarts ?? []).flatMap((p) => {
+      const index = series.findIndex((point) => point.date === p.date)
+      // Silently drop boundaries outside the visible window rather than
+      // clamping them to an edge, which would imply a change that is not there.
+      return index <= 0 ? [] : [{ x: x(index), name: p.name }]
+    })
+
     // Break the trend path wherever data is missing, rather than bridging a gap
     // with a straight line that implies readings we never took.
     const segments: string[] = []
@@ -115,8 +132,8 @@ export function TrendChart({
 
     const ticks = [min + span * 0.15, min + span * 0.5, min + span * 0.85]
 
-    return { x, y, segments, area, ticks, innerW }
-  }, [series, targetKg, width, height])
+    return { x, y, segments, area, ticks, innerW, marks }
+  }, [series, targetKg, phaseStarts, width, height])
 
   const point = active === null ? null : series[active]
 
@@ -184,6 +201,32 @@ export function TrendChart({
                   fill="var(--app-muted)"
                 >
                   {value.toFixed(1)}
+                </text>
+              </g>
+            ))}
+
+            {/*
+              Drawn before the data so a boundary never obscures the line it is
+              meant to explain.
+            */}
+            {model.marks.map((mark) => (
+              <g key={`${mark.name}-${mark.x}`}>
+                <line
+                  x1={mark.x}
+                  x2={mark.x}
+                  y1={PAD.top}
+                  y2={height - PAD.bottom}
+                  stroke="var(--app-line-strong)"
+                  strokeWidth={1}
+                  strokeDasharray="2 3"
+                />
+                <text
+                  x={mark.x + 3}
+                  y={PAD.top + 9}
+                  fontSize={9}
+                  fill="var(--app-muted)"
+                >
+                  {mark.name}
                 </text>
               </g>
             ))}

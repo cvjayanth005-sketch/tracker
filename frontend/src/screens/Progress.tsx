@@ -83,6 +83,10 @@ export default function Progress() {
     return <EmptyState title="Setting up" body="Preparing your local database." />
   }
 
+  const phaseStarts = dash.phases.flatMap((p) =>
+    p.startedOn ? [{ date: p.startedOn, name: p.name }] : [],
+  )
+
   const e = dash.recommendation?.evidence
 
   return (
@@ -111,7 +115,12 @@ export default function Progress() {
 
       <SectionTitle>Weight</SectionTitle>
       <Card refract>
-        <TrendChart series={dash.series} targetKg={phase.targetWeightKg} height={260} />
+        <TrendChart
+          series={dash.series}
+          targetKg={phase.targetWeightKg}
+          phaseStarts={phaseStarts}
+          height={260}
+        />
       </Card>
 
       <div className="mt-3 grid grid-cols-3 gap-2 sm:gap-3">

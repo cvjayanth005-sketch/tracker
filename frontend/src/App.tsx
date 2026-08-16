@@ -91,12 +91,32 @@ function SidebarLink({ tab, active }: { tab: (typeof TABS)[number]; active: bool
   )
 }
 
+/**
+ * Detail screens reached from a tab, mapped to the tab that owns them.
+ *
+ * Without this a user who follows a link off Today lands somewhere with no tab
+ * lit at all, which reads as having fallen out of the app. Adding each as its
+ * own tab would be worse: they are drill-downs, not peer sections, and a
+ * five-item bar on a phone is already crowded.
+ */
+const DETAIL_ROUTE_PARENT: Record<string, string> = {
+  '/progress': '/',
+  '/calendar': '/',
+  '/workout': '/activity',
+}
+
+function activeTabPath(pathname: string): string {
+  for (const [detail, parent] of Object.entries(DETAIL_ROUTE_PARENT)) {
+    if (pathname === detail || pathname.startsWith(`${detail}/`)) return parent
+  }
+  return pathname
+}
+
 function RailNav() {
   const location = useLocation()
+  const path = activeTabPath(location.pathname)
   const activeIndex = TABS.findIndex((tab) =>
-    tab.to === '/'
-      ? location.pathname === '/'
-      : location.pathname === tab.to || location.pathname.startsWith(`${tab.to}/`),
+    tab.to === '/' ? path === '/' : path === tab.to || path.startsWith(`${tab.to}/`),
   )
 
   return (
@@ -311,6 +331,8 @@ function AccountSyncGate({
 
 function TrackerShell() {
   useAutoSync()
+  const shellLocation = useLocation()
+  const mobileTabPath = activeTabPath(shellLocation.pathname)
   // The tab bar is the one surface always on screen on mobile, so it is worth
   // the real refraction; content scrolling behind it is what makes it read as
   // glass rather than as a grey bar.
@@ -353,23 +375,28 @@ function TrackerShell() {
           ref={tabBarRef}
           className="app-mobile-tabs"
         >
-          {TABS.map((tab) => (
-            <NavLink
-              key={tab.to}
-              to={tab.to}
-              end={tab.to === '/'}
-              className={({ isActive }) =>
-                `app-mobile-tab ${isActive ? 'is-active' : ''}`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <Icon name={tab.icon} active={isActive} />
-                  <span>{tab.label}</span>
-                </>
-              )}
-            </NavLink>
-          ))}
+          {TABS.map((tab) => {
+            /*
+              NavLink's own isActive only knows its exact path, so a detail
+              screen would leave every tab dark. Resolving through the parent map
+              keeps the owning tab lit, matching the desktop rail.
+            */
+            const active =
+              tab.to === '/'
+                ? mobileTabPath === '/'
+                : mobileTabPath === tab.to || mobileTabPath.startsWith(`${tab.to}/`)
+            return (
+              <NavLink
+                key={tab.to}
+                to={tab.to}
+                end={tab.to === '/'}
+                className={`app-mobile-tab ${active ? 'is-active' : ''}`}
+              >
+                <Icon name={tab.icon} active={active} />
+                <span>{tab.label}</span>
+              </NavLink>
+            )
+          })}
         </div>
       </nav>
     </div>
