@@ -53,7 +53,7 @@ describe('syncHonesty', () => {
         lastError: null,
         lastSyncedAt: null,
       }),
-    ).toEqual({ state: 'pending', label: 'Pending' })
+    ).toEqual({ state: 'local', label: 'Local only' })
   })
 })
 
