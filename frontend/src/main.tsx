@@ -4,6 +4,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { Navigate } from 'react-router-dom'
 import { registerSW } from 'virtual:pwa-register'
 import App from './App'
+import { consumeGoogleRedirectSession } from '@/auth/session'
 import { ensureSeeded } from '@/db/database'
 import { requestPersistentStorage } from '@/sync/client'
 import Today from '@/screens/Today'
@@ -41,6 +42,7 @@ const router = createBrowserRouter([
 
 // Seed before first paint so no screen has to handle a half-empty database.
 await ensureSeeded()
+await consumeGoogleRedirectSession()
 // Best-effort: ask the browser not to evict the only copy of the data.
 void requestPersistentStorage()
 

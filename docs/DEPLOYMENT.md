@@ -77,11 +77,20 @@ Add authorized JavaScript origins:
 
 ```text
 https://your-render-service.onrender.com
+https://your-vercel-app.vercel.app
 http://localhost:5173
 ```
 
-The app uses Google Identity Services ID tokens, so no redirect URI is required
-for the current sign-in flow.
+If the Google console asks for authorized redirect URIs, add the same-origin
+login callback the app uses on phones:
+
+```text
+https://your-render-service.onrender.com/api/auth/google
+https://your-vercel-app.vercel.app/api/google-login
+```
+
+Desktop browsers keep the Google popup. Phones, installed PWAs, and in-app
+browsers use a full-page redirect so the account picker is not blocked.
 
 ## Optional: Vercel + Render Split
 
@@ -95,6 +104,9 @@ VITE_API_BASE=https://your-render-service.onrender.com
 # Optional safety net only; normal login config comes from Render /api/config.
 VITE_GOOGLE_CLIENT_ID=
 ```
+
+`VITE_API_BASE` is also read by `/api/google-login` on Vercel so phone sign-in
+can finish on the same origin, then create the session on Render.
 
 Then set Render:
 

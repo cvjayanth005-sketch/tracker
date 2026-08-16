@@ -17,7 +17,7 @@ import {
   scheduleSync,
   type SyncOutcome,
 } from '@/sync/client'
-import { getAuthState, signOut, subscribeAuth, type AuthState } from '@/auth/session'
+import { getAuthState, signOut, subscribeAuth, takeGoogleRedirectError, type AuthState } from '@/auth/session'
 
 const TABS: Array<{ to: string; label: string; icon: IconName }> = [
   { to: '/', label: 'Today', icon: 'today' },
@@ -191,7 +191,7 @@ function AccountButton() {
 }
 
 function WelcomePage() {
-  const [status, setStatus] = useState<string | null>(null)
+  const [status, setStatus] = useState<string | null>(() => takeGoogleRedirectError())
 
   return (
     <div className="min-h-dvh">

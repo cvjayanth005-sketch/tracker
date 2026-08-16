@@ -10,10 +10,11 @@ from pathlib import Path
 import re
 import time
 import traceback
+from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 from dotenv import load_dotenv
@@ -282,37 +283,91 @@ def public_config() -> dict:
     return {"googleClientId": os.environ.get("GOOGLE_CLIENT_ID", "")}
 
 
-@app.post("/api/auth/google")
-def google_login(payload: GoogleLoginRequest, request: Request) -> dict:
-    check_auth_rate_limit(request)
-    profile = verify_google_id_token(payload.credential)
+def _auth_payload(user: dict, session: dict) -> dict:
+    return {
+        "session": session,
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "name": user["name"],
+            "picture": user["picture"],
+        },
+    }
+
+
+def _complete_google_login(credential: str) -> dict:
+    profile = verify_google_id_token(credential)
     if cloud_store.enabled():
         try:
             user = cloud_store.create_or_update_user(profile)
             session = cloud_store.create_session(int(user["id"]))
         except Exception as exc:
             cloud_database_unavailable(exc)
-        return {
-            "session": session,
-            "user": {
-                "id": user["id"],
-                "email": user["email"],
-                "name": user["name"],
-                "picture": user["picture"],
-            },
-        }
+        return _auth_payload(user, session)
     with connect() as conn:
         user = create_or_update_user(conn, profile)
         session = create_session(conn, int(user["id"]))
-        return {
-            "session": session,
-            "user": {
-                "id": user["id"],
-                "email": user["email"],
-                "name": user["name"],
-                "picture": user["picture"],
-            },
-        }
+        return _auth_payload(user, session)
+
+
+def frontend_origin_for_redirect(request: Request) -> str:
+    proto = (request.headers.get("x-forwarded-proto") or request.url.scheme or "https").split(",")[0].strip()
+    host = (
+        request.headers.get("x-forwarded-host") or request.headers.get("host") or ""
+    ).split(",")[0].strip()
+    if host:
+        return f"{proto}://{host}".rstrip("/")
+    origins = configured_cors_origins()
+    if origins:
+        return origins[0]
+    return str(request.base_url).rstrip("/")
+
+
+def google_login_redirect(request: Request, **params: str) -> RedirectResponse:
+    origin = frontend_origin_for_redirect(request)
+    query = "&".join(f"{key}={quote(value, safe='')}" for key, value in params.items() if value)
+    return RedirectResponse(f"{origin}/#{query}", status_code=303)
+
+
+def http_exception_message(exc: HTTPException) -> str:
+    if isinstance(exc.detail, str) and exc.detail:
+        return exc.detail
+    return "Google sign-in failed."
+
+
+@app.post("/api/auth/google", response_model=None)
+async def google_login(request: Request):
+    check_auth_rate_limit(request)
+    content_type = (request.headers.get("content-type") or "").lower()
+    is_form = "application/x-www-form-urlencoded" in content_type or "multipart/form-data" in content_type
+    if is_form:
+        form = await request.form()
+        credential = str(form.get("credential") or "")
+        csrf_body = str(form.get("g_csrf_token") or "")
+        csrf_cookie = request.cookies.get("g_csrf_token") or ""
+        if not credential:
+            return google_login_redirect(request, google_error="Google sign-in failed.")
+        if not csrf_body or not csrf_cookie or csrf_body != csrf_cookie:
+            return google_login_redirect(request, google_error="Sign-in was blocked. Refresh and try again.")
+    else:
+        try:
+            body = await request.json()
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail="Google sign-in failed.") from exc
+        credential = GoogleLoginRequest.model_validate(body).credential
+    try:
+        result = _complete_google_login(credential)
+    except HTTPException as exc:
+        if is_form:
+            return google_login_redirect(request, google_error=http_exception_message(exc))
+        raise
+    if is_form:
+        return google_login_redirect(
+            request,
+            google_session=str(result["session"]["token"]),
+            expires=str(result["session"]["expiresAt"]),
+        )
+    return result
 
 
 @app.get("/api/auth/me")

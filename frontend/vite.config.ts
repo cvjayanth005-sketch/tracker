@@ -53,6 +53,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         // The app must open offline; everything it needs is precached.
         navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/^\/api\//],
       },
     }),
   ],

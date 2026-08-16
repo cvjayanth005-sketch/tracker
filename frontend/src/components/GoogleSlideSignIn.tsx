@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { googleLoginUri, prefersRedirectSignIn } from '@/auth/googleSignIn'
 import { AUTH_API_BASE, getGoogleClientId, signInWithGoogleCredential } from '@/auth/session'
 
 declare global {
@@ -10,6 +11,11 @@ declare global {
             client_id: string
             callback: (response: { credential?: string }) => void
             ux_mode?: 'popup' | 'redirect'
+            login_uri?: string
+            auto_select?: boolean
+            cancel_on_tap_outside?: boolean
+            use_fedcm_for_prompt?: boolean
+            itp_support?: boolean
           }) => void
           renderButton: (el: HTMLElement, options: Record<string, unknown>) => void
         }
@@ -19,6 +25,10 @@ declare global {
 }
 
 const GIS_SCRIPT_ID = 'google-identity-services'
+
+let gisClientId: string | null = null
+let gisUxMode: 'popup' | 'redirect' | null = null
+let credentialListener: ((credential: string) => void) | null = null
 
 function loadGisScript(): Promise<void> {
   if (window.google?.accounts?.id) return Promise.resolve()
@@ -43,6 +53,27 @@ function loadGisScript(): Promise<void> {
     script.onerror = () => reject(new Error('Google sign-in failed to load.'))
     document.head.appendChild(script)
   })
+}
+
+function ensureGisInitialized(clientId: string): void {
+  if (!window.google?.accounts?.id) return
+  const uxMode = prefersRedirectSignIn() ? 'redirect' : 'popup'
+  if (gisClientId === clientId && gisUxMode === uxMode) return
+  window.google.accounts.id.initialize({
+    client_id: clientId,
+    ux_mode: uxMode,
+    login_uri: googleLoginUri(window.location.origin, AUTH_API_BASE),
+    auto_select: false,
+    cancel_on_tap_outside: true,
+    use_fedcm_for_prompt: false,
+    itp_support: true,
+    callback: (response) => {
+      if (!response.credential) return
+      credentialListener?.(response.credential)
+    },
+  })
+  gisClientId = clientId
+  gisUxMode = uxMode
 }
 
 function GoogleMark() {
@@ -79,12 +110,10 @@ export function GoogleSlideSignIn({
   const [signing, setSigning] = useState(false)
   const [ready, setReady] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [redirectMode, setRedirectMode] = useState(false)
 
   onStatusRef.current = onStatus
 
-  // Wake a possibly cold-started backend the moment the sign-in is shown, so the
-  // OAuth POST that follows a user's account pick hits a warm server. Fire-and-
-  // forget — nothing depends on the result and it starts the GIS script too.
   useEffect(() => {
     if (AUTH_API_BASE) {
       void fetch(`${AUTH_API_BASE}/api/health`, { cache: 'no-store' }).catch(() => {})
@@ -105,46 +134,45 @@ export function GoogleSlideSignIn({
   }, [])
 
   useEffect(() => {
+    credentialListener = (credential) => {
+      setSigning(true)
+      onStatusRef.current?.('Signing in...')
+      void signInWithGoogleCredential(credential)
+        .then(() => onStatusRef.current?.('Signed in. Syncing backup...'))
+        .catch((error) => {
+          setSigning(false)
+          onStatusRef.current?.(error instanceof Error ? error.message : String(error))
+        })
+    }
+    return () => {
+      credentialListener = null
+    }
+  }, [])
+
+  useEffect(() => {
     if (!googleClientId) return
     const host = hostRef.current
     if (!host) return
     let cancelled = false
     let lastWidth = 0
 
-    const render = () => {
+    const renderButton = () => {
       if (cancelled || !window.google || !hostRef.current) return
       const node = hostRef.current
       const width = Math.min(400, Math.max(200, Math.floor(node.clientWidth) || 320))
       if (width === lastWidth && node.childElementCount > 0) return
       lastWidth = width
+      ensureGisInitialized(googleClientId)
       node.innerHTML = ''
-      window.google.accounts.id.initialize({
-        client_id: googleClientId,
-        ux_mode: 'popup',
-        callback: (response) => {
-          if (!response.credential) {
-            setSigning(false)
-            onStatusRef.current?.('Sign-in was cancelled.')
-            return
-          }
-          setSigning(true)
-          onStatusRef.current?.('Signing in...')
-          void signInWithGoogleCredential(response.credential)
-            .then(() => onStatusRef.current?.('Signed in. Syncing backup...'))
-            .catch((error) => {
-              setSigning(false)
-              onStatusRef.current?.(error instanceof Error ? error.message : String(error))
-            })
-        },
-      })
       window.google.accounts.id.renderButton(node, {
         type: 'standard',
         theme: 'outline',
         size: 'large',
         shape: 'pill',
-        text: 'signin_with',
+        text: 'continue_with',
         width,
       })
+      setRedirectMode(prefersRedirectSignIn())
       setReady(true)
     }
 
@@ -152,7 +180,7 @@ export function GoogleSlideSignIn({
       .then(() => {
         if (cancelled) return
         setLoadError(null)
-        render()
+        renderButton()
       })
       .catch((error) => {
         if (cancelled) return
@@ -161,7 +189,7 @@ export function GoogleSlideSignIn({
         onStatusRef.current?.(message)
       })
 
-    const observer = new ResizeObserver(() => render())
+    const observer = new ResizeObserver(() => renderButton())
     observer.observe(host)
     return () => {
       cancelled = true
@@ -205,6 +233,11 @@ export function GoogleSlideSignIn({
           className="absolute inset-0 z-0 overflow-hidden rounded-full [&_div]:!h-full [&_div]:!w-full [&_iframe]:!h-full [&_iframe]:!min-h-full [&_iframe]:!w-full [&_iframe]:!min-w-full"
         />
       </div>
+      {redirectMode ? (
+        <p className="mt-2 text-[12px] leading-relaxed text-ink-400">
+          This device will open Google in this tab, then return here signed in.
+        </p>
+      ) : null}
       {loadError ? <p className="mt-2 text-[12px] text-alert">{loadError}</p> : null}
     </div>
   )

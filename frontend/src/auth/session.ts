@@ -1,3 +1,4 @@
+import { parseGoogleRedirectHash } from '@/auth/googleSignIn'
 import { clearLocalTrackerData, ensureLocalAccountOwner, ensureSeeded } from '@/db/database'
 
 export const AUTH_API_BASE =
@@ -106,6 +107,61 @@ export function clearAuthState(): void {
   localStorage.removeItem(STORAGE_KEY)
   emit()
   window.dispatchEvent(new Event('tracker-auth-change'))
+}
+
+const REDIRECT_ERROR_KEY = 'tracker.google_error'
+
+export function takeGoogleRedirectError(): string | null {
+  try {
+    const message = sessionStorage.getItem(REDIRECT_ERROR_KEY)
+    if (message) sessionStorage.removeItem(REDIRECT_ERROR_KEY)
+    return message
+  } catch {
+    return null
+  }
+}
+
+function rememberGoogleRedirectError(message: string): void {
+  try {
+    sessionStorage.setItem(REDIRECT_ERROR_KEY, message)
+  } catch {
+    // Private mode can block sessionStorage; Welcome still has a sign-in button.
+  }
+}
+
+export async function consumeGoogleRedirectSession(): Promise<void> {
+  if (typeof window === 'undefined') return
+  const parsed = parseGoogleRedirectHash(window.location.hash)
+  if (!parsed) return
+  const url = new URL(window.location.href)
+  url.hash = ''
+  window.history.replaceState(null, '', `${url.pathname}${url.search}`)
+  if (parsed.error) {
+    rememberGoogleRedirectError(parsed.error)
+    return
+  }
+  if (!parsed.token) return
+  try {
+    const res = await fetch(`${AUTH_API_BASE}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${parsed.token}` },
+    })
+    if (!res.ok) throw await apiError(res, 'Google sign-in failed')
+    const payload = (await res.json()) as { user: AuthUser }
+    const previous = getAuthState()
+    if (!previous || previous.user.id !== payload.user.id) {
+      await ensureLocalAccountOwner(payload.user.id)
+    }
+    const expiresAt =
+      parsed.expires && Date.parse(parsed.expires) > Date.now()
+        ? parsed.expires
+        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    setAuthState({
+      user: payload.user,
+      session: { token: parsed.token, expiresAt },
+    })
+  } catch (error) {
+    rememberGoogleRedirectError(error instanceof Error ? error.message : 'Google sign-in failed.')
+  }
 }
 
 export async function signInWithGoogleCredential(credential: string): Promise<AuthState> {

@@ -44,6 +44,34 @@ def test_health_and_seeded_phase(tmp_path, monkeypatch) -> None:
     assert client.get("/api/phase", headers=headers).json()["name"] == "Phase 1"
 
 
+def test_google_form_login_redirects_with_session_token(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    credential = fake_google_credential("phone-user", "phone@example.com")
+    response = client.post(
+        "/api/auth/google",
+        data={"credential": credential, "g_csrf_token": "csrf-token"},
+        cookies={"g_csrf_token": "csrf-token"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+    location = response.headers["location"]
+    assert "google_session=" in location
+    assert "expires=" in location
+
+
+def test_google_form_login_rejects_csrf_mismatch(tmp_path, monkeypatch) -> None:
+    client = make_client(tmp_path, monkeypatch)
+    credential = fake_google_credential("csrf-user", "csrf@example.com")
+    response = client.post(
+        "/api/auth/google",
+        data={"credential": credential, "g_csrf_token": "one"},
+        cookies={"g_csrf_token": "two"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+    assert "google_error=" in response.headers["location"]
+
+
 def test_public_config_exposes_backend_google_client_id(tmp_path, monkeypatch) -> None:
     client = make_client(tmp_path, monkeypatch)
     monkeypatch.setenv("GOOGLE_CLIENT_ID", "backend-client-id.apps.googleusercontent.com")
