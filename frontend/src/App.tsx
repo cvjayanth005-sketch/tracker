@@ -447,6 +447,8 @@ export default function App() {
   const meta = useSyncMeta()
   const previewBrandIntro =
     import.meta.env.DEV && new URLSearchParams(window.location.search).get('preview') === 'intro'
+  const previewOnboarding =
+    import.meta.env.DEV && new URLSearchParams(window.location.search).get('preview') === 'onboarding'
   const [bootstrappedUserId, setBootstrappedUserId] = useState<number | null>(null)
   const [bootError, setBootError] = useState<string | null>(null)
   const [bootConflict, setBootConflict] = useState<Extract<SyncOutcome, { status: 'conflict' }> | null>(null)
@@ -551,6 +553,7 @@ export default function App() {
   if (previewBrandIntro && introCompletedForUser !== auth.user.id) {
     return <BrandIntro onComplete={() => setIntroCompletedForUser(auth.user.id)} />
   }
+  if (previewOnboarding) return <Onboarding preview />
   if (!settings.onboardingCompleted || !settings.planStartDate) {
     const introSeen =
       introCompletedForUser === auth.user.id || hasSeenBrandIntro(auth.user.id)
