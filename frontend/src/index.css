@@ -61,16 +61,18 @@
 }
 
 @theme {
-  --color-ink-950: #030304;
-  --color-ink-900: #06060a;
-  --color-ink-850: #0a0a12;
-  --color-ink-800: #0f0f1c;
-  --color-ink-700: #18182d;
-  --color-ink-600: #2e2e4a;
-  --color-ink-400: #5a5a80;
-  --color-ink-300: #8888aa;
-  --color-ink-200: #c0c0d8;
-  --color-ink-50: #f0f0ff;
+  --color-ink-950: #101410;
+  --color-ink-900: #f5f7f4;
+  --color-ink-850: #eef2ee;
+  --color-ink-800: #e2e7e2;
+  --color-ink-700: #cbd2cb;
+  --color-ink-600: #8a948b;
+  --color-ink-500: #747e75;
+  --color-ink-400: #626c63;
+  --color-ink-300: #465047;
+  --color-ink-200: #2f3830;
+  --color-ink-100: #222a23;
+  --color-ink-50: #111612;
 
   /*
    * Light-surface scale for the signed-out pages. The app proper is dark-only,
@@ -91,28 +93,28 @@
   --color-surface-notice-line: #d7ad2b;
   --color-surface-danger-ink: #b42318;
 
-  --color-accent: #39ff14;
-  --color-accent-dim: #20cc00;
-  --color-warn: #ffe100;
-  --color-alert: #ff2d78;
-  --color-info: #00f0ff;
-  --color-violet: #bf5af2;
+  --color-accent: #35d326;
+  --color-accent-dim: #219915;
+  --color-warn: #d99b16;
+  --color-alert: #d64d72;
+  --color-info: #168baa;
+  --color-violet: #7657bd;
 
   --font-sans: 'DM Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-heading: 'Archivo', 'DM Sans', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
 
-  --glass-fill: rgb(255 255 255 / 0.06);
-  --glass-fill-strong: rgb(255 255 255 / 0.09);
-  --glass-edge: rgb(255 255 255 / 0.12);
-  --glass-highlight: rgb(255 255 255 / 0.16);
-  --glass-blur: 12px;
+  --glass-fill: rgb(255 255 255 / 0.74);
+  --glass-fill-strong: rgb(255 255 255 / 0.82);
+  --glass-edge: rgb(24 37 26 / 0.11);
+  --glass-highlight: rgb(255 255 255 / 0.9);
+  --glass-blur: 22px;
 }
 
 @layer base {
   html {
-    background: var(--color-ink-950);
-    color-scheme: dark;
+    background: var(--color-surface);
+    color-scheme: light;
     -webkit-text-size-adjust: 100%;
   }
 
@@ -125,7 +127,7 @@
      * in-flow block descendants — so an opaque body background would cover it
      * completely. The base colour lives on `html`, which paints as the canvas.
      */
-    background: transparent;
+    background: var(--color-surface);
     color: var(--color-ink-50);
     font-family: var(--font-sans);
     /*

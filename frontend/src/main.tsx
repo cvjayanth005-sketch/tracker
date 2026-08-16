@@ -15,6 +15,7 @@ import Activity from '@/screens/Activity'
 import WorkoutScreen from '@/screens/WorkoutScreen'
 import Plan from '@/screens/Plan'
 import './index.css'
+import './styles/design-system.css'
 
 const updateServiceWorker = registerSW({
   immediate: true,

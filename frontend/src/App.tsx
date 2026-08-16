@@ -57,8 +57,8 @@ function StatusChip() {
      * the top on mobile would cover the page header, which is where the date
      * and phase live.
      */
-    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+5.25rem)] z-30 flex justify-center lg:bottom-auto lg:top-0 lg:pl-24 lg:pt-3">
-      <div className="glass rounded-full px-3.5 py-1.5 text-[11px] font-medium text-ink-200">
+    <div className="app-status-position pointer-events-none">
+      <div className="app-status-chip">
         {!online ? (
           <span className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-warn" />
@@ -80,15 +80,13 @@ function SidebarLink({ tab, active }: { tab: (typeof TABS)[number]; active: bool
     <NavLink
       to={tab.to}
       end={tab.to === '/'}
-      className={`group relative z-10 flex h-12 w-12 items-center justify-center rounded-full text-sm font-medium transition-[color,transform] duration-200 active:scale-95 ${
-        active ? 'text-ink-950' : 'text-ink-300 hover:text-ink-50'
-      }`}
+      className={`app-nav-link ${active ? 'is-active' : ''}`}
       aria-label={tab.label}
-      title={tab.label}
     >
-      <span className="relative z-10 flex items-center justify-center">
+      <span className="app-nav-icon">
         <Icon name={tab.icon} active={active} />
       </span>
+      <span>{tab.label}</span>
     </NavLink>
   )
 }
@@ -105,26 +103,26 @@ function RailNav() {
   )
 
   return (
-    <div
-      className="glass-strong relative flex flex-col items-center gap-4 overflow-visible rounded-full p-2.5 shadow-[0_28px_80px_-36px_rgba(57,255,20,0.6)]"
-    >
-      <AccountButton />
+    <div className="app-sidebar-frame">
+      <div className="app-sidebar-brand">
+        <strong>Formara</strong>
+        <span>Your next move</span>
+      </div>
 
-      <nav className="relative flex flex-col items-center gap-3">
-        <div
-          className="absolute left-0 top-0 z-0 h-12 w-12 rounded-full bg-[linear-gradient(145deg,rgba(255,255,255,0.96),rgba(226,232,240,0.78))] shadow-[0_18px_42px_-20px_rgba(255,255,255,0.9),inset_0_1px_1px_rgba(255,255,255,0.95),inset_0_-12px_22px_rgba(15,23,42,0.16)] ring-1 ring-inset ring-white/80 transition-transform duration-300 ease-[cubic-bezier(.2,.9,.2,1)] will-change-transform"
-          style={{ transform: `translate3d(0, ${activeIndex * 60}px, 0)` }}
-          aria-hidden="true"
-        />
+      <nav className="app-sidebar-nav" aria-label="Primary navigation">
         {TABS.map((tab, index) => (
           <SidebarLink key={tab.to} tab={tab} active={index === activeIndex} />
         ))}
       </nav>
+
+      <div className="app-sidebar-account">
+        <AccountButton />
+      </div>
     </div>
   )
 }
 
-function AccountButton() {
+function AccountButton({ mobile = false }: { mobile?: boolean }) {
   const auth = useAuthState()
   const [open, setOpen] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
@@ -134,23 +132,23 @@ function AccountButton() {
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-accent text-3xl font-black text-ink-50 shadow-[0_18px_40px_-22px] shadow-accent transition-transform active:scale-95"
+        className="app-account-button"
         aria-label="Account"
         title="Account"
       >
         {auth?.user.picture ? (
           <img src={auth.user.picture} alt="" className="h-full w-full object-cover" />
         ) : (
-          'k'
+          (auth?.user.name ?? auth?.user.email ?? 'Formara').charAt(0).toUpperCase()
         )}
       </button>
 
       {open ? (
-        <div className="glass-strong absolute left-full top-0 z-40 ml-3 w-72 rounded-3xl p-4 text-sm text-ink-200">
+        <div className={`app-account-menu ${mobile ? 'is-mobile' : ''}`}>
           {auth ? (
             <>
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-accent text-lg font-bold text-ink-50">
+                <div className="app-account-avatar">
                   {auth.user.picture ? (
                     <img src={auth.user.picture} alt="" className="h-full w-full object-cover" />
                   ) : (
@@ -164,14 +162,14 @@ function AccountButton() {
                   <div className="truncate text-[12px] text-ink-400">{auth.user.email}</div>
                 </div>
               </div>
-              <div className="mt-4 rounded-2xl bg-white/6 p-3 text-[12px] leading-relaxed text-ink-300">
+              <div className="app-account-note">
                 Cloud backup is tied to this Google account. Strava and Apple Fitness can plug in
                 here later.
               </div>
               <button
                 type="button"
                 onClick={() => void signOut().then(() => setOpen(false))}
-                className="mt-3 w-full rounded-2xl bg-white/8 px-3 py-2.5 font-semibold text-ink-50 ring-1 ring-inset ring-white/10"
+                className="app-button app-button-secondary mt-3 w-full"
               >
                 Sign out
               </button>
@@ -381,32 +379,30 @@ function TrackerShell() {
   }, [])
 
   return (
-    <div className="min-h-dvh">
-      <Aurora />
+    <div className="app-shell">
       <StatusChip />
 
-      {/* Desktop floating rail. Hidden below lg, where the tab bar takes over. */}
-      <aside className="pointer-events-none fixed inset-y-0 left-0 z-20 hidden w-24 flex-col items-center py-5 lg:flex">
-        <div className="pointer-events-auto">
-          <RailNav />
-        </div>
-
-        <div className="pointer-events-auto glass-strong mt-auto flex h-14 w-14 items-center justify-center rounded-full text-ink-300">
-          ⌁
-        </div>
+      <aside className="app-sidebar">
+        <RailNav />
       </aside>
 
-      <div className="lg:pl-24">
-        <main className="mx-auto w-full max-w-[92rem] px-4 pb-28 safe-top sm:px-6 lg:px-8 lg:pb-10">
+      <div className="app-workspace">
+        <header className="app-mobile-header safe-top">
+          <div>
+            <strong>Formara</strong>
+            <span>Your body. Your data. Your next move.</span>
+          </div>
+          <AccountButton mobile />
+        </header>
+        <main className="app-page safe-top">
           <Outlet />
         </main>
       </div>
 
-      {/* Mobile tab bar: a floating glass pill, Apple Fitness style. */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:hidden">
+      <nav className="app-mobile-nav" aria-label="Primary navigation">
         <div
           ref={tabBarRef}
-          className="glass-strong flex w-full max-w-md items-center gap-1 rounded-2xl p-1.5"
+          className="app-mobile-tabs"
         >
           {TABS.map((tab) => (
             <NavLink
@@ -414,23 +410,13 @@ function TrackerShell() {
               to={tab.to}
               end={tab.to === '/'}
               className={({ isActive }) =>
-                `relative flex flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 text-[10px] font-medium transition-colors ${
-                  isActive ? 'text-ink-50' : 'text-ink-400'
-                }`
+                `app-mobile-tab ${isActive ? 'is-active' : ''}`
               }
             >
               {({ isActive }) => (
                 <>
-                  {isActive ? (
-                    <span
-                      className="glass-inset absolute inset-0 rounded-xl"
-                      aria-hidden="true"
-                    />
-                  ) : null}
-                  <span className="relative z-10 flex flex-col items-center gap-0.5">
-                    <Icon name={tab.icon} active={isActive} />
-                    {tab.label}
-                  </span>
+                  <Icon name={tab.icon} active={isActive} />
+                  <span>{tab.label}</span>
                 </>
               )}
             </NavLink>

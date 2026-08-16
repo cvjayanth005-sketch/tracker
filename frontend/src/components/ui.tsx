@@ -21,7 +21,7 @@ export function Card({
   refract?: boolean
 }) {
   const ref = useLiquidGlass<HTMLDivElement>({ scale: -90, chroma: 5, blur: 4 }, refract)
-  const base = `${refract ? 'glass' : 'surface'} rounded-3xl p-4 sm:p-5`
+  const base = `${refract ? 'glass' : 'surface'} rounded-lg p-4 sm:p-5`
 
   if (onClick) {
     return (
@@ -43,8 +43,8 @@ export function Card({
 
 export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
-    <div className="mb-2.5 mt-7 flex items-baseline justify-between px-1 first:mt-0">
-      <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-400">
+    <div className="mb-2.5 mt-7 flex items-baseline justify-between first:mt-0">
+      <h2 className="text-[11px] font-semibold uppercase tracking-normal text-ink-500">
         {children}
       </h2>
       {action}
@@ -79,8 +79,8 @@ export function Stat({
           ? 'text-alert'
           : 'text-ink-50'
   return (
-    <div className="glass-inset rounded-2xl px-3.5 py-3">
-      <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-ink-400">
+    <div className="glass-inset rounded-lg px-3.5 py-3">
+      <div className="text-[10px] font-medium uppercase tracking-normal text-ink-500">
         {label}
       </div>
       <div
@@ -88,10 +88,10 @@ export function Stat({
       >
         {value === null ? <span className="text-ink-600">—</span> : value}
         {value !== null && unit ? (
-          <span className="ml-1 text-xs font-normal text-ink-400">{unit}</span>
+          <span className="ml-1 text-xs font-normal text-ink-500">{unit}</span>
         ) : null}
       </div>
-      {sub ? <div className="mt-1.5 text-[11px] leading-tight text-ink-400">{sub}</div> : null}
+      {sub ? <div className="mt-1.5 text-[11px] leading-tight text-ink-500">{sub}</div> : null}
     </div>
   )
 }
@@ -104,7 +104,7 @@ export function Pill({
   tone?: 'neutral' | 'good' | 'warn' | 'bad' | 'info'
 }) {
   const tones = {
-    neutral: 'bg-white/8 text-ink-200 ring-white/10',
+    neutral: 'bg-ink-850 text-ink-300 ring-ink-700',
     good: 'bg-accent/15 text-accent ring-accent/25',
     warn: 'bg-warn/15 text-warn ring-warn/25',
     bad: 'bg-alert/15 text-alert ring-alert/25',
@@ -136,10 +136,10 @@ export function Button({
 }) {
   const variants = {
     primary:
-      'bg-accent text-ink-950 font-semibold shadow-[0_8px_24px_-8px] shadow-accent/50 active:bg-accent-dim',
+      'app-button-primary',
     secondary:
-      'bg-white/8 text-ink-50 ring-1 ring-inset ring-white/12 active:bg-white/12',
-    ghost: 'bg-transparent text-ink-300 active:bg-white/5',
+      'app-button-secondary',
+    ghost: 'app-button-quiet',
     danger: 'bg-alert/15 text-alert ring-1 ring-inset ring-alert/25 active:bg-alert/25',
   } as const
   return (
@@ -147,7 +147,7 @@ export function Button({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`min-h-11 rounded-xl px-4 text-sm transition-colors disabled:opacity-40 ${variants[variant]} ${className}`}
+      className={`app-button disabled:opacity-40 ${variants[variant]} ${className}`}
     >
       {children}
     </button>
@@ -158,7 +158,7 @@ export function EmptyState({ title, body }: { title: string; body: string }) {
   return (
     <Card className="text-center">
       <div className="text-sm font-medium text-ink-200">{title}</div>
-      <p className="mx-auto mt-1 max-w-xs text-[13px] leading-relaxed text-ink-400">{body}</p>
+      <p className="mx-auto mt-1 max-w-xs text-[13px] leading-relaxed text-ink-500">{body}</p>
     </Card>
   )
 }
@@ -181,14 +181,14 @@ export function Meter({
   } as const
   if (value === null) {
     return (
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/6">
-        <div className="h-full w-full bg-[repeating-linear-gradient(45deg,transparent,transparent_4px,rgba(255,255,255,0.08)_4px,rgba(255,255,255,0.08)_8px)]" />
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-ink-800">
+        <div className="h-full w-full bg-[repeating-linear-gradient(45deg,transparent,transparent_4px,rgba(17,22,18,0.08)_4px,rgba(17,22,18,0.08)_8px)]" />
       </div>
     )
   }
   const pct = Math.max(0, Math.min(100, (value / max) * 100))
   return (
-    <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/6">
+    <div className="h-1.5 w-full overflow-hidden rounded-full bg-ink-800">
       <div
         className={`h-full rounded-full transition-[width] duration-500 ${tones[tone]}`}
         style={{ width: `${pct}%` }}
@@ -211,11 +211,11 @@ export function PageHeader({
     <header className="flex items-end justify-between gap-3 pt-4 sm:pt-6">
       <div className="min-w-0">
         {eyebrow ? (
-          <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink-400">
+          <div className="text-[11px] font-medium uppercase tracking-normal text-ink-500">
             {eyebrow}
           </div>
         ) : null}
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
+        <h1 className="mt-1 text-2xl font-semibold tracking-normal text-ink-50 sm:text-3xl">{title}</h1>
       </div>
       {action}
     </header>
