@@ -48,6 +48,7 @@ const TABLES = [
   'workoutSets',
   'runs',
   'weeklyCheckIns',
+  'onboardingDrafts',
 ] as const
 
 export async function exportState(): Promise<StateDocument> {
