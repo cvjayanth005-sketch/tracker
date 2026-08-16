@@ -77,6 +77,15 @@ export default function WorkoutScreen() {
       })
     : (exercises ?? []).filter((e) => sessionType === 'full' || e.sessionType === sessionType)
 
+  const startType: Exclude<SessionType, 'rest'> =
+    scheduled?.gym && scheduled.sessionType !== 'rest'
+      ? (scheduled.sessionType as Exclude<SessionType, 'rest'>)
+      : 'upper'
+  const previewExercises = (exercises ?? []).filter(
+    (e) => !e.archived && (startType === 'full' || e.sessionType === startType),
+  )
+  const previewSets = previewExercises.reduce((sum, e) => sum + e.targetSets, 0)
+
   // Progression reads only sessions before today, so today's own half-finished
   // sets never feed back into today's advice.
   const priorHistory = (history ?? []).filter((h) => h.workout.date !== today)
@@ -163,17 +172,43 @@ export default function WorkoutScreen() {
                   ? `Today is a ${scheduled.sessionType} day in ${phase.name}.`
                   : 'No gym session is scheduled today. You can still log one.'}
               </p>
+
+              {/*
+                What the session actually contains, before committing to it.
+                Starting a workout writes a record and marks the day's gym as
+                done, so it is not a free action — being able to see the lifts
+                first is the difference between choosing a session and
+                discovering it.
+              */}
+              {previewExercises.length > 0 ? (
+                <div className="mt-3 radius-inset border border-[var(--app-line)] bg-[var(--app-inset)] p-3">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="type-micro text-[var(--app-muted)]">
+                      {startType} session
+                    </span>
+                    <span className="type-dense text-[var(--app-muted)]">
+                      {previewExercises.length} exercises · {previewSets} sets
+                    </span>
+                  </div>
+                  <ul className="mt-2 space-y-1.5">
+                    {previewExercises.map((exercise) => (
+                      <li key={exercise.id} className="flex items-baseline justify-between gap-3">
+                        <span className="type-caption min-w-0 truncate text-[var(--app-ink)]">
+                          {exercise.name}
+                        </span>
+                        <span className="tabular type-dense shrink-0 text-[var(--app-muted)]">
+                          {exercise.targetSets} × {exercise.repRangeMin}–{exercise.repRangeMax}
+                          {' @ RIR '}
+                          {exercise.targetRir}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
               <div className="mt-3 flex gap-2">
-                <Button
-                  variant="primary"
-                  onClick={() =>
-                    void begin(
-                      scheduled?.gym && scheduled.sessionType !== 'rest'
-                        ? (scheduled.sessionType as Exclude<SessionType, 'rest'>)
-                        : 'upper',
-                    )
-                  }
-                >
+                <Button variant="primary" onClick={() => void begin(startType)}>
                   Start {scheduled?.gym ? scheduled.sessionType : 'session'}
                 </Button>
                 <Button onClick={() => setPickerOpen(true)}>Pick another</Button>
