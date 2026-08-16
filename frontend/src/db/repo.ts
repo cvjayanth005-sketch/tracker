@@ -16,6 +16,7 @@ import type {
   RunType,
   SavedFood,
   Settings,
+  UserProfile,
   WeeklyCheckIn,
   Workout,
   WorkoutPrescription,
@@ -547,6 +548,19 @@ export async function getMeasurement(date: LocalDate): Promise<BodyMeasurement |
 
 export async function getSettings(): Promise<Settings | undefined> {
   return db.settings.get('settings')
+}
+
+export async function getProfile(): Promise<UserProfile | undefined> {
+  return db.profile.get('me')
+}
+
+export async function updateProfile(
+  patch: Partial<Omit<UserProfile, 'id' | 'updatedAt'>>,
+): Promise<void> {
+  const existing = await db.profile.get('me')
+  if (!existing) return
+  await db.profile.put({ ...existing, ...patch, id: 'me', updatedAt: now() })
+  await markDirty()
 }
 
 export async function updateSettings(patch: Partial<Settings>): Promise<void> {

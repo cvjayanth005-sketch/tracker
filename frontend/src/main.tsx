@@ -14,6 +14,7 @@ import Food from '@/screens/Food'
 import Activity from '@/screens/Activity'
 import WorkoutScreen from '@/screens/WorkoutScreen'
 import Plan from '@/screens/Plan'
+import Account from '@/screens/Account'
 import './index.css'
 import './styles/design-system.css'
 
@@ -37,6 +38,7 @@ const router = createBrowserRouter([
       { path: 'workout', element: <WorkoutScreen /> },
       { path: 'progress', element: <Navigate to="/activity" replace /> },
       { path: 'plan', element: <Plan /> },
+      { path: 'account', element: <Account /> },
     ],
   },
 ])

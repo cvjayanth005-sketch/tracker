@@ -1,124 +1,375 @@
-.plan-decision h3 {
+.plan-page {
+  display: grid;
+  gap: 1rem;
+  max-width: 82rem;
+  margin: 0 auto;
+  padding-bottom: 2rem;
+}
+
+.plan-status {
   margin: 0;
-  font-size: 1.2rem;
+  border-radius: var(--app-radius);
+  padding: 0.75rem 0.9rem;
+  font-size: 0.78rem;
+}
+
+.plan-command-grid,
+.plan-current-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.plan-decision,
+.plan-snapshot,
+.plan-targets,
+.plan-roadmap {
+  min-width: 0;
+  border-radius: var(--app-radius);
+}
+
+.plan-section {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 0.35rem;
+}
+
+.plan-section-heading {
+  margin-bottom: 0.8rem;
+}
+
+.plan-section-heading h2 {
+  margin: 0.18rem 0 0;
+  color: var(--app-ink);
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
   line-height: 1.2;
+  letter-spacing: 0;
 }
 
-.plan-decision p {
-  margin: 0.45rem 0 0;
-  font-size: 14px;
-  line-height: 1.55;
-  color: var(--canvas-muted);
+.plan-decision-copy {
+  max-width: 48rem;
+  margin: 0;
+  color: var(--app-ink-soft);
+  font-size: 0.82rem;
+  line-height: 1.6;
 }
 
-.plan-change {
-  margin-top: 0.85rem;
-  font-size: 13px;
-  color: var(--canvas-muted);
+.plan-decision-action {
+  display: grid;
+  gap: 0.75rem;
+  align-items: end;
+  margin-top: 1rem;
+  border-top: 1px solid var(--tone-edge);
+  padding-top: 0.9rem;
 }
 
-.plan-change strong {
-  color: var(--canvas-ink);
-  font-weight: 600;
+.plan-decision-action span,
+.plan-progress span,
+.plan-hold span {
+  display: block;
+  color: var(--app-muted);
+  font-size: 0.68rem;
 }
 
-.plan-secondary {
-  margin-top: 0.85rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--canvas-line);
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--canvas-muted);
-}
-
-.plan-warn {
-  margin-top: 0.85rem;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--canvas-warn);
+.plan-decision-action strong,
+.plan-progress strong,
+.plan-hold strong {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--app-ink);
+  font-family: var(--font-numbers);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .plan-hold {
-  margin-top: 0.85rem;
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 1rem;
 }
 
-.plan-hold-bar {
-  height: 4px;
-  overflow: hidden;
-  border-radius: 99px;
-  background: var(--canvas-line);
+.plan-hold > div,
+.plan-progress > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
-.plan-hold-bar > span {
+.plan-warning {
+  margin: 1rem 0 0;
+  border-radius: 7px;
+  padding: 0.7rem 0.8rem;
+  font-size: 0.75rem;
+  line-height: 1.55;
+}
+
+.plan-secondary-note {
+  margin: 1rem 0 0;
+  border-top: 1px solid var(--app-line);
+  padding-top: 0.8rem;
+  color: var(--app-muted);
+  font-size: 0.73rem;
+  line-height: 1.55;
+}
+
+.plan-secondary-note strong {
+  color: var(--app-ink-soft);
+}
+
+.plan-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.plan-metric {
+  min-height: 4.3rem;
+  padding: 0.7rem 0.8rem;
+}
+
+.plan-metric > span {
   display: block;
-  height: 100%;
-  background: var(--canvas-ink);
+  color: var(--app-muted);
+  font-size: 0.66rem;
 }
 
-.plan-roadmap {
-  list-style: none;
+.plan-metric > strong {
+  display: block;
+  margin-top: 0.4rem;
+  overflow-wrap: anywhere;
+  color: var(--app-ink);
+  font-family: var(--font-numbers);
+  font-size: 1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-metric small {
+  margin-left: 0.25rem;
+  color: var(--app-muted);
+  font-family: var(--font-body);
+  font-size: 0.66rem;
+  font-weight: 500;
+}
+
+.plan-progress {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.9rem;
+}
+
+.plan-progress p,
+.plan-target-note {
+  margin: 0;
+  color: var(--app-muted);
+  font-size: 0.68rem;
+}
+
+.plan-target-note {
+  margin-top: 0.85rem;
+  border-top: 1px solid var(--app-line);
+  padding-top: 0.75rem;
+}
+
+.plan-roadmap ol,
+.plan-phase-list {
   margin: 0;
   padding: 0;
+  list-style: none;
 }
 
 .plan-roadmap li {
   display: grid;
-  grid-template-columns: 1.5rem minmax(0, 1fr) auto;
-  gap: 0.65rem;
-  align-items: baseline;
-  padding: 0.45rem 0;
-  font-size: 14px;
+  grid-template-columns: 1.7rem minmax(0, 1fr) auto;
+  gap: 0.7rem;
+  align-items: center;
+  min-height: 3.2rem;
 }
 
 .plan-roadmap li + li {
-  border-top: 1px solid var(--canvas-line);
+  border-top: 1px solid var(--app-line);
 }
 
-.plan-roadmap .plan-step {
-  font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 11px;
-  color: var(--canvas-muted);
+.plan-roadmap-index {
+  display: grid;
+  width: 1.45rem;
+  height: 1.45rem;
+  place-items: center;
+  border: 1px solid var(--app-line-strong);
+  border-radius: 50%;
+  color: var(--app-muted);
+  font-family: var(--font-numbers);
+  font-size: 0.64rem;
 }
 
-.plan-roadmap .is-current {
-  font-weight: 600;
+.plan-roadmap li.is-current .plan-roadmap-index {
+  border-color: rgb(120 164 203 / 0.72);
+  background: var(--app-blue-soft);
+  color: var(--app-ink);
 }
 
-.plan-roadmap .is-completed {
-  color: var(--canvas-muted);
+.plan-roadmap li.is-completed .plan-roadmap-index {
+  border-color: var(--app-success);
+  background: var(--app-success-soft);
+  color: var(--app-ink);
 }
 
-.plan-roadmap .plan-meta {
-  font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 11px;
-  color: var(--canvas-muted);
+.plan-roadmap li strong,
+.plan-roadmap li div > span {
+  display: block;
 }
 
-.plan-phase-list {
-  list-style: none;
+.plan-roadmap li strong {
+  color: var(--app-ink);
+  font-size: 0.78rem;
+}
+
+.plan-roadmap li div > span,
+.plan-roadmap-state {
+  margin-top: 0.16rem;
+  color: var(--app-muted);
+  font-size: 0.66rem;
+}
+
+.plan-roadmap-state {
   margin: 0;
+  text-transform: capitalize;
+}
+
+.plan-manage {
   padding: 0;
+}
+
+.plan-manage summary {
+  display: flex;
+  min-height: 3.2rem;
+  cursor: pointer;
+  list-style: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.9rem;
+  color: var(--app-ink);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.plan-manage summary::-webkit-details-marker {
+  display: none;
+}
+
+.plan-manage-chevron {
+  color: var(--app-muted);
+  transition: transform 160ms ease;
+}
+
+.plan-manage[open] .plan-manage-chevron {
+  transform: rotate(180deg);
+}
+
+.plan-manage-body {
+  border-top: 1px solid var(--app-line);
+  padding: 0.9rem;
+}
+
+.plan-fields {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.plan-fields .glass-tile {
+  border-radius: 7px;
+  background: var(--app-inset);
+  color: var(--app-ink);
+  box-shadow: inset 0 1px rgb(255 255 255 / 0.9);
+}
+
+.plan-fields .text-ink-200,
+.plan-fields .text-ink-50 {
+  color: var(--app-ink);
+}
+
+.plan-fields .text-ink-400,
+.plan-fields .text-ink-500,
+.plan-fields .text-ink-600 {
+  color: var(--app-muted);
 }
 
 .plan-phase-list li {
-  display: flex;
-  gap: 0.6rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.65rem;
   align-items: center;
-  padding: 0.35rem 0;
-  font-size: 13px;
+  min-height: 2.55rem;
+  color: var(--app-ink-soft);
+  font-size: 0.77rem;
 }
 
-.plan-dot {
-  width: 16px;
-  height: 16px;
-  padding: 0;
-  border: 0;
-  border-radius: 99px;
-  background: transparent;
-  box-shadow: inset 0 0 0 1px var(--canvas-line);
+.plan-phase-list li + li {
+  border-top: 1px solid var(--app-line);
+}
+
+.plan-phase-radio {
+  width: 1rem;
+  height: 1rem;
   cursor: pointer;
+  border: 1px solid var(--app-line-strong);
+  border-radius: 50%;
+  background: transparent;
 }
 
-.plan-dot.is-on {
-  background: var(--canvas-ink);
+.plan-phase-radio.is-active {
+  border: 4px solid var(--app-blue);
+}
+
+.plan-phase-meta {
+  color: var(--app-muted);
+  font-family: var(--font-numbers);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-manage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+
+@media (min-width: 640px) {
+  .plan-page {
+    gap: 1.25rem;
+  }
+
+  .plan-decision-action {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .plan-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .plan-command-grid {
+    grid-template-columns: minmax(0, 1.45fr) minmax(20rem, 0.8fr);
+  }
+
+  .plan-current-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 0.82fr);
+  }
+
+  .plan-metric-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .plan-snapshot .plan-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-manage-chevron {
+    transition: none;
+  }
 }

@@ -164,6 +164,11 @@
   transform: scale(0.97);
 }
 
+.app-account-button.is-active {
+  border-color: rgb(120 164 203 / 0.75);
+  box-shadow: 0 0 0 4px rgb(180 225 235 / 0.42);
+}
+
 .app-account-button img,
 .app-account-avatar img {
   width: 100%;

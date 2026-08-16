@@ -93,13 +93,10 @@ function SidebarLink({ tab, active }: { tab: (typeof TABS)[number]; active: bool
 
 function RailNav() {
   const location = useLocation()
-  const activeIndex = Math.max(
-    0,
-    TABS.findIndex((tab) =>
-      tab.to === '/'
-        ? location.pathname === '/'
-        : location.pathname === tab.to || location.pathname.startsWith(`${tab.to}/`),
-    ),
+  const activeIndex = TABS.findIndex((tab) =>
+    tab.to === '/'
+      ? location.pathname === '/'
+      : location.pathname === tab.to || location.pathname.startsWith(`${tab.to}/`),
   )
 
   return (
@@ -124,69 +121,21 @@ function RailNav() {
 
 function AccountButton({ mobile = false }: { mobile?: boolean }) {
   const auth = useAuthState()
-  const [open, setOpen] = useState(false)
-  const [status, setStatus] = useState<string | null>(null)
 
   return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="app-account-button"
-        aria-label="Account"
-        title="Account"
-      >
-        {auth?.user.picture ? (
-          <img src={auth.user.picture} alt="" className="h-full w-full object-cover" />
-        ) : (
-          (auth?.user.name ?? auth?.user.email ?? 'Formara').charAt(0).toUpperCase()
-        )}
-      </button>
-
-      {open ? (
-        <div className={`app-account-menu ${mobile ? 'is-mobile' : ''}`}>
-          {auth ? (
-            <>
-              <div className="flex items-center gap-3">
-                <div className="app-account-avatar">
-                  {auth.user.picture ? (
-                    <img src={auth.user.picture} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    (auth.user.name ?? auth.user.email).charAt(0).toUpperCase()
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <div className="truncate font-semibold text-ink-50">
-                    {auth.user.name ?? 'Signed in'}
-                  </div>
-                  <div className="truncate text-[12px] text-ink-400">{auth.user.email}</div>
-                </div>
-              </div>
-              <div className="app-account-note">
-                Cloud backup is tied to this Google account. Strava and Apple Fitness can plug in
-                here later.
-              </div>
-              <button
-                type="button"
-                onClick={() => void signOut().then(() => setOpen(false))}
-                className="app-button app-button-secondary mt-3 w-full"
-              >
-                Sign out
-              </button>
-            </>
-          ) : (
-            <>
-              <div className="font-semibold text-ink-50">Sign in</div>
-              <p className="mt-1 text-[12px] leading-relaxed text-ink-400">
-                Use Google to keep your tracker backed up across devices.
-              </p>
-              <GoogleSlideSignIn onStatus={setStatus} />
-              {status ? <div className="mt-3 text-[12px] text-ink-300">{status}</div> : null}
-            </>
-          )}
-        </div>
-      ) : null}
-    </div>
+    <NavLink
+      to="/account"
+      className={({ isActive }) => `app-account-button ${isActive ? 'is-active' : ''}`}
+      aria-label="Open account"
+      title="Account"
+      data-mobile={mobile ? 'true' : undefined}
+    >
+      {auth?.user.picture ? (
+        <img src={auth.user.picture} alt="" className="h-full w-full object-cover" />
+      ) : (
+        (auth?.user.name ?? auth?.user.email ?? 'Formara').charAt(0).toUpperCase()
+      )}
+    </NavLink>
   )
 }
 

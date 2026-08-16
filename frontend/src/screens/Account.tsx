@@ -1,9 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { getAuthState, signOut } from '@/auth/session'
-import { getProfile, getSettings, importDailyLogs, updateProfile, updateSettings } from '@/db/repo'
+import { Button, PageHeader, Pill } from '@/components/ui'
 import { NumberField } from '@/components/fields'
 import { fmtInt } from '@/components/format'
+import {
+  getProfile,
+  getSettings,
+  importDailyLogs,
+  updateProfile,
+  updateSettings,
+} from '@/db/repo'
 import { previewExcel } from '@/import/excel'
 import { useOnline, useSyncMeta } from '@/hooks/useDashboard'
 import {
@@ -14,9 +21,8 @@ import {
   sync,
   type StateDocument,
 } from '@/sync/client'
-import { lastSyncCopy, syncHonesty } from '@/screens/account/syncState'
-import { timezoneOptions } from '@/screens/account/timezones'
-import { CanvasPage } from '@/shell/CanvasPage'
+import { lastSyncCopy, syncHonesty } from './account/syncState'
+import { timezoneOptions } from './account/timezones'
 import './account/account.css'
 
 export default function Account() {
@@ -35,38 +41,53 @@ export default function Account() {
     lastError: meta?.lastError,
     lastSyncedAt: meta?.lastSyncedAt,
   })
+  const syncTone =
+    honesty.state === 'connected'
+      ? 'good'
+      : honesty.state === 'error'
+        ? 'bad'
+      : honesty.state === 'offline'
+          ? 'warn'
+          : honesty.state === 'local'
+            ? 'neutral'
+            : 'info'
 
   const restore = async (file: File) => {
-    const text = await file.text()
-    const doc = JSON.parse(text) as StateDocument
-    if (!doc.tables || typeof doc.version !== 'number') {
-      setStatus('That file is not a ledger backup.')
-      return
+    try {
+      const doc = JSON.parse(await file.text()) as StateDocument
+      if (!doc.tables || typeof doc.version !== 'number') {
+        setStatus('That file is not a Formara backup.')
+        return
+      }
+      const rows = Object.values(doc.tables).reduce((count, table) => count + (table?.length ?? 0), 0)
+      const ok = window.confirm(
+        `Restore ${rows} records? This replaces the current data on this device.`,
+      )
+      if (!ok) return
+      await importState(doc)
+      setStatus(`Restored ${rows} records.`)
+    } catch (error) {
+      setStatus(`Restore failed: ${error instanceof Error ? error.message : String(error)}`)
     }
-    const rows = Object.values(doc.tables).reduce((n, table) => n + (table?.length ?? 0), 0)
-    const ok = window.confirm(
-      `Restore ${rows} records from this backup? This REPLACES everything currently in the app.`,
-    )
-    if (!ok) return
-    await importState(doc)
-    setStatus(`Restored ${rows} records.`)
   }
 
   const syncNow = async () => {
     setWorking(true)
-    const result = await sync()
-    setWorking(false)
-    if (result.status === 'pushed') setStatus(`Synced version ${result.version} to the server.`)
-    else if (result.status === 'pulled') setStatus(`Pulled version ${result.version} from the server.`)
-    else if (result.status === 'clean') setStatus('Server and this device are already in sync.')
-    else if (result.status === 'unauthorized') {
-      setStatus('Session expired. Sign in again.')
-      void signOut()
-    } else if (result.status === 'conflict') {
-      setStatus('Both copies changed. Download a backup before choosing which copy to keep.')
-    } else if (result.status === 'offline') setStatus('Offline — your changes remain on this device.')
-    else if (result.status === 'error') setStatus(`Sync failed: ${result.message}`)
-    else setStatus('No sync server is configured; download a backup instead.')
+    try {
+      const result = await sync()
+      if (result.status === 'pushed') setStatus(`Synced version ${result.version}.`)
+      else if (result.status === 'pulled') setStatus(`Loaded version ${result.version}.`)
+      else if (result.status === 'clean') setStatus('This device and the cloud are up to date.')
+      else if (result.status === 'unauthorized') setStatus('Session expired. Sign in again.')
+      else if (result.status === 'conflict') setStatus('Both copies changed. Download a backup before resolving the conflict.')
+      else if (result.status === 'offline') setStatus('Offline. Changes remain on this device.')
+      else if (result.status === 'error') setStatus(`Sync failed: ${result.message}`)
+      else setStatus('Cloud sync is not configured. Use a downloaded backup instead.')
+    } catch (error) {
+      setStatus(`Sync failed: ${error instanceof Error ? error.message : String(error)}`)
+    } finally {
+      setWorking(false)
+    }
   }
 
   const importHistory = async (file: File) => {
@@ -74,13 +95,10 @@ export default function Account() {
     try {
       const preview = await previewExcel(file)
       if (preview.logs.length === 0) {
-        setStatus('The workbook is a blank template — no dated history was found to import.')
+        setStatus('No dated history was found in that workbook.')
         return
       }
-      const ok = window.confirm(
-        `Merge ${preview.logs.length} dated rows into the ledger? Existing fields are kept ` +
-          `unless the workbook contains a value for them.`,
-      )
+      const ok = window.confirm(`Merge ${preview.logs.length} dated rows into Formara?`)
       if (!ok) return
       await importDailyLogs(preview.logs)
       setStatus(`Imported ${preview.logs.length} dated rows from ${file.name}.`)
@@ -92,23 +110,56 @@ export default function Account() {
   }
 
   return (
-    <CanvasPage>
-      <div className="canvas-stack">
-        <header>
-          <p className="canvas-kicker">You</p>
-          <h1 className="canvas-title">Account</h1>
-          <p className="canvas-lede">Profile, backup, and the quiet controls.</p>
-        </header>
+    <div className="account-page">
+      <PageHeader eyebrow="Settings and data" title="Account" action={<Pill tone={syncTone}>{honesty.label}</Pill>} />
 
-        {status ? <p className="canvas-status">{status}</p> : null}
+      {status ? (
+        <p className="account-status app-tone-action" role="status">
+          {status}
+        </p>
+      ) : null}
 
-        <section className="canvas-section">
-          <h2>Profile</h2>
-          <div className="canvas-fields">
-            <CanvasTextField
+      <section className="account-identity app-panel" aria-labelledby="account-identity-title">
+        <div className="account-avatar">
+          {auth?.user.picture ? (
+            <img src={auth.user.picture} alt="" />
+          ) : (
+            (auth?.user.name ?? auth?.user.email ?? 'F').charAt(0).toUpperCase()
+          )}
+        </div>
+        <div className="account-identity-copy">
+          <h2 id="account-identity-title">{auth?.user.name ?? 'Signed in'}</h2>
+          <p>{auth?.user.email ?? 'Google account'}</p>
+        </div>
+        <dl className="account-sync-summary">
+          <div>
+            <dt>Pending</dt>
+            <dd>{fmtInt(pendingChanges)}</dd>
+          </div>
+          <div>
+            <dt>Last sync</dt>
+            <dd>{lastSyncCopy(meta?.lastSyncedAt)}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <div className="account-grid">
+        <section className="account-section app-panel" aria-labelledby="profile-title">
+          <div className="account-section-heading">
+            <p className="app-eyebrow">Profile</p>
+            <h2 id="profile-title">Personal details</h2>
+          </div>
+          <div className="account-fields">
+            <TextField
               label="Name"
               value={profile?.name ?? ''}
               onCommit={(name) => void updateProfile({ name })}
+            />
+            <NumberField
+              label="Birth year"
+              inputMode="numeric"
+              value={profile?.birthYear ?? null}
+              onCommit={(birthYear) => void updateProfile({ birthYear })}
             />
             <NumberField
               label="Height"
@@ -118,188 +169,139 @@ export default function Account() {
               onCommit={(heightCm) => void updateProfile({ heightCm })}
             />
             <NumberField
-              label="Birth year"
-              inputMode="numeric"
-              value={profile?.birthYear ?? null}
-              onCommit={(birthYear) => void updateProfile({ birthYear })}
-            />
-            <NumberField
               label="Start weight"
               unit="kg"
               step="0.1"
               value={profile?.startWeightKg ?? null}
-              onCommit={(startWeightKg) => startWeightKg != null && void updateProfile({ startWeightKg })}
+              onCommit={(startWeightKg) => void updateProfile({ startWeightKg })}
             />
             <NumberField
               label="Goal weight"
               unit="kg"
               step="0.1"
               value={profile?.goalWeightKg ?? null}
-              onCommit={(goalWeightKg) => goalWeightKg != null && void updateProfile({ goalWeightKg })}
+              onCommit={(goalWeightKg) => void updateProfile({ goalWeightKg })}
             />
           </div>
-          <label className="account-field">
-            <span>Timezone</span>
+          <label className="account-select-field">
+            <span>Calendar timezone</span>
             <select
-              className="canvas-select"
+              className="app-field"
               value={settings?.timezone ?? ''}
               onChange={(event) => void updateSettings({ timezone: event.target.value })}
               disabled={!settings}
             >
-              {timezoneOptions(settings?.timezone ?? '').map((tz) => (
-                <option key={tz} value={tz}>
-                  {tz}
+              {timezoneOptions(settings?.timezone ?? '').map((timezone) => (
+                <option key={timezone} value={timezone}>
+                  {timezone}
                 </option>
               ))}
             </select>
           </label>
-          <p className="canvas-note">
-            Units are metric (kg, cm, kcal). Imperial is not stored on this account yet.
-          </p>
         </section>
 
-        <section className="canvas-section">
-          <h2>Coaching preferences</h2>
-          <p className="account-placeholder">
-            Training, diet, and constraints will live here. They are not stored as editable settings
-            after onboarding yet.
-          </p>
-        </section>
-
-        <section className="canvas-section">
-          <h2>Connections and sync</h2>
-          <div className="account-identity">
-            <div className="account-avatar">
-              {auth?.user.picture ? (
-                <img src={auth.user.picture} alt="" />
-              ) : (
-                (auth?.user.name ?? auth?.user.email ?? 'A').charAt(0).toUpperCase()
-              )}
-            </div>
-            <div>
-              <h3>{auth?.user.name ?? 'Signed in'}</h3>
-              <p>{auth?.user.email ?? 'Google account'}</p>
-            </div>
-            <span
-              className={`canvas-pill${
-                honesty.state === 'error'
-                  ? ' canvas-pill-alert'
-                  : honesty.state === 'offline'
-                    ? ' canvas-pill-warn'
-                    : honesty.state === 'connected'
-                      ? ' canvas-pill-accent'
-                      : ''
-              }`}
-              style={{ marginLeft: 'auto' }}
-            >
-              {honesty.label}
-            </span>
+        <section className="account-section app-panel" aria-labelledby="sync-title">
+          <div className="account-section-heading">
+            <p className="app-eyebrow">Sync</p>
+            <h2 id="sync-title">Device and cloud</h2>
           </div>
-          <dl className="account-dl">
-            <dt>Cloud</dt>
-            <dd>{API_BASE ? 'Google account backup' : 'Not configured'}</dd>
-            <dt>Last successful sync</dt>
-            <dd className="tabular">{lastSyncCopy(meta?.lastSyncedAt)}</dd>
+          <dl className="account-detail-list">
+            <dt>Cloud backup</dt>
+            <dd>{API_BASE ? 'Configured' : 'Not configured'}</dd>
             <dt>Local version</dt>
-            <dd className="tabular">{fmtInt(meta?.localVersion ?? 0)}</dd>
-            <dt>Server version</dt>
-            <dd className="tabular">{fmtInt(meta?.syncedVersion ?? 0)}</dd>
+            <dd>{fmtInt(meta?.localVersion ?? 0)}</dd>
+            <dt>Cloud version</dt>
+            <dd>{fmtInt(meta?.syncedVersion ?? 0)}</dd>
           </dl>
-          {meta?.lastError ? <p className="canvas-warn">{meta.lastError}</p> : null}
-          <div className="canvas-row" style={{ marginTop: '0.9rem' }}>
-            {API_BASE ? (
-              <button
-                type="button"
-                className="canvas-btn"
-                onClick={() => void syncNow()}
-                disabled={working}
-              >
-                {working ? 'Working…' : 'Sync now'}
-              </button>
-            ) : null}
-          </div>
-        </section>
-
-        <section className="canvas-section">
-          <h2>Privacy and data</h2>
-          <p className="account-placeholder">
-            This device keeps the working copy in the browser. Cloud backup, when configured, is tied
-            to your Google sign-in. Nothing here is shared with other services.
-          </p>
-          <div className="canvas-row" style={{ marginTop: '0.9rem' }}>
-            <button
-              type="button"
-              className="canvas-btn canvas-btn-quiet"
-              onClick={() => void downloadBackup().then(() => setStatus('Downloaded a complete JSON backup.'))}
-            >
-              Download backup
-            </button>
-            <label className="canvas-file">
-              Restore from file
-              <input
-                type="file"
-                accept="application/json"
-                onChange={(event) => {
-                  const file = event.target.files?.[0]
-                  if (file) void restore(file)
-                  event.target.value = ''
-                }}
-              />
-            </label>
-            <label className="canvas-file">
-              {working ? 'Reading workbook…' : 'Import Excel'}
-              <input
-                type="file"
-                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                disabled={working}
-                onChange={(event) => {
-                  const file = event.target.files?.[0]
-                  if (file) void importHistory(file)
-                  event.target.value = ''
-                }}
-              />
-            </label>
-            <button
-              type="button"
-              className="canvas-btn canvas-btn-quiet"
-              onClick={() =>
-                void requestPersistentStorage().then((granted) =>
-                  setStatus(
-                    granted
-                      ? 'Browser granted persistent storage.'
-                      : 'Browser declined persistent storage — keep downloading backups.',
-                  ),
-                )
-              }
-            >
-              Request persistent storage
-            </button>
-          </div>
-
-          <div className="canvas-danger">
-            <p className="canvas-note" style={{ marginTop: 0 }}>
-              Sign out clears this device copy. Synced cloud data stays with your Google account.
-            </p>
-            <button
-              type="button"
-              className="canvas-btn canvas-btn-danger"
-              onClick={() => {
-                const ok = window.confirm(
-                  'Sign out and clear this device copy? Your synced cloud data stays with your Google account.',
-                )
-                if (ok) void signOut()
-              }}
-            >
-              Sign out
-            </button>
-          </div>
+          {meta?.lastError ? <p className="account-inline-error">{meta.lastError}</p> : null}
+          {API_BASE ? (
+            <Button variant="primary" onClick={() => void syncNow()} disabled={working} className="account-full-button">
+              {working ? 'Syncing' : 'Sync now'}
+            </Button>
+          ) : null}
         </section>
       </div>
-    </CanvasPage>
+
+      <section className="account-section app-panel" aria-labelledby="data-title">
+        <div className="account-section-heading">
+          <p className="app-eyebrow">Storage</p>
+          <h2 id="data-title">Your data</h2>
+        </div>
+        <div className="account-actions">
+          <Button
+            variant="secondary"
+            onClick={() => void downloadBackup().then(() => setStatus('Downloaded a complete JSON backup.'))}
+          >
+            Download backup
+          </Button>
+          <FileAction label="Restore backup" accept="application/json" onFile={restore} />
+          <FileAction
+            label={working ? 'Reading workbook' : 'Import Excel'}
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            disabled={working}
+            onFile={importHistory}
+          />
+          <Button
+            variant="ghost"
+            onClick={() =>
+              void requestPersistentStorage().then((granted) =>
+                setStatus(granted ? 'Persistent browser storage is enabled.' : 'Persistent storage was not granted.'),
+              )
+            }
+          >
+            Keep data on this device
+          </Button>
+        </div>
+
+        <div className="account-danger app-tone-danger">
+          <div>
+            <h3>Sign out on this device</h3>
+            <p>Your local copy is cleared. Synced cloud data remains attached to your account.</p>
+          </div>
+          <Button
+            variant="danger"
+            onClick={() => {
+              const ok = window.confirm('Sign out and clear the Formara data stored on this device?')
+              if (ok) void signOut()
+            }}
+          >
+            Sign out
+          </Button>
+        </div>
+      </section>
+    </div>
   )
 }
 
-function CanvasTextField({
+function FileAction({
+  label,
+  accept,
+  disabled = false,
+  onFile,
+}: {
+  label: string
+  accept: string
+  disabled?: boolean
+  onFile: (file: File) => Promise<void>
+}) {
+  return (
+    <label className={`account-file-button ${disabled ? 'is-disabled' : ''}`}>
+      {label}
+      <input
+        type="file"
+        accept={accept}
+        disabled={disabled}
+        onChange={(event) => {
+          const file = event.target.files?.[0]
+          if (file) void onFile(file)
+          event.target.value = ''
+        }}
+      />
+    </label>
+  )
+}
+
+function TextField({
   label,
   value,
   onCommit,
@@ -313,22 +315,21 @@ function CanvasTextField({
   const dirty = useRef(false)
 
   useEffect(() => {
-    if (dirty.current) return
-    setText(value)
+    if (!dirty.current) setText(value)
   }, [value])
 
   useEffect(() => () => window.clearTimeout(timer.current), [])
 
   const commit = (raw: string) => {
     dirty.current = false
-    const trimmed = raw.trim()
-    onCommit(trimmed === '' ? null : trimmed)
+    onCommit(raw.trim() || null)
   }
 
   return (
-    <label className="glass-tile flex items-center justify-between gap-3 rounded-3xl px-4 py-3.5">
-      <span className="block text-[13px] font-medium text-ink-200">{label}</span>
+    <label className="account-text-field app-inset">
+      <span>{label}</span>
       <input
+        className="app-field"
         type="text"
         value={text}
         placeholder="—"
@@ -343,8 +344,6 @@ function CanvasTextField({
           window.clearTimeout(timer.current)
           commit(event.target.value)
         }}
-        className="canvas-text"
-        style={{ width: '14rem', marginTop: 0, minHeight: '2.25rem' }}
       />
     </label>
   )

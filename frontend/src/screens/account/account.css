@@ -1,23 +1,37 @@
+.account-page {
+  display: grid;
+  gap: 1rem;
+  max-width: 76rem;
+  margin: 0 auto;
+  padding-bottom: 2rem;
+}
+
+.account-status {
+  margin: 0;
+  border-radius: var(--app-radius);
+  padding: 0.75rem 0.9rem;
+  font-size: 0.78rem;
+}
+
 .account-identity {
-  display: flex;
-  gap: 0.85rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.9rem;
   align-items: center;
 }
 
 .account-avatar {
-  display: flex;
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  width: 3.5rem;
+  height: 3.5rem;
   overflow: hidden;
-  border-radius: 99px;
-  background: var(--canvas-ink);
-  color: #f7f6f2;
-  font-family: Archivo, sans-serif;
-  font-size: 1.1rem;
-  font-weight: 600;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--app-ink);
+  color: white;
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
+  font-weight: 700;
 }
 
 .account-avatar img {
@@ -26,52 +40,219 @@
   object-fit: cover;
 }
 
-.account-identity h3 {
+.account-identity-copy h2,
+.account-section-heading h2,
+.account-danger h3 {
   margin: 0;
-  font-size: 1rem;
+  color: var(--app-ink);
+  font-family: var(--font-heading);
+  letter-spacing: 0;
 }
 
-.account-identity p {
-  margin: 0.15rem 0 0;
-  font-size: 13px;
-  color: var(--canvas-muted);
+.account-identity-copy h2 {
+  font-size: 1.05rem;
 }
 
-.account-dl {
+.account-identity-copy p,
+.account-danger p {
+  margin: 0.2rem 0 0;
+  color: var(--app-muted);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.account-sync-summary {
+  display: none;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin: 0;
+}
+
+.account-sync-summary div {
+  min-width: 7rem;
+  border-left: 1px solid var(--app-line);
+  padding-left: 0.8rem;
+}
+
+.account-sync-summary dt,
+.account-detail-list dt {
+  color: var(--app-muted);
+  font-size: 0.68rem;
+}
+
+.account-sync-summary dd,
+.account-detail-list dd {
+  margin: 0.18rem 0 0;
+  color: var(--app-ink);
+  font-family: var(--font-numbers);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.account-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.account-section {
+  min-width: 0;
+}
+
+.account-section-heading {
+  margin-bottom: 0.9rem;
+}
+
+.account-section-heading h2 {
+  margin-top: 0.18rem;
+  font-size: 1.15rem;
+}
+
+.account-fields {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.account-fields .glass-tile {
+  border-radius: 7px;
+  background: var(--app-inset);
+  color: var(--app-ink);
+  box-shadow: inset 0 1px rgb(255 255 255 / 0.9);
+}
+
+.account-fields .text-ink-200,
+.account-fields .text-ink-50 {
+  color: var(--app-ink);
+}
+
+.account-fields .text-ink-400,
+.account-fields .text-ink-500,
+.account-fields .text-ink-600 {
+  color: var(--app-muted);
+}
+
+.account-text-field {
+  display: flex;
+  min-height: 4rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 0.85rem;
+}
+
+.account-text-field > span,
+.account-select-field > span {
+  color: var(--app-ink-soft);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.account-text-field .app-field {
+  width: min(52%, 14rem);
+}
+
+.account-select-field {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.8rem;
+}
+
+.account-select-field .app-field {
+  width: 100%;
+}
+
+.account-detail-list {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 0.4rem 1rem;
-  margin: 0.85rem 0 0;
-  font-size: 13px;
-}
-
-.account-dl dt {
-  color: var(--canvas-muted);
-}
-
-.account-dl dd {
+  gap: 0.6rem 1rem;
   margin: 0;
+}
+
+.account-detail-list dd {
   text-align: right;
 }
 
-.account-placeholder {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.55;
-  color: var(--canvas-muted);
+.account-inline-error {
+  margin: 0.85rem 0 0;
+  color: var(--app-danger);
+  font-size: 0.75rem;
+  line-height: 1.5;
 }
 
-.account-field {
-  margin-top: 0.85rem;
+.account-full-button {
+  width: 100%;
+  margin-top: 1rem;
 }
 
-.account-field:first-child {
-  margin-top: 0;
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
-.account-field span {
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--canvas-muted);
+.account-file-button {
+  display: inline-flex;
+  min-height: 2.75rem;
+  cursor: pointer;
+  align-items: center;
+  border: 1px solid var(--app-line-strong);
+  border-radius: 7px;
+  background: rgb(255 255 255 / 0.72);
+  padding: 0 1rem;
+  color: var(--app-ink);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.account-file-button.is-disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.account-file-button input {
+  display: none;
+}
+
+.account-danger {
+  display: grid;
+  gap: 0.85rem;
+  align-items: center;
+  margin-top: 1rem;
+  border-radius: 7px;
+  padding: 0.9rem;
+}
+
+.account-danger h3 {
+  font-size: 0.92rem;
+}
+
+@media (min-width: 640px) {
+  .account-page {
+    gap: 1.25rem;
+  }
+
+  .account-identity {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .account-sync-summary {
+    display: grid;
+  }
+
+  .account-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .account-text-field:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .account-danger {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+@media (min-width: 900px) {
+  .account-grid {
+    grid-template-columns: minmax(0, 1.65fr) minmax(17rem, 0.8fr);
+  }
 }

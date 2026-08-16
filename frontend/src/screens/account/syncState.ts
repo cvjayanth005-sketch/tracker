@@ -1,4 +1,4 @@
-export type SyncHonesty = 'connected' | 'pending' | 'offline' | 'error'
+export type SyncHonesty = 'connected' | 'pending' | 'offline' | 'error' | 'local'
 
 export function syncHonesty(input: {
   online: boolean
@@ -9,7 +9,7 @@ export function syncHonesty(input: {
 }): { state: SyncHonesty; label: string } {
   if (!input.online) return { state: 'offline', label: 'Offline' }
   if (input.lastError) return { state: 'error', label: 'Error' }
-  if (!input.cloudConfigured) return { state: 'pending', label: 'Pending' }
+  if (!input.cloudConfigured) return { state: 'local', label: 'Local only' }
   if (input.pendingChanges > 0) return { state: 'pending', label: 'Pending' }
   if (input.lastSyncedAt) return { state: 'connected', label: 'Connected' }
   return { state: 'pending', label: 'Pending' }
