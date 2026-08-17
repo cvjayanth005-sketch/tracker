@@ -2,6 +2,15 @@ export const config = {
   runtime: 'edge',
 }
 
+/*
+ * Vercel's edge runtime polyfills `process.env` for reading configured
+ * environment variables, but it is not Node — pulling in `@types/node` for
+ * one global would claim the rest of the Node API surface is available here
+ * too, which it isn't. This declares only the one shape this file actually
+ * uses.
+ */
+declare const process: { env: Record<string, string | undefined> }
+
 function cookieValue(header: string | null, name: string): string {
   if (!header) return ''
   for (const part of header.split(';')) {
