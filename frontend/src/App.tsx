@@ -536,5 +536,26 @@ export default function App() {
     )
   }
 
+  /*
+   * A conflict can also surface from a background sync mid-session, not just
+   * at boot — the previous version only checked at boot, so a conflict that
+   * happened while the app was already open kept failing silently every
+   * retry with nothing ever telling the user. This is reactive to the same
+   * `syncMeta.lastError` autoSync writes, so it appears the moment it
+   * happens rather than waiting for the next cold start.
+   */
+  if (meta?.lastError?.startsWith('Sync conflict')) {
+    return (
+      <AccountSyncGate
+        title={recoveryBusy ? 'Resolving account sync' : 'Choose your account copy'}
+        body="This device and the cloud both changed since your last sync. The server copy is safest, but you can intentionally overwrite it with this device."
+        detail={meta.lastError}
+        onRetry={() => void finishRecovery('retry')}
+        onUseServer={() => void finishRecovery('pull')}
+        onReplaceServer={() => void finishRecovery('replace')}
+      />
+    )
+  }
+
   return <TrackerShell />
 }

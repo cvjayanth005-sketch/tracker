@@ -225,13 +225,22 @@ export function useAutoSync(): void {
   const meta = useSyncMeta()
   const localVersion = meta?.localVersion
   const syncedVersion = meta?.syncedVersion
+  const lastError = meta?.lastError
 
   useEffect(() => {
     if (!API_BASE) return
     if (localVersion === undefined || syncedVersion === undefined) return
     if (localVersion === syncedVersion) return
+    /*
+     * A version conflict fails the same way on every retry until a person
+     * resolves it — the App shell now surfaces that as soon as it happens
+     * (see the `lastError` check in App.tsx), so retrying here in the
+     * background just repeats a known failure silently instead of ever
+     * reaching the person who can actually fix it.
+     */
+    if (lastError?.startsWith('Sync conflict')) return
     scheduleSync(1500)
-  }, [localVersion, syncedVersion])
+  }, [localVersion, syncedVersion, lastError])
 
   useEffect(() => {
     if (!API_BASE) return

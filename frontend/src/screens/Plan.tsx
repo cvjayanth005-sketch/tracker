@@ -16,6 +16,8 @@ import {
   API_BASE,
   downloadBackup,
   importState,
+  pullServerState,
+  replaceServerState,
   requestPersistentStorage,
   sync,
   type StateDocument,
@@ -103,6 +105,19 @@ export default function Plan() {
     } else if (result.status === 'offline') setStatus('Offline — your changes remain on this device.')
     else if (result.status === 'error') setStatus(`Sync failed: ${result.message}`)
     else setStatus('No sync server is configured; download a backup instead.')
+  }
+
+  const resolveConflict = async (side: 'server' | 'device') => {
+    setWorking(true)
+    const result = side === 'server' ? await pullServerState() : await replaceServerState()
+    setWorking(false)
+    if (result.status === 'pulled') setStatus(`Loaded the server copy (version ${result.version}).`)
+    else if (result.status === 'pushed') setStatus(`This device's copy is now the server copy (version ${result.version}).`)
+    else if (result.status === 'conflict') setStatus('The server changed again during this attempt. Try once more.')
+    else if (result.status === 'unauthorized') {
+      setStatus('Session expired. Sign in again.')
+      void signOut()
+    } else setStatus('Could not resolve the conflict. Check your connection and try again.')
   }
 
   const importHistory = async (file: File) => {
@@ -569,6 +584,17 @@ export default function Plan() {
             </>
           ) : null}
         </dl>
+
+        {meta?.lastError?.startsWith('Sync conflict') ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => void resolveConflict('server')} disabled={working}>
+              Use server copy
+            </Button>
+            <Button variant="secondary" onClick={() => void resolveConflict('device')} disabled={working}>
+              Replace server with this device
+            </Button>
+          </div>
+        ) : null}
       </Manage>
     </div>
   )
