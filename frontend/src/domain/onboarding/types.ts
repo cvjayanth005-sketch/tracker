@@ -163,9 +163,27 @@ export interface PreviousPerformance {
   date: LocalDate | null
 }
 
+/**
+ * The split someone is already running, in their own words.
+ *
+ * Asked rather than inferred: a few weeks of partial logs cannot reliably tell
+ * an upper/lower from a full-body programme, and guessing wrong makes every
+ * downstream suggestion look uninformed. `other` is a real answer, not a
+ * fallback — plenty of good programmes do not fit these buckets.
+ */
+export type TrainingSplit =
+  | 'full_body'
+  | 'upper_lower'
+  | 'push_pull_legs'
+  | 'bro_split'
+  | 'other'
+  | 'none'
+
 export interface TrainingChapter {
   experience: TrainingExperience | null
   environment: TrainingEnvironment | null
+  /** What they are training now, before Formara proposes anything. */
+  currentSplit: TrainingSplit | null
   preferredDays: number[]
   sessionMinutes: number | null
   /** Stable ids from the equipment catalogue. Empty means "not answered yet". */

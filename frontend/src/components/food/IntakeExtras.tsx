@@ -16,19 +16,37 @@ export function IntakeExtras({
   waterMl,
   waterTargetMl,
   caffeineMg,
+  caffeineFromMealsMg,
   alcoholUnits,
+  alcoholFromMealsUnits,
   sodiumMg,
+  sodiumFromMealsMg,
   eatingWindow,
 }: {
   date: LocalDate
   waterMl: number | null
   waterTargetMl: number
   caffeineMg: number | null
+  caffeineFromMealsMg: number | null
   alcoholUnits: number | null
+  alcoholFromMealsUnits: number | null
   sodiumMg: number | null
+  sodiumFromMealsMg: number | null
   eatingWindow?: { firstMealTime: string; lastMealTime: string; windowHours: number } | null
 }) {
   const save = (patch: Parameters<typeof upsertLog>[1]) => void upsertLog(date, patch)
+  const saveIntakeTotal = (
+    field: 'caffeineMg' | 'alcoholUnits' | 'sodiumMg',
+    next: number | null,
+    fromMeals: number | null,
+  ) => {
+    // The daily-log column is a manual addition. Meal estimates stay
+    // attributable to their meal, and typing a total here adds only the amount
+    // not already captured from meals. A user cannot accidentally erase the
+    // caffeine or sodium attached to a logged coffee.
+    const manual = next === null ? null : Math.max(0, next - (fromMeals ?? 0))
+    save({ [field]: manual === null || manual <= 0.05 ? null : Math.round(manual * 10) / 10 })
+  }
   const water = waterMl ?? 0
   const pct = waterTargetMl > 0 ? (water / waterTargetMl) * 100 : null
 
@@ -83,9 +101,29 @@ export function IntakeExtras({
       </div>
 
       <div className="mt-3 space-y-2">
-        <NumberField label="Caffeine" value={caffeineMg} unit="mg" inputMode="numeric" onCommit={(v) => save({ caffeineMg: v })} />
-        <NumberField label="Alcohol" value={alcoholUnits} unit="units" onCommit={(v) => save({ alcoholUnits: v })} />
-        <NumberField label="Sodium" value={sodiumMg} unit="mg" inputMode="numeric" onCommit={(v) => save({ sodiumMg: v })} />
+        <NumberField
+          label="Caffeine"
+          value={caffeineMg}
+          unit="mg"
+          inputMode="numeric"
+          {...(caffeineFromMealsMg !== null ? { target: `${Math.round(caffeineFromMealsMg)} mg from logged meals` } : {})}
+          onCommit={(next) => saveIntakeTotal('caffeineMg', next, caffeineFromMealsMg)}
+        />
+        <NumberField
+          label="Alcohol"
+          value={alcoholUnits}
+          unit="units"
+          {...(alcoholFromMealsUnits !== null ? { target: `${alcoholFromMealsUnits} from logged meals` } : {})}
+          onCommit={(next) => saveIntakeTotal('alcoholUnits', next, alcoholFromMealsUnits)}
+        />
+        <NumberField
+          label="Sodium"
+          value={sodiumMg}
+          unit="mg"
+          inputMode="numeric"
+          {...(sodiumFromMealsMg !== null ? { target: `${Math.round(sodiumFromMealsMg)} mg from logged meals` } : {})}
+          onCommit={(next) => saveIntakeTotal('sodiumMg', next, sodiumFromMealsMg)}
+        />
       </div>
     </Card>
   )

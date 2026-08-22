@@ -31,6 +31,9 @@ export interface MealDraft {
   sugarG: number | null
   satFatG: number | null
   micros: Record<string, number> | null
+  caffeineMg: number | null
+  sodiumMg: number | null
+  alcoholUnits: number | null
   notes: string | null
 }
 

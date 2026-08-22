@@ -263,6 +263,9 @@ export async function addMeal(
     sugarG: null,
     satFatG: null,
     micros: null,
+    caffeineMg: null,
+    sodiumMg: null,
+    alcoholUnits: null,
     notes: null,
     source,
     createdAt: stamp,
@@ -328,6 +331,9 @@ export async function addMeals(
     sugarG: null,
     satFatG: null,
     micros: null,
+    caffeineMg: null,
+    sodiumMg: null,
+    alcoholUnits: null,
     notes: null,
     source,
     ...draft,
@@ -364,7 +370,7 @@ export async function favouriteFoods(limit = 12): Promise<SavedFood[]> {
  * skips anything already saved so Recent and Saved don't show duplicates.
  */
 export async function recentMealTemplates(limit = 12): Promise<
-  Array<Pick<Meal, 'name' | 'slot' | 'quantity' | 'unit' | 'calories' | 'proteinG' | 'carbsG' | 'fatG' | 'fiberG' | 'sugarG' | 'satFatG' | 'micros'>>
+  Array<Pick<Meal, 'name' | 'slot' | 'quantity' | 'unit' | 'calories' | 'proteinG' | 'carbsG' | 'fatG' | 'fiberG' | 'sugarG' | 'satFatG' | 'micros' | 'caffeineMg' | 'sodiumMg' | 'alcoholUnits'>>
 > {
   const [meals, saved] = await Promise.all([
     db.meals.orderBy('date').reverse().limit(200).toArray(),
@@ -372,7 +378,7 @@ export async function recentMealTemplates(limit = 12): Promise<
   ])
   const savedNames = new Set(saved.map((food) => food.name.trim().toLowerCase()))
   const seen = new Set<string>()
-  const out: Array<Pick<Meal, 'name' | 'slot' | 'quantity' | 'unit' | 'calories' | 'proteinG' | 'carbsG' | 'fatG' | 'fiberG' | 'sugarG' | 'satFatG' | 'micros'>> = []
+  const out: Array<Pick<Meal, 'name' | 'slot' | 'quantity' | 'unit' | 'calories' | 'proteinG' | 'carbsG' | 'fatG' | 'fiberG' | 'sugarG' | 'satFatG' | 'micros' | 'caffeineMg' | 'sodiumMg' | 'alcoholUnits'>> = []
   for (const meal of meals) {
     const key = meal.name.trim().toLowerCase()
     if (!key || seen.has(key) || savedNames.has(key)) continue
@@ -390,6 +396,9 @@ export async function recentMealTemplates(limit = 12): Promise<
       sugarG: meal.sugarG,
       satFatG: meal.satFatG,
       micros: meal.micros,
+      caffeineMg: meal.caffeineMg,
+      sodiumMg: meal.sodiumMg,
+      alcoholUnits: meal.alcoholUnits,
     })
     if (out.length >= limit) break
   }
@@ -418,6 +427,9 @@ export async function saveFood(
     sugarG: null,
     satFatG: null,
     micros: null,
+    caffeineMg: null,
+    sodiumMg: null,
+    alcoholUnits: null,
     useCount: existing?.useCount ?? 0,
     lastUsedAt: existing?.lastUsedAt ?? null,
     createdAt: existing?.createdAt ?? stamp,
@@ -460,6 +472,9 @@ export async function logSavedFood(
       sugarG: food.sugarG,
       satFatG: food.satFatG,
       micros: food.micros,
+      caffeineMg: food.caffeineMg,
+      sodiumMg: food.sodiumMg,
+      alcoholUnits: food.alcoholUnits,
     },
     'manual',
   )
@@ -470,7 +485,7 @@ export async function logSavedFood(
 /** Log a recent meal template (not yet saved) straight into today. */
 export async function logMealTemplate(
   date: LocalDate,
-  template: Pick<Meal, 'name' | 'slot' | 'quantity' | 'unit' | 'calories' | 'proteinG' | 'carbsG' | 'fatG' | 'fiberG' | 'sugarG' | 'satFatG' | 'micros'>,
+  template: Pick<Meal, 'name' | 'slot' | 'quantity' | 'unit' | 'calories' | 'proteinG' | 'carbsG' | 'fatG' | 'fiberG' | 'sugarG' | 'satFatG' | 'micros' | 'caffeineMg' | 'sodiumMg' | 'alcoholUnits'>,
 ): Promise<void> {
   await addMeal(
     date,
@@ -487,6 +502,9 @@ export async function logMealTemplate(
       sugarG: template.sugarG,
       satFatG: template.satFatG,
       micros: template.micros,
+      caffeineMg: template.caffeineMg,
+      sodiumMg: template.sodiumMg,
+      alcoholUnits: template.alcoholUnits,
     },
     'manual',
   )
@@ -507,6 +525,9 @@ export async function saveMealAsFood(meal: Meal): Promise<SavedFood> {
     sugarG: meal.sugarG,
     satFatG: meal.satFatG,
     micros: meal.micros,
+    caffeineMg: meal.caffeineMg,
+    sodiumMg: meal.sodiumMg,
+    alcoholUnits: meal.alcoholUnits,
   })
 }
 

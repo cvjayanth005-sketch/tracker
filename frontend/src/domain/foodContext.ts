@@ -92,8 +92,11 @@ export interface FoodContext {
       waterMl: number | null
       targetMl: number
       sodiumMg: number | null
+      sodiumFromMealsMg: number | null
       alcoholUnits: number | null
+      alcoholFromMealsUnits: number | null
       caffeineMg: number | null
+      caffeineFromMealsMg: number | null
     }
     /** Meal-timing span from logged clock times. Null until a timed meal exists. */
     eatingWindow: { firstMealTime: string; lastMealTime: string; windowHours: number } | null
@@ -128,6 +131,21 @@ function meanOf(values: Array<number | null>): number | null {
   const known = values.filter((value): value is number => value !== null)
   if (known.length === 0) return null
   return round(known.reduce((sum, value) => sum + value, 0) / known.length)
+}
+
+/** Sum a nutrient only across meals that actually recorded it. */
+function sumMealValues(meals: Meal[], pick: (meal: Meal) => number | null): number | null {
+  const known = meals.flatMap((meal) => {
+    const value = pick(meal)
+    return value === null ? [] : [value]
+  })
+  return known.length === 0 ? null : round(known.reduce((sum, value) => sum + value, 0), 1)
+}
+
+/** Keep "unknown" honest while letting a manual addition extend meal totals. */
+function combineIntake(manual: number | null, fromMeals: number | null): number | null {
+  if (manual === null && fromMeals === null) return null
+  return round((manual ?? 0) + (fromMeals ?? 0), 1)
 }
 
 function macroSplit(proteinG: number | null, carbsG: number | null, fatG: number | null): MacroSplit | null {
@@ -266,6 +284,9 @@ export function buildFoodContext(
   const currentWeight = todayLog?.weightKg ?? profile?.startWeightKg ?? null
   const waterTargetMl = waterTargetForWeight(currentWeight)
   const eatingWindow = computeEatingWindow(todayMeals)
+  const caffeineFromMealsMg = sumMealValues(todayMeals, (meal) => meal.caffeineMg)
+  const sodiumFromMealsMg = sumMealValues(todayMeals, (meal) => meal.sodiumMg)
+  const alcoholFromMealsUnits = sumMealValues(todayMeals, (meal) => meal.alcoholUnits)
 
   const tdee = estimateTdee(today, logs)
   const metabolism =
@@ -339,9 +360,12 @@ export function buildFoodContext(
       hydration: {
         waterMl: todayLog?.waterMl ?? null,
         targetMl: waterTargetMl,
-        sodiumMg: todayLog?.sodiumMg ?? null,
-        alcoholUnits: todayLog?.alcoholUnits ?? null,
-        caffeineMg: todayLog?.caffeineMg ?? null,
+        sodiumMg: combineIntake(todayLog?.sodiumMg ?? null, sodiumFromMealsMg),
+        sodiumFromMealsMg,
+        alcoholUnits: combineIntake(todayLog?.alcoholUnits ?? null, alcoholFromMealsUnits),
+        alcoholFromMealsUnits,
+        caffeineMg: combineIntake(todayLog?.caffeineMg ?? null, caffeineFromMealsMg),
+        caffeineFromMealsMg,
       },
       eatingWindow,
     },

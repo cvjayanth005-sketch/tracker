@@ -48,6 +48,9 @@ function meal(slot: MealSlot, partial: Partial<Meal> = {}): Meal {
     sugarG: null,
     satFatG: null,
     micros: null,
+    caffeineMg: null,
+    sodiumMg: null,
+    alcoholUnits: null,
     notes: null,
     source: 'manual',
     createdAt: STAMP,
@@ -116,6 +119,21 @@ describe('buildFoodContext', () => {
     expect(ctx.observations.some((n) => n.toLowerCase().includes('hydration'))).toBe(true)
     expect(ctx.observations.some((n) => n.toLowerCase().includes('sodium'))).toBe(true)
     expect(ctx.observations.some((n) => n.toLowerCase().includes('alcohol'))).toBe(true)
+  })
+
+  it('adds meal-derived caffeine, sodium, and alcohol to manual daily additions', () => {
+    const log = makeLog('2026-08-15', { caffeineMg: 50, sodiumMg: 100 })
+    const meals = [
+      meal('breakfast', { name: 'coffee', caffeineMg: 95, sodiumMg: 12 }),
+      meal('dinner', { name: 'ramen', sodiumMg: 850, alcoholUnits: 1.2 }),
+    ]
+    const ctx = buildFoodContext(TODAY, phase(), profile(), [log], meals)
+    expect(ctx.today.hydration.caffeineFromMealsMg).toBe(95)
+    expect(ctx.today.hydration.sodiumFromMealsMg).toBe(862)
+    expect(ctx.today.hydration.alcoholFromMealsUnits).toBe(1.2)
+    expect(ctx.today.hydration.caffeineMg).toBe(145)
+    expect(ctx.today.hydration.sodiumMg).toBe(962)
+    expect(ctx.today.hydration.alcoholUnits).toBe(1.2)
   })
 
   it('computes the eating window from timed meals and flags late eating', () => {

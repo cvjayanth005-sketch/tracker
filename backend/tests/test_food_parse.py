@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import httpx
+import pytest
 
 from app.services import (
     FOOD_PARSE_RETRY_MODEL,
@@ -61,6 +62,43 @@ def test_food_parse_uses_groq(monkeypatch) -> None:
     assert result["needsManual"] is False
     assert result["meals"][0]["calories"] == 400
     assert result["meals"][0]["quantity"] == 5
+
+
+def test_normalize_food_parse_keeps_meal_extras_and_normalizes_submacros() -> None:
+    result = normalize_food_parse(
+        {
+            "meals": [
+                {
+                    "name": "latte",
+                    "calories": 180,
+                    "carbsG": 12,
+                    "sugarG": 20,
+                    "fatG": 6,
+                    "satFatG": 9,
+                    "caffeineMg": 95,
+                    "sodiumMg": 160,
+                    "alcoholUnits": 0,
+                }
+            ]
+        },
+        "breakfast",
+        "groq",
+    )
+
+    meal = result["meals"][0]
+    assert meal["caffeineMg"] == 95
+    assert meal["sodiumMg"] == 160
+    assert meal["alcoholUnits"] == 0
+    assert meal["sugarG"] == 12
+    assert meal["satFatG"] == 6
+
+
+@pytest.mark.parametrize("text", ["2 kg uranium", "1 La Ferrari", "one human"])
+def test_food_parse_rejects_non_edible_input_before_calling_ai(monkeypatch, text: str) -> None:
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+
+    with pytest.raises(ValueError, match="edible foods and drinks"):
+        food_parse({"text": text, "defaultSlot": "snack"})
 
 
 def test_food_parse_retries_then_succeeds(monkeypatch) -> None:

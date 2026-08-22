@@ -42,9 +42,12 @@ function blankDraft(slot: MealSlot): MealDraft {
     fatG: null,
     fiberG: null,
     sugarG: null,
-    satFatG: null,
-    micros: null,
-    notes: null,
+  satFatG: null,
+  micros: null,
+  caffeineMg: null,
+  sodiumMg: null,
+  alcoholUnits: null,
+  notes: null,
   }
 }
 
@@ -53,6 +56,12 @@ const MACRO_FIELDS = [
   { key: 'proteinG', ...MACRO.protein },
   { key: 'carbsG', ...MACRO.carbs },
   { key: 'fatG', ...MACRO.fat },
+] as const
+
+const INTAKE_FIELDS = [
+  { key: 'caffeineMg', label: 'Caffeine', unit: 'mg' },
+  { key: 'sodiumMg', label: 'Sodium', unit: 'mg' },
+  { key: 'alcoholUnits', label: 'Alcohol', unit: 'units' },
 ] as const
 
 function SlotPicker({ value, onChange }: { value: MealSlot; onChange: (slot: MealSlot) => void }) {
@@ -160,6 +169,24 @@ function DraftRow({
               className="tabular ml-auto w-14 rounded bg-[var(--app-inset)] px-1.5 py-1 text-center type-caption text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
             />
             <span className="type-caption text-[var(--app-muted)]">g</span>
+          </label>
+        ))}
+      </div>
+      <div className="mt-1.5 grid grid-cols-3 gap-1.5">
+        {INTAKE_FIELDS.map((field) => (
+          <label key={field.key} className="flex min-w-0 items-center gap-1.5 radius-control bg-[var(--app-inset)] px-2 py-1">
+            <span className="min-w-0 flex-1 truncate type-caption font-semibold text-[var(--app-ink-soft)]">
+              {field.label}
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              value={draft[field.key] ?? ''}
+              onChange={(e) => onChange({ [field.key]: num(e.target.value) })}
+              placeholder="—"
+              className="tabular w-12 rounded bg-[var(--app-inset)] px-1 py-1 text-center type-caption text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
+            />
+            <span className="type-caption text-[var(--app-muted)]">{field.unit}</span>
           </label>
         ))}
       </div>
@@ -277,6 +304,9 @@ export function MealLogger({ date }: { date: LocalDate }) {
           sugarG: draft.sugarG,
           satFatG: draft.satFatG,
           micros: draft.micros,
+          caffeineMg: draft.caffeineMg,
+          sodiumMg: draft.sodiumMg,
+          alcoholUnits: draft.alcoholUnits,
           notes: draft.notes,
         })),
         aiParsed ? 'ai' : 'manual',

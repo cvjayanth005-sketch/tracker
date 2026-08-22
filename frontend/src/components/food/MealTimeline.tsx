@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { deleteMeal, saveMealAsFood, updateMeal } from '@/db/repo'
+import { db } from '@/db/database'
 import { Card } from '@/components/ui'
+import { requestUndo } from '@/components/undoBus'
 import { groupMacroTotals, groupMeals, groupName, type MealGroup } from '@/domain/mealGroups'
 import type { Meal } from '@/domain/types'
 import { MACRO, SLOT_META, SLOT_ORDER, SUBMACRO, type SubMacroKey } from './palette'
@@ -11,6 +13,12 @@ const MACRO_CHIPS = [
   { key: 'proteinG', ...MACRO.protein },
   { key: 'carbsG', ...MACRO.carbs },
   { key: 'fatG', ...MACRO.fat },
+] as const
+
+const INTAKE_FIELDS = [
+  { key: 'caffeineMg', label: 'Caffeine', unit: 'mg' },
+  { key: 'sodiumMg', label: 'Sodium', unit: 'mg' },
+  { key: 'alcoholUnits', label: 'Alcohol', unit: 'units' },
 ] as const
 
 function num(raw: string): number | null {
@@ -96,11 +104,47 @@ function MealEditor({ meal, onClose }: { meal: Meal; onClose: () => void }) {
           </label>
         ))}
       </div>
+      <div className="grid grid-cols-3 gap-1.5">
+        {INTAKE_FIELDS.map((field) => (
+          <label key={field.key} className="flex min-w-0 items-center gap-1.5 radius-control bg-[var(--app-inset)] px-2 py-1">
+            <span className="min-w-0 flex-1 truncate type-caption font-semibold text-[var(--app-ink-soft)]">
+              {field.label}
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              defaultValue={meal[field.key] ?? ''}
+              onBlur={(e) => {
+                const next = num(e.target.value)
+                if (next !== (meal[field.key] ?? null)) void updateMeal(meal.id, { [field.key]: next })
+              }}
+              placeholder="—"
+              className="tabular w-12 rounded bg-[var(--app-inset)] px-1 py-1 text-center type-caption text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
+            />
+            <span className="type-caption text-[var(--app-muted)]">{field.unit}</span>
+          </label>
+        ))}
+      </div>
       <MicroFields value={meal.micros} onSet={(key, next) => void updateMeal(meal.id, { micros: setMicro(meal.micros, key, next) })} />
       <div className="flex justify-between pt-0.5">
         <button
           type="button"
-          onClick={() => void deleteMeal(meal.id)}
+          onClick={() => {
+            /*
+             * Capture the row first, then delete, then offer undo. The re-add
+             * uses `db.meals.put` to preserve the original id — going through
+             * `addMeals` would mint a fresh id and the undo would leave a
+             * ghost row instead of restoring the original.
+             */
+            const restored = { ...meal }
+            void deleteMeal(meal.id)
+            requestUndo({
+              message: 'Meal deleted',
+              onUndo: () => {
+                void db.meals.put(restored)
+              },
+            })
+          }}
           className="type-caption font-medium text-alert/80 hover:text-alert"
         >
           Delete meal

@@ -155,6 +155,7 @@ export function emptyDraft(timezone: string | null = null): OnboardingDraft {
     training: {
       experience: null,
       environment: null,
+      currentSplit: null,
       preferredDays: [],
       sessionMinutes: null,
       equipmentIds: [],

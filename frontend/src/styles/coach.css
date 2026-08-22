@@ -1,0 +1,118 @@
+/*
+ * The one persistent Formara Coach, mounted once in the app shell.
+ *
+ * Mobile gets a slim expandable bar above the dock; desktop gets a compact
+ * trigger near the shell's other persistent control (quick log) that opens a
+ * right-anchored side panel rather than a centered dialog, so it reads as
+ * shell chrome, not an interruption.
+ */
+
+.coach-bar {
+  position: fixed;
+  z-index: 44;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--app-line);
+  background-color: var(--app-frost-strong);
+  background-image: var(--app-noise);
+  background-blend-mode: soft-light;
+  color: var(--app-ink);
+  box-shadow: var(--app-shadow);
+}
+
+.coach-bar-icon {
+  display: flex;
+  height: 1.5rem;
+  width: 1.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-pill);
+  background-color: var(--app-ink);
+  color: var(--app-canvas-pure);
+  font-size: 0.625rem;
+  font-weight: 700;
+}
+
+.coach-bar--mobile {
+  /* A real gap above the dock, not just clearance for it — the previous
+     value put the two pills' edges flush against each other. */
+  bottom: max(5.5rem, calc(5.5rem + env(safe-area-inset-bottom) - 0.5rem));
+  left: 0.75rem;
+  right: 0.75rem;
+  height: 2.75rem;
+  padding: 0 0.9rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.coach-bar--desktop {
+  display: none;
+}
+
+.coach-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background-color: rgb(20 20 18 / 0.32);
+  backdrop-filter: blur(2px);
+}
+
+.coach-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 32rem;
+  max-height: 85dvh;
+  overflow: hidden;
+  padding: 1.25rem;
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+  background-color: var(--app-frost-strong);
+  background-image: var(--app-noise);
+  background-blend-mode: soft-light;
+  border: 1px solid var(--app-line);
+  border-bottom: none;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  box-shadow: var(--app-shadow-raised);
+}
+
+@media (min-width: 1024px) {
+  /* Stacked above the quick-log FAB on mobile; on desktop, moved to sit just
+     left of it in the same row instead. */
+  .coach-bar--mobile {
+    display: none;
+  }
+
+  .coach-bar--desktop {
+    display: flex;
+    position: fixed;
+    z-index: 45;
+    top: 1.25rem;
+    right: 10.5rem;
+    height: 2.5rem;
+    padding: 0 1rem;
+    border-radius: var(--radius-pill);
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+
+  .coach-backdrop {
+    align-items: stretch;
+    justify-content: flex-end;
+    background-color: rgb(20 20 18 / 0.18);
+  }
+
+  .coach-panel {
+    max-width: 26rem;
+    max-height: none;
+    margin: 1.25rem;
+    border-radius: var(--radius-panel);
+    border-bottom: 1px solid var(--app-line);
+  }
+}

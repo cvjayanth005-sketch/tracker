@@ -16,6 +16,19 @@ const MACRO_CHIPS = [
   { key: 'fatG', ...MACRO.fat },
 ] as const
 
+function sumMealIntake(meals: Meal[], pick: (meal: Meal) => number | null): number | null {
+  const values = meals.flatMap((meal) => {
+    const value = pick(meal)
+    return value === null ? [] : [value]
+  })
+  return values.length === 0 ? null : Math.round(values.reduce((sum, value) => sum + value, 0) * 10) / 10
+}
+
+function combinedIntake(manual: number | null | undefined, fromMeals: number | null): number | null {
+  if (manual == null && fromMeals === null) return null
+  return Math.round(((manual ?? 0) + (fromMeals ?? 0)) * 10) / 10
+}
+
 /**
  * The food block on a single day. When the day has itemized meals they are the
  * source of truth: macro totals are shown derived (read-only) and the meal list
@@ -36,6 +49,9 @@ export function DayFoodSection({
 }) {
   const hasMeals = meals.length > 0
   const save = (patch: Parameters<typeof upsertLog>[1]) => void upsertLog(date, patch)
+  const caffeineFromMealsMg = sumMealIntake(meals, (meal) => meal.caffeineMg)
+  const sodiumFromMealsMg = sumMealIntake(meals, (meal) => meal.sodiumMg)
+  const alcoholFromMealsUnits = sumMealIntake(meals, (meal) => meal.alcoholUnits)
 
   return (
     <div className="space-y-3">
@@ -97,9 +113,12 @@ export function DayFoodSection({
         date={date}
         waterMl={log?.waterMl ?? null}
         waterTargetMl={waterTargetForWeight(log?.weightKg ?? phase?.startWeightKg ?? null)}
-        caffeineMg={log?.caffeineMg ?? null}
-        alcoholUnits={log?.alcoholUnits ?? null}
-        sodiumMg={log?.sodiumMg ?? null}
+        caffeineMg={combinedIntake(log?.caffeineMg, caffeineFromMealsMg)}
+        caffeineFromMealsMg={caffeineFromMealsMg}
+        alcoholUnits={combinedIntake(log?.alcoholUnits, alcoholFromMealsUnits)}
+        alcoholFromMealsUnits={alcoholFromMealsUnits}
+        sodiumMg={combinedIntake(log?.sodiumMg, sodiumFromMealsMg)}
+        sodiumFromMealsMg={sodiumFromMealsMg}
         eatingWindow={computeEatingWindow(meals)}
       />
     </div>

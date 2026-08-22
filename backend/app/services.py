@@ -1009,6 +1009,9 @@ _MEAL_ITEM_PROPERTIES: dict[str, Any] = {
     "fiberG": _NULL_NUMBER,
     "sugarG": _NULL_NUMBER,
     "satFatG": _NULL_NUMBER,
+    "caffeineMg": _NULL_NUMBER,
+    "sodiumMg": _NULL_NUMBER,
+    "alcoholUnits": _NULL_NUMBER,
     "micros": {
         "anyOf": [
             {
@@ -1046,7 +1049,15 @@ def _macro(value: Any, hi: float) -> float | None:
     if value is None:
         return None
     try:
-        parsed = float(str(value).replace("g", "").replace("kcal", "").strip())
+        parsed = float(
+            str(value)
+            .replace("kcal", "")
+            .replace("mg", "")
+            .replace("units", "")
+            .replace("unit", "")
+            .replace("g", "")
+            .strip()
+        )
     except (TypeError, ValueError):
         return None
     if parsed != parsed or parsed < 0:  # reject NaN / negatives
@@ -1066,6 +1077,31 @@ def _micros(value: Any) -> dict[str, float] | None:
     return out or None
 
 
+# This is deliberately a narrow block-list, not an "approved foods" list: food
+# vocabulary is culturally vast, while these terms are unambiguously not food or
+# drink in the meal-logging context. The same rule is applied before the model
+# is called and to model output as a second line of defence.
+_NON_FOOD_RE = re.compile(
+    r"\b(?:human|person|people|corpse|cadaver|uranium|plutonium|radium|asbestos|mercury|"
+    r"ferrari|lamborghini|vehicle|car|motorcycle|bicycle|laptop|phone|firearm|gun|ammunition)\b",
+    re.IGNORECASE,
+)
+
+
+def non_food_term(value: str) -> str | None:
+    match = _NON_FOOD_RE.search(value)
+    return match.group(0).lower() if match else None
+
+
+def validate_food_text(value: str) -> None:
+    term = non_food_term(value)
+    if term:
+        raise ValueError(
+            f"I can estimate edible foods and drinks, not {term}. "
+            "Please describe something you ate or drank."
+        )
+
+
 def normalize_food_parse(raw: dict[str, Any], default_slot: str, provider: str) -> dict[str, Any]:
     """Coerce the model's JSON into safe, clamped meal drafts the UI can render."""
     slot = default_slot if default_slot in MEAL_SLOTS else "snack"
@@ -1075,19 +1111,23 @@ def normalize_food_parse(raw: dict[str, Any], default_slot: str, provider: str) 
         if not isinstance(item, dict):
             continue
         name = str(item.get("name", "")).strip()[:160]
-        if not name:
+        if not name or non_food_term(name):
             continue
         item_slot = item.get("slot")
         time_raw = str(item.get("time", "") or "").strip()[:5] or None
         unit_raw = str(item.get("unit", "") or "").strip()[:16] or None
         confidence = item.get("confidence")
         calories = _macro(item.get("calories"), 6000)
+        carbs = _macro(item.get("carbsG"), 900)
+        fat = _macro(item.get("fatG"), 500)
+        sugar = _macro(item.get("sugarG"), 900)
+        sat_fat = _macro(item.get("satFatG"), 500)
         meals.append(
             {
                 "slot": item_slot if item_slot in MEAL_SLOTS else slot,
                 "name": name,
                 "time": time_raw,
-                "quantity": _macro(item.get("quantity"), 100000),
+                "quantity": _macro(item.get("quantity"), 10000),
                 "unit": unit_raw,
                 "calories": calories,
                 # Uncertainty the model reports, so the UI can flag shaky items.
@@ -1095,12 +1135,15 @@ def normalize_food_parse(raw: dict[str, Any], default_slot: str, provider: str) 
                 "caloriesLow": _macro(item.get("caloriesLow"), 6000),
                 "caloriesHigh": _macro(item.get("caloriesHigh"), 6000),
                 "proteinG": _macro(item.get("proteinG"), 500),
-                "carbsG": _macro(item.get("carbsG"), 900),
-                "fatG": _macro(item.get("fatG"), 500),
+                "carbsG": carbs,
+                "fatG": fat,
                 "fiberG": _macro(item.get("fiberG"), 200),
-                "sugarG": _macro(item.get("sugarG"), 900),
-                "satFatG": _macro(item.get("satFatG"), 500),
+                "sugarG": min(sugar, carbs) if sugar is not None and carbs is not None else sugar,
+                "satFatG": min(sat_fat, fat) if sat_fat is not None and fat is not None else sat_fat,
                 "micros": _micros(item.get("micros")),
+                "caffeineMg": _macro(item.get("caffeineMg"), 1000),
+                "sodiumMg": _macro(item.get("sodiumMg"), 15000),
+                "alcoholUnits": _macro(item.get("alcoholUnits"), 20),
                 "notes": (str(item.get("notes", "")).strip()[:240] or None),
             }
         )
@@ -1187,9 +1230,13 @@ def request_groq_food_parse(text: str, default_slot: str, api_key: str, model: s
                     "time is 24h HH:mm or null. quantity is the numeric portion and unit its measure "
                     "(g, ml, piece, cup, tbsp, serving); estimate a sensible portion when unstated. "
                     "Macros are grams; calories are kcal; use realistic estimates for that portion and null when a "
-                    "food gives no basis to estimate. sugarG is the sugar within carbsG and satFatG the saturated "
+                    "food gives no basis to estimate. Only return edible food or drinks; reject non-food objects, "
+                    "vehicles, toxic materials, and people by returning an empty meals list with a short summary. "
+                    "sugarG is the sugar within carbsG and satFatG the saturated "
                     "fat within fatG (each <= its parent). micros may include potassiumMg, cholesterolMg, "
                     "calciumMg, ironMg, vitaminCMg, vitaminDMcg; use null for unknowns. "
+                    "caffeineMg, sodiumMg, and alcoholUnits describe only that item; use null when unknown rather "
+                    "than guessing. "
                     "caloriesLow/caloriesHigh bound a plausible calorie range. confidence is high, medium, or low "
                     "(vague or restaurant/homemade dishes are lower). "
                     "Include cooking fats — oil, butter, dressing, sauce — in calories and fat even when unstated, and note it. "
@@ -1253,6 +1300,9 @@ def fallback_food_parse(text: str, default_slot: str) -> dict[str, Any]:
             "sugarG": None,
             "satFatG": None,
             "micros": None,
+            "caffeineMg": None,
+            "sodiumMg": None,
+            "alcoholUnits": None,
             "notes": None,
         }
         for name in (names or [text.strip()[:160]])
@@ -1270,6 +1320,7 @@ def food_parse(payload: dict[str, Any]) -> dict[str, Any]:
     default_slot = str(payload.get("defaultSlot", "snack"))
     if not text:
         raise ValueError("Describe what you ate first.")
+    validate_food_text(text)
     groq_key = os.environ.get("GROQ_API_KEY")
     groq_model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
     if not groq_key:

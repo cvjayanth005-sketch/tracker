@@ -11,14 +11,21 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { allExercises, recentSessions, upsertLog } from '@/db/repo'
+import { allExercises, recentSessions, upsertExercise, upsertLog } from '@/db/repo'
 import { dayOfWeek, daysBetween, formatShort, weekdayName } from '@/domain/date'
 import { outcomeFor } from '@/domain/compliance'
 import { sessionVolume } from '@/domain/progression'
+import { computeMuscleMetrics } from '@/domain/muscleVolume'
+import { MuscleVolumeWheel } from '@/components/activity/MuscleVolumeWheel'
+import { ProgressionCard } from '@/components/activity/ProgressionCard'
+import { buildGainsSuggestion, groupProgression } from '@/domain/gainsSuggestion'
+import '@/styles/progression.css'
 import { useDashboard } from '@/hooks/useDashboard'
-import { CoachChatButton } from '@/components/CoachChatButton'
+import { AdaptiveReadinessPanel } from '@/components/activity/AdaptiveReadinessPanel'
+import { useAdaptiveSession } from '@/hooks/useAdaptiveSession'
 import { SleepScoreCard } from '@/components/SleepScoreCard'
-import { Card, EmptyState, Meter, PageHeader, Pill, SectionTitle, Stat } from '@/components/ui'
+import { Card, Meter, PageHeader, Pill, SectionTitle, Stat } from '@/components/ui'
+import { Skeleton, SkeletonPanel } from '@/components/Skeleton'
 import { statInt, statVal } from '@/components/format'
 import { lastSevenDates } from '@/components/SevenDayBars'
 import type { DailyLog, DaySchedule, Exercise, LocalDate, Phase } from '@/domain/types'
@@ -35,13 +42,6 @@ const TONE_GLOW = {
   info: 'rgb(0 240 255 / 0.25)',
   warn: 'rgb(255 225 0 / 0.23)',
 } as const
-
-const ACTIVITY_COACH_PROMPTS = [
-  'Build my next workout',
-  'Should I increase any lifts?',
-  'Check my recovery before training',
-  'Adjust this week after missed work',
-] as const
 
 function scheduleLabel(day: DaySchedule): string {
   const strength = day.gym ? day.sessionType : 'Rest'
@@ -630,6 +630,7 @@ export default function Activity() {
   const sessions = useLiveQuery(() => recentSessions(60), [], [])
   const exercises = useLiveQuery(() => allExercises(), [], [] as Exercise[])
   const [selectedDate, setSelectedDate] = useState<LocalDate>(today)
+  const adaptive = useAdaptiveSession()
 
   const dates = useMemo(() => lastSevenDates(today), [today])
   const scheduled = useMemo(
@@ -659,8 +660,70 @@ export default function Activity() {
     })
   }, [dates, sessions, today])
 
+  const [applyingSuggestion, setApplyingSuggestion] = useState(false)
+
+  const progressionGroups = useMemo(
+    () => groupProgression(adaptive.exercises, adaptive.history),
+    [adaptive.exercises, adaptive.history],
+  )
+
+  const muscleMetrics = useMemo(
+    () => computeMuscleMetrics(sessions ?? [], exercises ?? [], today, 30),
+    [sessions, exercises, today],
+  )
+
+  const gainsSuggestion = useMemo(
+    () =>
+      buildGainsSuggestion({
+        exercises: adaptive.exercises,
+        history: adaptive.history,
+        volume: muscleMetrics.volume,
+      }),
+    [adaptive.exercises, adaptive.history, muscleMetrics.volume],
+  )
+
+  /*
+   * The only suggestion the app will act on directly, and it still only ever
+   * changes the target set count — never the load, which is a judgement the
+   * lifter makes with the bar in their hands.
+   */
+  const applyVolumeSuggestion = async (exerciseIds: string[]) => {
+    setApplyingSuggestion(true)
+    try {
+      for (const id of exerciseIds) {
+        const exercise = adaptive.exercises.find((candidate) => candidate.id === id)
+        if (!exercise) continue
+        await upsertExercise({ ...exercise, targetSets: exercise.targetSets + 1 })
+      }
+    } finally {
+      setApplyingSuggestion(false)
+    }
+  }
+
   if (!phase || !settings) {
-    return <EmptyState title="Setting up" body="Preparing your local database." />
+    return (
+      <div className="space-y-4 pb-4">
+        <SkeletonPanel label="Loading today's training">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="mt-3 h-8 w-48" />
+          <Skeleton className="mt-3 h-24 w-full" />
+        </SkeletonPanel>
+        <div className="grid gap-3 xl:grid-cols-2">
+          <SkeletonPanel label="Loading week split">
+            <Skeleton className="h-4 w-24" />
+            <div className="mt-3 grid grid-cols-7 gap-1.5">
+              {Array.from({ length: 7 }).map((_, i) => (
+                <Skeleton key={i} className="h-20 w-full" />
+              ))}
+            </div>
+          </SkeletonPanel>
+          <SkeletonPanel label="Loading readiness">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="mt-3 h-24 w-full" />
+          </SkeletonPanel>
+        </div>
+      </div>
+    )
   }
 
   const steps = dates.map((date) => ({ date, value: index.get(date)?.steps ?? null }))
@@ -747,7 +810,18 @@ export default function Activity() {
             />
           </Card>
 
-          <CoachChatButton placement="card" starters={ACTIVITY_COACH_PROMPTS} fillHeight />
+          <Card className="xl:flex-1">
+            <AdaptiveReadinessPanel
+              log={adaptive.dash.todayLog}
+              prescription={adaptive.adaptiveSession}
+              targetSleepHours={adaptive.dash.phase?.sleepHours ?? null}
+              scheduled={Boolean(adaptive.todaySchedule?.gym)}
+              workoutFinished={Boolean(adaptive.todayWorkout?.finishedAt)}
+              workoutStarted={adaptive.todaySetCount > 0}
+              onSave={(patch) => void upsertLog(adaptive.dash.today, patch)}
+              onApply={() => void adaptive.applyAdaptiveSession()}
+            />
+          </Card>
         </div>
 
         <div className="min-w-0 space-y-4">
@@ -854,29 +928,44 @@ export default function Activity() {
         </Card>
       </div>
 
-      <div className="mt-4">
-        <div>
-          <SectionTitle>Strength Progress</SectionTitle>
-          <Card>
-            <div className="space-y-3">
-              {training.map((week) => (
-                <div key={week.label}>
-                  <div className="mb-1 flex items-center justify-between type-caption">
-                    <span className="text-[var(--app-ink-soft)]">{week.label}</span>
-                    <span className="tabular text-[var(--app-ink)]">
-                      {week.sessions} session{week.sessions === 1 ? '' : 's'}
-                      <span className="text-[var(--app-muted)]">
-                        {' '}
-                        · {Math.round(week.volume).toLocaleString()} kg·reps
-                      </span>
+      <SectionTitle>Strength</SectionTitle>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <MuscleVolumeWheel metrics={muscleMetrics} windowLabel="in the last 30 days" />
+        </Card>
+
+        <Card>
+          <div className="type-caption font-semibold text-[var(--app-ink)]">Progression</div>
+          <div className="mt-3">
+            <ProgressionCard
+              groups={progressionGroups}
+              suggestion={gainsSuggestion}
+              applying={applyingSuggestion}
+              onApplySuggestion={(ids) => void applyVolumeSuggestion(ids)}
+            />
+          </div>
+        </Card>
+
+        <Card>
+          <div className="type-caption font-semibold text-[var(--app-ink)]">Strength progress</div>
+          <div className="mt-3 space-y-3">
+            {training.map((week) => (
+              <div key={week.label}>
+                <div className="mb-1 flex items-center justify-between type-caption">
+                  <span className="text-[var(--app-ink-soft)]">{week.label}</span>
+                  <span className="tabular text-[var(--app-ink)]">
+                    {week.sessions} session{week.sessions === 1 ? '' : 's'}
+                    <span className="text-[var(--app-muted)]">
+                      {' '}
+                      · {Math.round(week.volume).toLocaleString()} kg·reps
                     </span>
-                  </div>
-                  <Meter value={Math.min(100, (week.sessions / 4) * 100)} tone="accent" />
+                  </span>
                 </div>
-              ))}
-            </div>
-          </Card>
-        </div>
+                <Meter value={Math.min(100, (week.sessions / 4) * 100)} tone="accent" />
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
     </div>
   )

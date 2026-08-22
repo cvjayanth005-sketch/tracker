@@ -252,6 +252,21 @@ export class TrackerDb extends Dexie {
      * and `onboardingCompleted` already tells us they do not need one.
      */
     this.version(18).stores({ onboardingDrafts: 'id' })
+    // Meal-level stimulant, sodium, and alcohol estimates. DailyLog retains
+    // manual additions; FoodContext combines both sources into the displayed
+    // total so a parsed coffee immediately appears in the extras panel.
+    this.version(19).upgrade(async (tx) => {
+      await tx.table<Meal, 'id'>('meals').toCollection().modify((meal) => {
+        meal.caffeineMg ??= null
+        meal.sodiumMg ??= null
+        meal.alcoholUnits ??= null
+      })
+      await tx.table<SavedFood, 'id'>('foods').toCollection().modify((food) => {
+        food.caffeineMg ??= null
+        food.sodiumMg ??= null
+        food.alcoholUnits ??= null
+      })
+    })
   }
 }
 

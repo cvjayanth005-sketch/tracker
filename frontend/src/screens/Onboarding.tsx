@@ -700,6 +700,25 @@ function StepFields({
               { value: 'custom', label: 'Custom setup' },
             ]}
           />
+          {/*
+            Asked outright rather than inferred: a few weeks of partial logs
+            cannot reliably distinguish an upper/lower from a full-body
+            programme, and guessing wrong makes every training suggestion look
+            uninformed. Editable later from Plan → Training.
+          */}
+          <ChoiceRows
+            label="Current split"
+            value={draft.training.currentSplit}
+            onChange={(currentSplit) => update('training', { currentSplit })}
+            options={[
+              { value: 'full_body', label: 'Full body every session' },
+              { value: 'upper_lower', label: 'Upper / lower' },
+              { value: 'push_pull_legs', label: 'Push / pull / legs' },
+              { value: 'bro_split', label: 'One body part per day' },
+              { value: 'other', label: 'Something else' },
+              { value: 'none', label: 'Not training regularly yet' },
+            ]}
+          />
         </div>
       )
 

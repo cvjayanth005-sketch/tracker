@@ -1,0 +1,241 @@
+/*
+ * Scroll-responsive bottom chrome.
+ *
+ * Expanded (only at the very top of a screen) the dock is a full pill with
+ * four labelled tabs. Scrolled away from the top, it clips down to a single
+ * Today circle — its left edge stays put while the right edge travels, so
+ * the two states are one object growing and shrinking rather than two
+ * different controls trading places. The plus button holds the right end of
+ * the row in both states and never moves.
+ *
+ * The whole thing is one element morphing rather than a pair crossfading:
+ * React unmounts whichever half of a conditional is not rendered, and an
+ * unmounted element cannot be transitioned no matter what the CSS says.
+ */
+
+:root {
+  --chrome-row-height: 3.25rem;
+  /* Long, soft-landing curve. Perceived plushness comes from the shape of
+     the deceleration far more than from the duration — a fast ease-out still
+     reads as snappy even stretched out to most of a second. */
+  --ease-plush: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-plush: 720ms;
+}
+
+.app-mobile-nav--with-plus {
+  align-items: center;
+  /* Left-anchored so the dock's own left edge is the fixed point of the
+     morph and only its right edge sweeps. */
+  justify-content: flex-start;
+  gap: 0.625rem;
+  /* The fixed nav spans the full viewport width. Let its empty middle pass
+     taps through to the compact Coach bar; only the actual controls opt back
+     into pointer handling below. */
+  pointer-events: none;
+}
+
+/*
+ * Flex rather than the base four-column grid: collapsed, the trailing tabs
+ * have to give up their width entirely and be clipped, which a fixed
+ * four-track grid cannot express — every column would just squeeze.
+ */
+.app-mobile-nav--with-plus .app-mobile-tabs {
+  display: flex;
+  width: auto;
+  flex: 1;
+  min-width: 0;
+  max-width: 30rem;
+  overflow: hidden;
+  pointer-events: auto;
+  transition:
+    flex-grow var(--duration-plush) var(--ease-plush),
+    max-width var(--duration-plush) var(--ease-plush),
+    padding var(--duration-plush) var(--ease-plush);
+}
+
+.app-mobile-nav--with-plus .app-mobile-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transition:
+    flex var(--duration-plush) var(--ease-plush),
+    opacity calc(var(--duration-plush) * 0.5) var(--ease-plush),
+    padding var(--duration-plush) var(--ease-plush);
+}
+
+/* --- Collapsed ---------------------------------------------------------- */
+
+.app-mobile-nav--with-plus.is-chrome-collapsed .app-mobile-tabs {
+  flex-grow: 0;
+  /* Exactly the circle's width, so the pill's right edge lands flush on the
+     Today icon rather than leaving a sliver of empty track. Height is pinned
+     to the same value and the pill's inner padding drops to zero — otherwise
+     that padding adds to the tab's own height and the "circle" comes out as
+     a tall oval. */
+  max-width: var(--chrome-row-height);
+  min-width: var(--chrome-row-height);
+  height: var(--chrome-row-height);
+  box-sizing: border-box;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.app-mobile-nav--with-plus.is-chrome-collapsed .app-mobile-tab {
+  /* Today fills the circle; the rest collapse to zero width and are clipped
+     by the container's overflow. */
+  flex: 0 0 100%;
+}
+
+.app-mobile-nav--with-plus.is-chrome-collapsed .app-mobile-tab:first-child {
+  /* The hidden Today label must not keep occupying flex space, otherwise the
+     icon remains centred as part of an invisible icon-and-label group. */
+  gap: 0;
+}
+
+/* Today is the first entry in TABS; matching on position rather than on the
+   rendered href keeps this from silently breaking if the route changes. */
+.app-mobile-nav--with-plus.is-chrome-collapsed .app-mobile-tab:not(:first-child) {
+  flex: 0 0 0;
+  padding: 0;
+  opacity: 0;
+}
+
+/* Labels are the first thing to go: they read as clutter long before the
+   icons stop being useful. */
+.app-mobile-nav--with-plus.is-chrome-collapsed .app-mobile-tab span {
+  width: 0;
+  min-width: 0;
+  flex: 0 0 0;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.app-mobile-nav--with-plus.is-chrome-collapsed .app-mobile-tab.is-active {
+  /* The active highlight would draw a green pill inside the collapsed
+     circle; the circle itself is the indicator at this size. */
+  background: transparent;
+  border-color: transparent;
+}
+
+/* --- The plus ----------------------------------------------------------- */
+
+.app-mobile-nav-plus {
+  display: flex;
+  height: var(--chrome-row-height);
+  width: var(--chrome-row-height);
+  flex-shrink: 0;
+  /* Pushed to the far right in both states, so the dock growing toward it
+     never shifts it. */
+  margin-left: auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-pill);
+  border: none;
+  background-color: var(--app-ink);
+  color: var(--app-canvas-pure);
+  box-shadow: var(--app-shadow-raised);
+  pointer-events: auto;
+}
+
+/* --- The coach bar ----------------------------------------------------- */
+
+/*
+ * Expanded, the coach bar is its own full-width row sitting above the dock.
+ * Collapsed, it drops down onto the dock's row and takes the space the three
+ * hidden tabs gave up — so the compact state is the single row of
+ * [Today] [ask Formara] [+] rather than a shrunken dock with a bar stranded
+ * above it. It stays a separate fixed element and simply agrees with the nav
+ * on geometry: same bottom, same height, insets equal to a circle plus the
+ * row's gap on each side.
+ */
+.coach-bar--mobile {
+  transition:
+    height var(--duration-plush) var(--ease-plush),
+    bottom var(--duration-plush) var(--ease-plush),
+    left var(--duration-plush) var(--ease-plush),
+    right var(--duration-plush) var(--ease-plush),
+    opacity var(--duration-plush) var(--ease-plush);
+}
+
+.coach-bar--mobile.is-chrome-collapsed {
+  /* The nav controls stay above the Coach pill throughout its 720ms move, so
+     its transitioning box can never steal the quick-log button's tap. */
+  z-index: 39;
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  left: calc(0.75rem + var(--chrome-row-height) + 0.625rem);
+  right: calc(0.75rem + var(--chrome-row-height) + 0.625rem);
+  height: var(--chrome-row-height);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-mobile-nav--with-plus .app-mobile-tabs,
+  .app-mobile-nav--with-plus .app-mobile-tab,
+  .coach-bar--mobile {
+    transition: none;
+  }
+}
+
+/*
+ * Undo toast — one slot, above the dock, quiet by default.
+ * Uses the panel material so it feels of a piece with everything else,
+ * rather than a bright popup that reads as an alert.
+ */
+.undo-toast {
+  position: fixed;
+  z-index: 55;
+  bottom: calc(var(--chrome-row-bottom) + var(--chrome-row-height) + 0.75rem);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.55rem 0.55rem 0.9rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--app-line);
+  background-color: var(--app-frost-strong);
+  color: var(--app-ink);
+  box-shadow: var(--app-shadow-raised);
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  animation: undo-toast-in var(--duration-plush) var(--ease-plush);
+}
+
+.undo-toast-message {
+  font-size: 0.8125rem;
+}
+
+.undo-toast-action {
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--app-accent-solid);
+  color: var(--app-accent-ink);
+  padding: 0.4rem 0.9rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@keyframes undo-toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@media (min-width: 1024px) {
+  .undo-toast {
+    bottom: 1.25rem;
+    left: 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .undo-toast {
+    animation: none;
+  }
+}

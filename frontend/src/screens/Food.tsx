@@ -6,7 +6,8 @@ import { outcomeFor } from '@/domain/compliance'
 import { buildConsistencyStrip, buildFoodContext } from '@/domain/foodContext'
 import { addDays, formatShort } from '@/domain/date'
 import { useDashboard } from '@/hooks/useDashboard'
-import { Card, EmptyState, Meter, PageHeader, Pill, SectionTitle } from '@/components/ui'
+import { Card, Meter, PageHeader, Pill, SectionTitle } from '@/components/ui'
+import { Skeleton, SkeletonPanel } from '@/components/Skeleton'
 import { lastSevenDates } from '@/components/SevenDayBars'
 import { AdaptiveTDEE } from '@/components/food/AdaptiveTDEE'
 import { IntakeExtras } from '@/components/food/IntakeExtras'
@@ -40,7 +41,25 @@ export default function Food() {
   )
 
   if (!phase || !settings || !food) {
-    return <EmptyState title="Setting up" body="Preparing your local database." />
+    return (
+      <div className="space-y-4 pb-6">
+        <SkeletonPanel label="Loading logger">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="mt-3 h-14 w-full" />
+          <Skeleton className="mt-2 h-24 w-full" />
+        </SkeletonPanel>
+        <div className="grid gap-3 lg:grid-cols-2">
+          <SkeletonPanel label="Loading macros">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="mt-3 h-36 w-full" />
+          </SkeletonPanel>
+          <SkeletonPanel label="Loading intake">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="mt-3 h-36 w-full" />
+          </SkeletonPanel>
+        </div>
+      </div>
+    )
   }
 
   const loggedDays = dates.filter((date) => {
@@ -58,8 +77,10 @@ export default function Food() {
         action={<Pill tone={loggedDays >= 5 ? 'good' : 'info'}>{loggedDays}/7 logged</Pill>}
       />
 
-      <div className="mt-4">
-        <NutritionCoachCard food={food} />
+      <SectionTitle>Log a meal</SectionTitle>
+      <div className="space-y-3">
+        <QuickAddFoods date={today} />
+        <MealLogger date={today} />
       </div>
 
       <SectionTitle>Today</SectionTitle>
@@ -70,16 +91,17 @@ export default function Food() {
           waterMl={food.today.hydration.waterMl}
           waterTargetMl={food.today.hydration.targetMl}
           caffeineMg={food.today.hydration.caffeineMg}
+          caffeineFromMealsMg={food.today.hydration.caffeineFromMealsMg}
           alcoholUnits={food.today.hydration.alcoholUnits}
+          alcoholFromMealsUnits={food.today.hydration.alcoholFromMealsUnits}
           sodiumMg={food.today.hydration.sodiumMg}
+          sodiumFromMealsMg={food.today.hydration.sodiumFromMealsMg}
           eatingWindow={food.today.eatingWindow}
         />
       </div>
 
-      <SectionTitle>Log a meal</SectionTitle>
-      <div className="space-y-3">
-        <QuickAddFoods date={today} />
-        <MealLogger date={today} />
+      <div className="mt-4">
+        <NutritionCoachCard food={food} />
       </div>
 
       <SectionTitle

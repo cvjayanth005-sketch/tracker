@@ -14,6 +14,7 @@ import { NumberField } from '@/components/fields'
 import { fmt } from '@/components/format'
 import { formatShort } from '@/domain/date'
 import type { Phase } from '@/domain/types'
+import { SPLIT_LABEL, describeSchedule } from './plan/training'
 import type { PhaseReview, Recommendation } from '@/domain/rules'
 import { useDashboard } from '@/hooks/useDashboard'
 import {
@@ -141,6 +142,14 @@ export default function Plan() {
           </div>
           <PhaseRoadmap phases={phases} activeId={phase.id} />
         </div>
+      </section>
+
+      <section className="plan-section" aria-labelledby="training-plan-title">
+        <div className="plan-section-heading">
+          <p className="app-eyebrow">Training</p>
+          <h2 id="training-plan-title">How your week is built</h2>
+        </div>
+        <TrainingPlan phase={phase} />
       </section>
 
       <section className="plan-section" aria-labelledby="manage-plan-title">
@@ -415,6 +424,47 @@ function PhaseRoadmap({ phases, activeId }: { phases: Phase[]; activeId: string 
           )
         })}
       </ol>
+    </div>
+  )
+}
+
+/**
+ * The training half of the plan.
+ *
+ * Plan was nutrition-only — calories, protein, steps, sleep — while the split
+ * and weekly schedule that drive every training decision lived nowhere the
+ * user could see them. This makes Plan the whole programme rather than half
+ * of it, and states the reasoning in plain language rather than presenting the
+ * schedule as a given.
+ */
+function TrainingPlan({ phase }: { phase: Phase }) {
+  const summary = describeSchedule(phase.schedule)
+
+  return (
+    <div className="plan-current-grid">
+      <div className="plan-targets app-panel">
+        <div className="plan-metric-grid">
+          <Metric label="Gym days" value={summary.gymDays} unit="/wk" />
+          <Metric label="Run days" value={summary.runDays} unit="/wk" />
+          <Metric label="Weekly run" value={summary.weeklyRunKm} unit="km" />
+          <Metric label="Rest days" value={summary.restDays} unit="/wk" />
+        </div>
+        <p className="plan-target-note">{summary.rationale}</p>
+      </div>
+
+      <div className="plan-roadmap app-panel">
+        <ol>
+          {phase.schedule.map((day) => (
+            <li key={day.dow} className={day.gym || day.runKm ? 'is-current' : ''}>
+              <span className="plan-roadmap-index">{SPLIT_LABEL[day.dow]}</span>
+              <div>
+                <strong className="capitalize">{day.gym ? day.sessionType : 'Rest'}</strong>
+                <span>{day.runKm ? `${day.runKm} km ${day.runType ?? 'run'}` : 'No run'}</span>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
     </div>
   )
 }

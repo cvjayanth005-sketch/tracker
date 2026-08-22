@@ -6,6 +6,10 @@ import { GoogleSlideSignIn } from '@/components/GoogleSlideSignIn'
 import { BrandIntro } from '@/components/BrandIntro'
 import { hasSeenBrandIntro, markBrandIntroSeen } from '@/components/brandIntroState'
 import { Icon, type IconName } from '@/components/Icon'
+import { QuickAction } from '@/components/QuickAction'
+import { Coach } from '@/components/Coach'
+import { UndoToast } from '@/components/UndoToast'
+import { useScrollCollapse } from '@/hooks/useScrollCollapse'
 import { getSettings } from '@/db/repo'
 import { useLiquidGlass } from '@/hooks/useLiquidGlass'
 import { useOnline, useSyncMeta } from '@/hooks/useDashboard'
@@ -48,8 +52,18 @@ function StatusChip() {
   const meta = useSyncMeta()
   const durableVersion = API_BASE ? meta?.syncedVersion : meta?.backedUpVersion
   const pending = meta ? meta.localVersion - (durableVersion ?? 0) : 0
+  /*
+   * A background sync failure used to be visible ONLY on Plan → sync details,
+   * which meant a device could quietly drift for weeks (the 178-change pileup
+   * happened exactly this way). A conflict has its own full gate; every other
+   * failure surfaces here as an ambient warning chip that stays on screen
+   * until sync succeeds. Nothing to click — the chip is a signal, not a
+   * modal — but at least the user knows something is wrong.
+   */
+  const conflictHandled = meta?.lastError?.startsWith('Sync conflict')
+  const showError = !!meta?.lastError && !conflictHandled
 
-  if (online && pending === 0) return null
+  if (online && pending === 0 && !showError) return null
 
   return (
     /*
@@ -58,11 +72,16 @@ function StatusChip() {
      * and phase live.
      */
     <div className="app-status-position pointer-events-none">
-      <div className="app-status-chip">
+      <div className={`app-status-chip ${showError ? 'is-error' : ''}`}>
         {!online ? (
           <span className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-warn" />
             Offline — saved on this device
+          </span>
+        ) : showError ? (
+          <span className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-alert" />
+            Sync failing — {pending} change{pending === 1 ? '' : 's'} unsent
           </span>
         ) : (
           <span className="flex items-center gap-1.5">
@@ -99,13 +118,13 @@ function SidebarLink({ tab, active }: { tab: (typeof TABS)[number]; active: bool
  * own tab would be worse: they are drill-downs, not peer sections, and a
  * five-item bar on a phone is already crowded.
  */
-const DETAIL_ROUTE_PARENT: Record<string, string> = {
+export const DETAIL_ROUTE_PARENT: Record<string, string> = {
   '/progress': '/',
   '/calendar': '/',
   '/workout': '/activity',
 }
 
-function activeTabPath(pathname: string): string {
+export function activeTabPath(pathname: string): string {
   for (const [detail, parent] of Object.entries(DETAIL_ROUTE_PARENT)) {
     if (pathname === detail || pathname.startsWith(`${detail}/`)) return parent
   }
@@ -180,7 +199,7 @@ function WelcomePage() {
           </div>
         </header>
 
-        <section className="relative mt-2 min-h-[calc(100dvh-6.5rem)] flex-1 overflow-hidden radius-control border border-surface-line bg-surface-raised shadow-[0_24px_80px_-48px_rgba(17,20,17,0.45)]">
+        <section className="formara-welcome-hero relative mt-2 min-h-[calc(100dvh-6.5rem)] flex-1 overflow-hidden radius-control border border-surface-line bg-surface-raised shadow-[0_24px_80px_-48px_rgba(17,20,17,0.45)]">
           {/*
             The LCP element on the one screen that gates the whole app, so it is
             art-directed rather than merely scaled: the landscape frame puts the
@@ -273,6 +292,9 @@ function AccountSyncGate({
   title,
   body,
   detail,
+  serverVersion,
+  localVersion,
+  pendingChanges,
   onRetry,
   onUseServer,
   onReplaceServer,
@@ -280,10 +302,16 @@ function AccountSyncGate({
   title: string
   body: string
   detail?: string | null
+  /** Live version numbers for the preview panel. */
+  serverVersion?: number
+  localVersion?: number
+  /** How many local writes would be uploaded by "replace server". */
+  pendingChanges?: number
   onRetry: () => void
   onUseServer?: () => void
   onReplaceServer?: () => void
 }) {
+  const hasPreview = serverVersion !== undefined && localVersion !== undefined
   return (
     <div className="min-h-dvh">
       <Aurora />
@@ -296,6 +324,31 @@ function AccountSyncGate({
               {detail}
             </div>
           ) : null}
+          {/*
+            Preview before either destructive choice. Blindly tapping "Use
+            server copy" while sitting on 178 pending changes was the exact
+            way real data got lost — the gate should show which side is
+            bigger, and how many local writes disappear if you go the other
+            way, before you commit to either.
+          */}
+          {hasPreview ? (
+            <div className="mt-3 grid grid-cols-2 gap-2 text-left">
+              <div className="radius-control bg-[var(--app-inset)] p-3">
+                <div className="type-micro font-semibold text-[var(--app-muted)]">This device</div>
+                <div className="mt-1 tabular-nums type-metric-sm text-[var(--app-ink)]">v{localVersion}</div>
+                {pendingChanges && pendingChanges > 0 ? (
+                  <div className="mt-0.5 type-caption text-[var(--app-ink-soft)]">
+                    {pendingChanges.toLocaleString()} unsynced change{pendingChanges === 1 ? '' : 's'}
+                  </div>
+                ) : null}
+              </div>
+              <div className="radius-control bg-[var(--app-inset)] p-3">
+                <div className="type-micro font-semibold text-[var(--app-muted)]">Server copy</div>
+                <div className="mt-1 tabular-nums type-metric-sm text-[var(--app-ink)]">v{serverVersion}</div>
+                <div className="mt-0.5 type-caption text-[var(--app-ink-soft)]">Last accepted by the cloud</div>
+              </div>
+            </div>
+          ) : null}
           <div className="mt-4 grid gap-2">
             {onUseServer ? (
               <button
@@ -303,7 +356,9 @@ function AccountSyncGate({
                 onClick={onUseServer}
                 className="radius-control bg-accent px-3 py-2.5 type-caption font-semibold text-ink-950"
               >
-                Use server copy
+                {pendingChanges && pendingChanges > 0
+                  ? `Use server copy (discard ${pendingChanges.toLocaleString()} local)`
+                  : 'Use server copy'}
               </button>
             ) : null}
             {onReplaceServer ? (
@@ -333,6 +388,26 @@ function TrackerShell() {
   useAutoSync()
   const shellLocation = useLocation()
   const mobileTabPath = activeTabPath(shellLocation.pathname)
+  const chromeCollapsed = useScrollCollapse()
+  const [quickActionOpen, setQuickActionOpen] = useState(false)
+  // Collapsing the dock hides every tab but Today, which left no way to reach
+  // the other pages without scrolling back to the top first. Tapping the
+  // collapsed circle now re-opens the full dock instead of navigating, so the
+  // circle behaves like "open the menu" rather than a dead Today link.
+  const [navManuallyOpen, setNavManuallyOpen] = useState(false)
+  const collapsed = chromeCollapsed && !navManuallyOpen
+
+  // Picking a page closes the temporarily-opened menu; scrolling does too, so
+  // it never lingers open over content the user has moved past.
+  useEffect(() => {
+    setNavManuallyOpen(false)
+  }, [shellLocation.pathname])
+  useEffect(() => {
+    if (!navManuallyOpen) return
+    const close = () => setNavManuallyOpen(false)
+    window.addEventListener('scroll', close, { passive: true })
+    return () => window.removeEventListener('scroll', close)
+  }, [navManuallyOpen])
   // The tab bar is the one surface always on screen on mobile, so it is worth
   // the real refraction; content scrolling behind it is what makes it read as
   // glass rather than as a grey bar.
@@ -370,11 +445,19 @@ function TrackerShell() {
         </main>
       </div>
 
-      <nav className="app-mobile-nav" aria-label="Primary navigation">
-        <div
-          ref={tabBarRef}
-          className="app-mobile-tabs"
-        >
+      {/*
+        One dock that morphs rather than two elements swapping: collapsed, it
+        clips down to just the Today icon as a circle; expanded, its right
+        edge travels out to full width and the remaining tabs fade in behind
+        it. A conditional swap could never animate that, because React would
+        unmount whichever side was not showing and there would be no shared
+        element for the transition to interpolate.
+      */}
+      <nav
+        className={`app-mobile-nav app-mobile-nav--with-plus ${collapsed ? 'is-chrome-collapsed' : ''}`}
+        aria-label="Primary navigation"
+      >
+        <div ref={tabBarRef} className="app-mobile-tabs">
           {TABS.map((tab) => {
             /*
               NavLink's own isActive only knows its exact path, so a detail
@@ -391,6 +474,21 @@ function TrackerShell() {
                 to={tab.to}
                 end={tab.to === '/'}
                 className={`app-mobile-tab ${active ? 'is-active' : ''}`}
+                /* Collapsed, the clipped tabs must not stay focusable while
+                   invisible; the visible Today circle stays reachable and
+                   doubles as the control that re-opens the dock. */
+                tabIndex={collapsed && tab.to !== '/' ? -1 : undefined}
+                aria-hidden={collapsed && tab.to !== '/' ? true : undefined}
+                aria-expanded={tab.to === '/' && chromeCollapsed ? !collapsed : undefined}
+                onClick={(event) => {
+                  // While collapsed, the circle opens the dock instead of
+                  // navigating — otherwise there is no way back to the other
+                  // tabs short of scrolling to the very top.
+                  if (collapsed && tab.to === '/') {
+                    event.preventDefault()
+                    setNavManuallyOpen(true)
+                  }
+                }}
               >
                 <Icon name={tab.icon} active={active} />
                 <span>{tab.label}</span>
@@ -398,7 +496,20 @@ function TrackerShell() {
             )
           })}
         </div>
+        <button
+          type="button"
+          onClick={() => setQuickActionOpen(true)}
+          aria-label="Quick log"
+          aria-haspopup="dialog"
+          className="app-mobile-nav-plus motion-press"
+        >
+          <Icon name="plus" className="h-5 w-5" />
+        </button>
       </nav>
+
+      <QuickAction open={quickActionOpen} onOpenChange={setQuickActionOpen} />
+      <Coach collapsed={collapsed} />
+      <UndoToast />
     </div>
   )
 }
@@ -490,6 +601,9 @@ export default function App() {
         title={recoveryBusy ? 'Resolving account sync' : 'Choose your account copy'}
         body="This device and the cloud both changed. The server copy is safest, but you can intentionally overwrite it with this device."
         detail={bootError}
+        serverVersion={bootConflict.serverVersion}
+        localVersion={bootConflict.localVersion}
+        pendingChanges={Math.max(0, bootConflict.localVersion - (meta?.syncedVersion ?? 0))}
         onRetry={() => void finishRecovery('retry')}
         onUseServer={() => void finishRecovery('pull')}
         onReplaceServer={() => void finishRecovery('replace')}
@@ -543,6 +657,38 @@ export default function App() {
         body="Your plan is saved on this device, but the cloud copy has not accepted it yet. Finish this before opening the dashboard."
         detail={bootError ?? meta.lastError}
         onRetry={() => void finishRecovery('retry')}
+      />
+    )
+  }
+
+  /*
+   * A conflict can also surface from a background sync mid-session, not just
+   * at boot — the previous version only checked at boot, so a conflict that
+   * happened while the app was already open kept failing silently every
+   * retry with nothing ever telling the user. This is reactive to the same
+   * `syncMeta.lastError` autoSync writes, so it appears the moment it
+   * happens rather than waiting for the next cold start.
+   */
+  if (meta?.lastError?.startsWith('Sync conflict')) {
+    /*
+     * A mid-session conflict does not carry the server number in the error
+     * message, so parse it if present and otherwise fall back to unknown —
+     * still shows the local side (which is what the user was about to lose
+     * blindly), just without the direct comparison.
+     */
+    const parsed = /server\s+(\d+)/i.exec(meta.lastError)
+    const serverVersion = parsed ? Number(parsed[1]) : null
+    return (
+      <AccountSyncGate
+        title={recoveryBusy ? 'Resolving account sync' : 'Choose your account copy'}
+        body="This device and the cloud both changed since your last sync. The server copy is safest, but you can intentionally overwrite it with this device."
+        detail={meta.lastError}
+        {...(serverVersion !== null ? { serverVersion } : {})}
+        localVersion={meta.localVersion}
+        pendingChanges={Math.max(0, meta.localVersion - meta.syncedVersion)}
+        onRetry={() => void finishRecovery('retry')}
+        onUseServer={() => void finishRecovery('pull')}
+        onReplaceServer={() => void finishRecovery('replace')}
       />
     )
   }

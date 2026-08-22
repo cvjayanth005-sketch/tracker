@@ -65,7 +65,23 @@ export function QuickAddFoods({ date }: { date: LocalDate }) {
 
   const hasFavourites = (favourites ?? []).length > 0
   const hasRecents = (recents ?? []).length > 0
-  if (!hasFavourites && !hasRecents) return null
+  /*
+   * First-time state kept visible instead of nothing at all. Someone with a
+   * blank history should still see the promise — "log a meal, it comes back
+   * as a one-tap chip" — otherwise the feature is invisible until they have
+   * already done the harder version of the same thing.
+   */
+  if (!hasFavourites && !hasRecents) {
+    return (
+      <Card>
+        <div className="type-micro font-semibold text-[var(--app-muted)]">One-tap re-log</div>
+        <p className="mt-1.5 type-caption text-[var(--app-ink-soft)]">
+          After you log a meal it appears here as a chip. Tap once to log it again — same macros,
+          no re-typing.
+        </p>
+      </Card>
+    )
+  }
 
   return (
     <Card>

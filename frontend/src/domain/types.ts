@@ -137,9 +137,9 @@ export interface DailyLog {
   /** Micronutrient totals rolled up from the day's meals. See `Meal.micros`. */
   micros: Record<string, number> | null
   /**
-   * Food intake logged as a running daily total, independent of the meal
-   * rollup. These are the cheap-to-log inputs that let the coach explain scale
-   * moves and hydration without any wearable: water, sodium, alcohol, caffeine.
+   * Water is a running daily total. Sodium, alcohol, and caffeine are manual
+   * additions; FoodContext combines them with the values attached to logged
+   * meals so the displayed daily total stays attributable and editable.
    */
   waterMl: number | null
   sodiumMg: number | null
@@ -215,6 +215,10 @@ export interface Meal {
    * knows can be captured without a schema change. Null = none recorded.
    */
   micros: Record<string, number> | null
+  /** Meal-derived extras, rolled into Food context with any manual daily additions. */
+  caffeineMg: number | null
+  sodiumMg: number | null
+  alcoholUnits: number | null
   notes: string | null
   /** How the macros were captured: hand-entered, or estimated by the AI parser. */
   source: 'manual' | 'ai'
@@ -250,6 +254,9 @@ export interface SavedFood {
   sugarG: number | null
   satFatG: number | null
   micros: Record<string, number> | null
+  caffeineMg: number | null
+  sodiumMg: number | null
+  alcoholUnits: number | null
   useCount: number
   lastUsedAt: Instant | null
   createdAt: Instant

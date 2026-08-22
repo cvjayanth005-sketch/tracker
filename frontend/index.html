@@ -15,6 +15,25 @@
     <meta name="apple-mobile-web-app-title" content="Formara" />
     <meta name="description" content="Your body. Your data. Your next move." />
     <title>Formara</title>
+    <script>
+      /* Resolve and apply the theme before first paint so the page never
+         flashes light on the way to dark (or the reverse). Mirrors the logic
+         in src/theme/theme.ts; kept inline and dependency-free on purpose. */
+      (function () {
+        try {
+          var pref = localStorage.getItem('formara-theme') || 'system'
+          var dark =
+            pref === 'dark' ||
+            (pref === 'system' &&
+              window.matchMedia &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches)
+          var resolved = dark ? 'dark' : 'light'
+          document.documentElement.setAttribute('data-theme', resolved)
+          var meta = document.querySelector('meta[name="theme-color"]')
+          if (meta) meta.setAttribute('content', dark ? '#44444e' : '#fbfcfa')
+        } catch (e) {}
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

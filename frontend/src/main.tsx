@@ -19,6 +19,14 @@ import './index.css'
 import './styles/design-system.css'
 import './styles/typography.css'
 import './styles/foundations.css'
+import './styles/quickAction.css'
+import './styles/coach.css'
+import './styles/shellChrome.css'
+import { initTheme } from '@/theme/theme'
+
+// Re-apply from storage and start the OS-change listener. The pre-paint script
+// in index.html already set the initial theme; this keeps "system" live.
+initTheme()
 
 const updateServiceWorker = registerSW({
   immediate: true,

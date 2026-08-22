@@ -17,6 +17,25 @@ import { Card, EmptyState, PageHeader, Pill, SectionTitle } from '@/components/u
 import type { LocalDate, Phase } from '@/domain/types'
 
 const METRICS: MetricKey[] = ['calories', 'protein', 'steps', 'run', 'gym', 'sleep', 'meals']
+
+/**
+ * A signal is the reading the calendar cell should reflect.
+ *
+ * Adherence rolls every metric into one hit/miss/open dot. That is fine for
+ * "how did I do overall", but every other question — was I training four
+ * times a week last month? did my sleep drift when the phase changed? — is
+ * about a single signal in isolation. Each option here maps to the metric
+ * keys that speak to that signal, and the cell colour reads only those.
+ */
+type Signal = 'adherence' | 'training' | 'sleep' | 'steps' | 'weight'
+
+const SIGNAL_META: Record<Signal, { label: string; metrics: MetricKey[] | null }> = {
+  adherence: { label: 'Adherence', metrics: null },
+  training: { label: 'Training', metrics: ['gym', 'run'] },
+  sleep: { label: 'Sleep', metrics: ['sleep'] },
+  steps: { label: 'Steps', metrics: ['steps'] },
+  weight: { label: 'Weight', metrics: [] },
+}
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -36,10 +55,26 @@ function monthDays(start: LocalDate): LocalDate[] {
   return dateRange(start, asLocalDate(`${year}-${String(month).padStart(2, '0')}-${String(last).padStart(2, '0')}`))
 }
 
-function statusFor(date: LocalDate, phase: Phase, index: ReturnType<typeof indexLogs>, today: LocalDate) {
+function statusFor(
+  date: LocalDate,
+  phase: Phase,
+  index: ReturnType<typeof indexLogs>,
+  today: LocalDate,
+  signal: Signal,
+) {
   const log = index.get(date)
   if (compareDates(date, today) > 0) return 'open'
-  const applicable = METRICS.filter((metric) => outcomeFor(metric, log, phase, date) !== 'notScheduled')
+  /*
+   * Weight is not a "hit/miss" signal — a weigh-in either happened or it
+   * didn't. Represent it as hit-when-logged so the calendar becomes a
+   * weigh-in dot map, matching what someone asking "did I weigh in?" wants
+   * to see.
+   */
+  if (signal === 'weight') {
+    return log?.weightKg != null ? 'hit' : 'open'
+  }
+  const active = signal === 'adherence' ? METRICS : SIGNAL_META[signal].metrics ?? METRICS
+  const applicable = active.filter((metric) => outcomeFor(metric, log, phase, date) !== 'notScheduled')
   const outcomes = applicable.map((metric) => outcomeFor(metric, log, phase, date))
   if (outcomes.some((outcome) => outcome === 'missed')) return 'miss'
   if (outcomes.length > 0 && outcomes.every((outcome) => outcome === 'hit')) return 'hit'
@@ -49,6 +84,7 @@ function statusFor(date: LocalDate, phase: Phase, index: ReturnType<typeof index
 export default function Calendar() {
   const dash = useDashboard(180)
   const [cursor, setCursor] = useState<LocalDate>(() => monthStart(dash.today))
+  const [signal, setSignal] = useState<Signal>('adherence')
   const { settings, phases, index } = dash
   const today = settings ? todayIn(settings.timezone) : dash.today
 
@@ -112,6 +148,33 @@ export default function Calendar() {
       </SectionTitle>
 
       <Card>
+        {/*
+          Signal picker. Each option restricts the cell colour to a specific
+          metric family — so "did I train four days a week last month?" is
+          a one-tap answer rather than a mental filter over a fused hit rate.
+        */}
+        <div role="tablist" aria-label="Calendar signal" className="mb-3 flex gap-1 overflow-x-auto">
+          {(Object.keys(SIGNAL_META) as Signal[]).map((option) => {
+            const active = signal === option
+            return (
+              <button
+                key={option}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setSignal(option)}
+                className={`radius-pill motion-press px-3 py-1.5 type-caption font-semibold whitespace-nowrap ${
+                  active
+                    ? 'bg-[var(--app-selected-fill)] text-[var(--app-selected-ink)] ring-1 ring-inset ring-[var(--app-selected-edge)]'
+                    : 'bg-[var(--app-inset)] text-[var(--app-ink-soft)] ring-1 ring-inset ring-[var(--app-line)]'
+                }`}
+              >
+                {SIGNAL_META[option].label}
+              </button>
+            )
+          })}
+        </div>
+
         <div className="grid grid-cols-7 gap-1.5 text-center type-micro font-semibold text-[var(--app-muted)]">
           {WEEKDAYS.map((day) => (
             <div key={day}>{day}</div>
@@ -124,7 +187,7 @@ export default function Calendar() {
           {days.map((date) => {
             const phase = resolvePhaseForDate(phases, date)
             if (!phase) return null
-            const status = statusFor(date, phase, index, today)
+            const status = statusFor(date, phase, index, today, signal)
             const week = planWeek(settings.planStartDate, date)
             const isToday = date === today
             const classes = {

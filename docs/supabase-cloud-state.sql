@@ -201,6 +201,9 @@ create table if not exists public.meals (
   sugar_g double precision,
   sat_fat_g double precision,
   micros jsonb,
+  caffeine_mg double precision,
+  sodium_mg double precision,
+  alcohol_units double precision,
   notes text,
   source text not null default 'manual',
   group_id text,
@@ -231,6 +234,9 @@ create table if not exists public.saved_foods (
   sugar_g double precision,
   sat_fat_g double precision,
   micros jsonb,
+  caffeine_mg double precision,
+  sodium_mg double precision,
+  alcohol_units double precision,
   use_count integer not null default 0,
   last_used_at timestamptz,
   created_at timestamptz not null default now(),
@@ -238,6 +244,14 @@ create table if not exists public.saved_foods (
   deleted_at timestamptz,
   primary key (user_id, id)
 );
+
+-- Existing databases need these additions too. Safe to run repeatedly.
+alter table public.meals add column if not exists caffeine_mg double precision;
+alter table public.meals add column if not exists sodium_mg double precision;
+alter table public.meals add column if not exists alcohol_units double precision;
+alter table public.saved_foods add column if not exists caffeine_mg double precision;
+alter table public.saved_foods add column if not exists sodium_mg double precision;
+alter table public.saved_foods add column if not exists alcohol_units double precision;
 
 create table if not exists public.measurements (
   user_id bigint not null references public.app_users(id) on delete cascade,

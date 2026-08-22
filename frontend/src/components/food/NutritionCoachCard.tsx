@@ -1,17 +1,15 @@
-import { CoachChatButton } from '@/components/CoachChatButton'
+import { openCoachWithPrompt } from '@/components/coachEvents'
 import type { FoodContext } from '@/domain/foodContext'
-
-const FOOD_STARTERS = [
-  'What should I eat next to hit my targets?',
-  'How can I improve my physique from my food?',
-  'Is my protein intake good today?',
-  'Suggest a high-protein snack under 250 kcal.',
-] as const
 
 /**
  * The insight the coach leads with before the user asks anything — computed
  * locally from the food context so it is instant and works offline. Falls back
  * to an encouraging on-track line when nothing needs attention.
+ *
+ * The conversation itself now lives in the shell-level coach (one Formara
+ * Coach for the whole app, not a separate box per tab) — this card is the
+ * quiet, always-visible nudge that used to sit above it, and tapping it opens
+ * that same coach already primed with a food-relevant question.
  */
 function leadInsight(food: FoodContext): { text: string; tone: 'good' | 'warn' } {
   if (food.observations.length > 0) return { text: food.observations[0]!, tone: 'warn' }
@@ -35,36 +33,26 @@ export function NutritionCoachCard({ food }: { food: FoodContext }) {
         : 'your physique'
 
   return (
-    <div className="space-y-3">
-      <div className="relative overflow-hidden radius-inset border border-[var(--app-line)] bg-[linear-gradient(135deg,rgba(57,255,20,0.14),rgba(0,240,255,0.10)_45%,rgba(185,139,255,0.12))] p-4 sm:p-5">
-        <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-accent/20 blur-3xl" />
-        <div className="relative flex items-start gap-3">
-          <span
-            className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center radius-control type-caption font-black ${ insight.tone === 'warn' ? 'bg-warn text-ink-950' : 'bg-accent text-ink-950' }`}
-          >
-            AI
-          </span>
-          <div className="min-w-0">
-            <div className="type-micro font-semibold text-[var(--app-ink-soft)]">
-              Nutrition coach · tuned for {goalWord}
-            </div>
-            <p className="mt-1 type-body font-medium leading-snug text-[var(--app-ink)]">{insight.text}</p>
+    <button
+      type="button"
+      onClick={() => openCoachWithPrompt('What should I eat next to hit my targets?')}
+      className="motion-press relative block w-full overflow-hidden radius-inset border border-[var(--app-line)] bg-[linear-gradient(135deg,rgba(57,255,20,0.14),rgba(0,240,255,0.10)_45%,rgba(185,139,255,0.12))] p-4 text-left sm:p-5"
+    >
+      <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-accent/20 blur-3xl" />
+      <div className="relative flex items-start gap-3">
+        <span
+          className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center radius-control type-caption font-black ${insight.tone === 'warn' ? 'bg-warn text-ink-950' : 'bg-accent text-ink-950'}`}
+        >
+          AI
+        </span>
+        <div className="min-w-0">
+          <div className="type-micro font-semibold text-[var(--app-ink-soft)]">
+            Nutrition coach · tuned for {goalWord}
           </div>
+          <p className="mt-1 type-body font-medium leading-snug text-[var(--app-ink)]">{insight.text}</p>
+          <p className="mt-1.5 type-caption text-[var(--app-muted)]">Tap to ask the coach about it</p>
         </div>
       </div>
-
-      <CoachChatButton
-        placement="card"
-        showTraining={false}
-        title="Nutrition Coach"
-        subtitle={
-          <>
-            Sees today&apos;s {food.today.mealCount} meal{food.today.mealCount === 1 ? '' : 's'} ·{' '}
-            {food.weekAverages.days}-day macro history
-          </>
-        }
-        starters={FOOD_STARTERS}
-      />
-    </div>
+    </button>
   )
 }

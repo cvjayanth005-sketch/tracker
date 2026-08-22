@@ -18,7 +18,9 @@ import { targetSegmentsForDay } from '@/components/today/dayTargetRingModel'
 import { buildTodayActions } from '@/components/today/todayActions'
 import { buildInsight, buildTodayTargets } from '@/components/today/todayTargets'
 import { projectArrival } from '@/domain/projection'
-import { Card, EmptyState, Pill } from '@/components/ui'
+import { getWeighInCadence } from '@/domain/weighInCadence'
+import { Card, Pill } from '@/components/ui'
+import { Skeleton, SkeletonPanel } from '@/components/Skeleton'
 import type { DailyLog, LocalDate, Phase, Run } from '@/domain/types'
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -146,7 +148,29 @@ export default function Today() {
   )
 
   if (!phase || !settings) {
-    return <EmptyState title="Setting up" body="Preparing your local database." />
+    /*
+     * Shape-matched skeletons rather than a "Setting up" message. On a fast
+     * cache-hit the flash is invisible; on a real cold start the panels that
+     * are coming are pre-drawn where they will land, so there is no layout
+     * jolt when the data arrives.
+     */
+    return (
+      <div className="space-y-4 pb-6">
+        <SkeletonPanel label="Loading today">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="mt-3 h-10 w-full" />
+          <Skeleton className="mt-3 h-4 w-3/4" />
+        </SkeletonPanel>
+        <SkeletonPanel label="Loading actions">
+          <Skeleton className="h-5 w-40" />
+          <div className="mt-4 space-y-2">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        </SkeletonPanel>
+      </div>
+    )
   }
 
   const save = (patch: Partial<DailyLog>) => void upsertLog(today, patch)
@@ -177,6 +201,7 @@ export default function Today() {
   )
   const todayRuns = dash.runs.filter((run) => run.date === today)
   const todayRunSummary = runSummary(todayRuns)
+  const weighInCadence = getWeighInCadence(today, dash.logs)
   const logEntryCount = [
     todayLog?.calories,
     todayLog?.proteinG,
@@ -203,6 +228,7 @@ export default function Today() {
       projection={projection}
       series={dash.series}
       targetKg={phase.targetWeightKg}
+      cadence={weighInCadence}
     />
   )
 

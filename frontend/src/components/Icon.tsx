@@ -1,4 +1,14 @@
-export type IconName = 'today' | 'food' | 'activity' | 'calendar' | 'workout' | 'progress' | 'plan'
+export type IconName =
+  | 'today'
+  | 'food'
+  | 'activity'
+  | 'calendar'
+  | 'workout'
+  | 'progress'
+  | 'plan'
+  | 'plus'
+  | 'water'
+  | 'scale'
 
 /** Stroke icons on a 24-grid. Kept as paths so weight can shift with state. */
 const PATHS: Record<IconName, string[]> = {
@@ -11,6 +21,13 @@ const PATHS: Record<IconName, string[]> = {
   workout: ['M7 7.5v9', 'M17 7.5v9', 'M7 12h10'],
   progress: ['M4 19V5', 'M4 19h16', 'm7 15 3.5-4.2 3 2.2L20 7'],
   plan: ['M4 8h5M13 8h7', 'M4 16h9M17 16h3', 'M11 8a2 2 0 1 0-4 0 2 2 0 0 0 4 0Z', 'M17 16a2 2 0 1 0-4 0 2 2 0 0 0 4 0Z'],
+  plus: ['M12 5v14', 'M5 12h14'],
+  water: ['M12 3.3c3.6 4.6 5.6 7.9 5.6 10.6a5.6 5.6 0 1 1-11.2 0c0-2.7 2-6 5.6-10.6Z'],
+  scale: [
+    'M4 8.2A1.2 1.2 0 0 1 5.2 7h13.6A1.2 1.2 0 0 1 20 8.2V17a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V8.2Z',
+    'M12 13.2 15 10',
+    'M12 13.2a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2Z',
+  ],
 }
 
 export function Icon({

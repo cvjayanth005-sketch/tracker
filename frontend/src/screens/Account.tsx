@@ -4,6 +4,7 @@ import { getAuthState, signOut } from '@/auth/session'
 import { Button, PageHeader, Pill } from '@/components/ui'
 import { NumberField } from '@/components/fields'
 import { fmtInt } from '@/components/format'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import {
   getProfile,
   getSettings,
@@ -17,6 +18,8 @@ import {
   API_BASE,
   downloadBackup,
   importState,
+  pullServerState,
+  replaceServerState,
   requestPersistentStorage,
   sync,
   type StateDocument,
@@ -85,6 +88,22 @@ export default function Account() {
       else setStatus('Cloud sync is not configured. Use a downloaded backup instead.')
     } catch (error) {
       setStatus(`Sync failed: ${error instanceof Error ? error.message : String(error)}`)
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  const resolveConflict = async (side: 'server' | 'device') => {
+    setWorking(true)
+    try {
+      const result = side === 'server' ? await pullServerState() : await replaceServerState()
+      if (result.status === 'pulled') setStatus(`Loaded the server copy (version ${result.version}).`)
+      else if (result.status === 'pushed') setStatus(`This device's copy is now the server copy (version ${result.version}).`)
+      else if (result.status === 'conflict') setStatus('The server changed again during this attempt. Try once more.')
+      else if (result.status === 'unauthorized') setStatus('Session expired. Sign in again.')
+      else setStatus('Could not resolve the conflict. Check your connection and try again.')
+    } catch (error) {
+      setStatus(`Resolve failed: ${error instanceof Error ? error.message : String(error)}`)
     } finally {
       setWorking(false)
     }
@@ -200,6 +219,17 @@ export default function Account() {
           </label>
         </section>
 
+        <section className="account-section app-panel" aria-labelledby="appearance-title">
+          <div className="account-section-heading">
+            <p className="app-eyebrow">Appearance</p>
+            <h2 id="appearance-title">Theme</h2>
+          </div>
+          <p className="account-appearance-note">
+            Choose a look, or follow your device. Dark uses a soft charcoal rather than pure black.
+          </p>
+          <ThemeToggle />
+        </section>
+
         <section className="account-section app-panel" aria-labelledby="sync-title">
           <div className="account-section-heading">
             <p className="app-eyebrow">Sync</p>
@@ -214,6 +244,24 @@ export default function Account() {
             <dd>{fmtInt(meta?.syncedVersion ?? 0)}</dd>
           </dl>
           {meta?.lastError ? <p className="account-inline-error">{meta.lastError}</p> : null}
+          {meta?.lastError?.startsWith('Sync conflict') ? (
+            <div className="account-actions">
+              <Button
+                variant="secondary"
+                onClick={() => void resolveConflict('server')}
+                disabled={working}
+              >
+                Use server copy
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => void resolveConflict('device')}
+                disabled={working}
+              >
+                Replace server with this device
+              </Button>
+            </div>
+          ) : null}
           {API_BASE ? (
             <Button variant="primary" onClick={() => void syncNow()} disabled={working} className="account-full-button">
               {working ? 'Syncing' : 'Sync now'}

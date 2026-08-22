@@ -256,3 +256,41 @@
     grid-template-columns: minmax(0, 1.65fr) minmax(17rem, 0.8fr);
   }
 }
+
+/* Appearance / theme control */
+.account-appearance-note {
+  margin: 0 0 0.75rem;
+  color: var(--app-muted);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.account-theme-toggle {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: var(--radius-control);
+  background: var(--app-inset);
+  border: 1px solid var(--app-line);
+}
+
+.account-theme-option {
+  min-height: 2.5rem;
+  border: none;
+  border-radius: calc(var(--radius-control) - 0.25rem);
+  background: transparent;
+  color: var(--app-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast, 140ms) ease,
+    color var(--duration-fast, 140ms) ease;
+}
+
+.account-theme-option.is-active {
+  background: var(--app-canvas-pure);
+  color: var(--app-ink);
+  box-shadow: var(--app-shadow);
+}
