@@ -181,9 +181,28 @@ def get_state_document(user_id: int | None = None) -> dict[str, Any]:
 
 
 def put_state_document(doc: dict[str, Any], user_id: int | None = None) -> dict[str, Any]:
+    """
+    Row-merge pushes (every current client) are never blocked on version drift.
+
+    `merge_user_rows` is a per-row upsert with tombstones — it can safely
+    combine two devices' changes regardless of what version each one last saw,
+    as long as they did not edit the exact same row. Refusing the whole push
+    just because the *document* version moved was strictly more conservative
+    than the merge underneath needed: a phone logging today's meal and a
+    laptop logging yesterday's workout share no rows, yet used to collide.
+
+    The version number itself can no longer come from the client, though —
+    two devices could each submit a stale "next version" and one push would
+    silently roll the counter backward. The server now owns it: every merge
+    advances a monotonic counter from whichever is larger, the stored value or
+    the version the client thought it was at.
+
+    Legacy non-merge pushes (`row_merge=False`, only the SQLite/self-hosted
+    path emits these) keep the original hard gate — a whole-document replace
+    has no row-level safety net, so refusing a stale write is the only option.
+    """
     row_merge = bool(doc.pop("rowMerge", False))
     stored = {
-        "version": int(doc["version"]),
         "updatedAt": doc["updatedAt"],
         "tables": doc["tables"],
         "tombstones": list(doc.get("tombstones") or []),
@@ -196,9 +215,13 @@ def put_state_document(doc: dict[str, Any], user_id: int | None = None) -> dict[
     with connect() as conn:
         with conn.cursor() as cur:
             current = _read_version(cur, user_id, for_update=True)
-            base = doc.get("baseVersion")
-            if base is not None and int(base) != current:
-                return {"conflict": True, "serverVersion": current}
+            if row_merge:
+                stored["version"] = max(current, int(doc.get("version") or 0)) + 1
+            else:
+                base = doc.get("baseVersion")
+                if base is not None and int(base) != current:
+                    return {"conflict": True, "serverVersion": current}
+                stored["version"] = int(doc["version"])
             if user_id is not None:
                 if row_merge:
                     state_tables.merge_user_rows(cur, user_id, stored["tables"], stored["tombstones"])

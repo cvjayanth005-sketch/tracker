@@ -2,12 +2,16 @@ import { db, ensureLocalAccountOwner, type Tombstone } from '@/db/database'
 import { authHeader } from '@/auth/session'
 
 /**
- * Sync is row merge with tombstones, plus a document version check.
+ * Sync is row merge with tombstones. The server accepts a push whenever both
+ * devices' changes land on different rows — which is nearly always true for
+ * a personal log, since a phone logging today's meal and a laptop logging
+ * yesterday's workout never touch the same row. It only refuses (409) for
+ * the legacy whole-document replace path, which has no per-row safety net.
  *
- * PUT upserts rows and applies deletes from `tombstones`. The server never
- * drops a row just because this device's export omitted it. If both copies
- * moved since the last shared version, the push is refused (409) rather than
- * silently picking a winner for the same id.
+ * A push response carries the fully merged document, not just an
+ * acknowledgement — this device may not have every row another device just
+ * contributed, so every successful push reconciles the local copy against
+ * what came back rather than only bumping a version counter.
  */
 
 export const API_BASE =
@@ -121,6 +125,46 @@ function isFactTable(name: string): name is (typeof TABLES)[number] {
   return (TABLES as readonly string[]).includes(name)
 }
 
+/**
+ * Reconciles the local database against a push response.
+ *
+ * The server merges every push server-side and hands back the *result* of
+ * that merge, which can include rows this device never had — another device
+ * may have contributed them in the same or an earlier merge this push just
+ * combined with. Only bumping a version counter after a push (the old
+ * behaviour) left those rows unfetched until some later full pull happened
+ * to trigger, which was not guaranteed; a device with its own steady stream
+ * of local edits could go a long time without ever picking them up. This
+ * applies the response the same way a pull does, then sets both version
+ * markers to the server's newly computed version — the device's own writes
+ * are now part of that merged state, not still "pending" against it.
+ */
+async function applyPushResponse(doc: StateDocument): Promise<void> {
+  const tables = [...TABLES.map((t) => db.table(t)), db.tombstones, db.syncMeta]
+  const tombstones = Array.isArray(doc.tombstones) ? doc.tombstones : []
+  await db.transaction('rw', tables, async () => {
+    for (const name of TABLES) {
+      const rows = doc.tables[name]
+      if (!Array.isArray(rows)) continue
+      await db.table(name).bulkPut(rows)
+    }
+    for (const stamp of tombstones) {
+      if (!isFactTable(stamp.table) || !stamp.id) continue
+      await db.table(stamp.table).delete(stamp.id)
+      await db.tombstones.put(stamp)
+    }
+    // A local write can land while the push was in flight — never roll
+    // localVersion backward below whatever it has already reached.
+    const current = await db.syncMeta.get('sync')
+    await db.syncMeta.update('sync', {
+      localVersion: Math.max(doc.version, current?.localVersion ?? 0),
+      syncedVersion: doc.version,
+      lastSyncedAt: new Date().toISOString(),
+      lastError: null,
+    })
+  })
+}
+
 let syncInFlight: Promise<SyncOutcome> | null = null
 
 class UnauthorizedError extends Error {
@@ -170,35 +214,38 @@ export async function pullServerState(): Promise<SyncOutcome> {
   }
 }
 
+/**
+ * Forces this device's state onto the server. Still a genuine push through
+ * the same row-merge endpoint as `sync()` — the server does not have a true
+ * "discard everything else" mode, and giving it one would mean a second,
+ * riskier code path just for this button. What makes this a deliberate
+ * override rather than an ordinary sync is that the person chose it from the
+ * conflict screen; the request itself is the same shape either way.
+ */
 export async function replaceServerState(): Promise<SyncOutcome> {
   if (!API_BASE) return { status: 'local_only' }
   if (typeof navigator !== 'undefined' && !navigator.onLine) return { status: 'offline' }
   try {
-    const serverVersion = await fetchServerVersion()
     const meta = await db.syncMeta.get('sync')
     if (!meta) return { status: 'error', message: 'sync metadata missing' }
-    const nextVersion = Math.max(meta.localVersion, serverVersion) + 1
-    await db.syncMeta.update('sync', { localVersion: nextVersion })
     const doc = await exportState()
     const res = await fetch(`${API_BASE}/api/state`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json', ...authHeader() },
-      body: JSON.stringify({ ...doc, baseVersion: serverVersion }),
+      body: JSON.stringify({ ...doc, baseVersion: meta.syncedVersion }),
     })
     if (res.status === 401) throw new UnauthorizedError()
     if (res.status === 409) {
+      const serverVersion = await fetchServerVersion()
       await db.syncMeta.update('sync', {
         lastError: `Sync conflict: server changed while this device was uploading`,
       })
       return { status: 'conflict', serverVersion, localVersion: doc.version }
     }
     if (!res.ok) throw new Error(`push failed: ${res.status}`)
-    await db.syncMeta.update('sync', {
-      syncedVersion: doc.version,
-      lastSyncedAt: new Date().toISOString(),
-      lastError: null,
-    })
-    return { status: 'pushed', version: doc.version }
+    const merged = (await res.json()) as StateDocument
+    await applyPushResponse(merged)
+    return { status: 'pushed', version: merged.version }
   } catch (error) {
     const outcome = outcomeForError(error)
     const message =
@@ -224,14 +271,14 @@ export async function bootstrapAccountState(userId: number): Promise<SyncOutcome
       return meta.localVersion > meta.syncedVersion ? sync() : { status: 'clean' }
     }
 
-    if (serverVersion > meta.syncedVersion && meta.localVersion > meta.syncedVersion) {
-      await db.syncMeta.update('sync', {
-        lastError: `Sync conflict: server ${serverVersion}, device ${meta.localVersion}`,
-      })
-      return { status: 'conflict', serverVersion, localVersion: meta.localVersion }
+    // Both sides having moved used to be refused outright here. The server
+    // now merges row-level changes regardless of which version each side last
+    // saw, so this is just an ordinary push-and-reconcile like any other —
+    // `sync()` handles it below via the same path as every other pending
+    // write.
+    if (serverVersion !== meta.syncedVersion && meta.localVersion === meta.syncedVersion) {
+      return pullServerState()
     }
-
-    if (serverVersion !== meta.syncedVersion) return pullServerState()
     return meta.localVersion > meta.syncedVersion ? sync() : { status: 'clean' }
   } catch (error) {
     const outcome = outcomeForError(error)
@@ -252,19 +299,16 @@ async function runSync(): Promise<SyncOutcome> {
   try {
     const serverVersion = await fetchServerVersion()
 
-    // Server ahead of the last version we pushed: another device wrote.
+    // Server ahead and nothing pending locally: a pull is all that is needed,
+    // there is nothing of this device's to merge in.
     if (serverVersion > meta.syncedVersion && meta.localVersion === meta.syncedVersion) {
       return pullServerState()
     }
 
-    if (serverVersion > meta.syncedVersion && meta.localVersion > meta.syncedVersion) {
-      // Both sides moved. Refuse rather than pick a winner silently.
-      await db.syncMeta.update('sync', {
-        lastError: `Sync conflict: server ${serverVersion}, device ${meta.localVersion}`,
-      })
-      return { status: 'conflict', serverVersion, localVersion: meta.localVersion }
-    }
-
+    // Both sides having moved no longer refuses here — the server merges
+    // row-level changes regardless of version drift (see cloud_store.py), so
+    // this device just pushes its pending changes and reconciles against
+    // whatever comes back, same as the plain "local pending" case below.
     if (meta.localVersion === meta.syncedVersion) return { status: 'clean' }
 
     const doc = await exportState()
@@ -282,14 +326,9 @@ async function runSync(): Promise<SyncOutcome> {
     }
     if (!res.ok) throw new Error(`push failed: ${res.status}`)
 
-    // A local write may land while the request is in flight. Update only the
-    // server watermark so a newer localVersion is never rolled back.
-    await db.syncMeta.update('sync', {
-      syncedVersion: doc.version,
-      lastSyncedAt: new Date().toISOString(),
-      lastError: null,
-    })
-    return { status: 'pushed', version: doc.version }
+    const merged = (await res.json()) as StateDocument
+    await applyPushResponse(merged)
+    return { status: 'pushed', version: merged.version }
   } catch (error) {
     const outcome = outcomeForError(error)
     const message =
