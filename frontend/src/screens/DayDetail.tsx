@@ -14,7 +14,7 @@ import {
   upsertLog,
   upsertMeasurement,
 } from '@/db/repo'
-import { asLocalDate, formatShort, isLocalDate } from '@/domain/date'
+import { asLocalDate, formatShort, isLocalDate, todayIn } from '@/domain/date'
 import { planDayLabel } from '@/domain/plan'
 import type { LocalDate, Rating, RunType } from '@/domain/types'
 import { NumberField, RatingField, TextArea, TriToggle } from '@/components/fields'
@@ -48,6 +48,10 @@ export default function DayDetail() {
   }
 
   const phase = resolvePhaseForDate(phases, date)
+  // The Training screen (/workout) is always TODAY's live set-logging session —
+  // it has no historical mode — so linking to it from a past day silently
+  // jumped the user to today's workout. Only offer it when this day is today.
+  const isToday = date === todayIn(settings.timezone)
   const save = (patch: Parameters<typeof upsertLog>[1]) => void upsertLog(date, patch)
   const targetProp = (target: string | undefined) => (target ? { target } : {})
 
@@ -169,14 +173,18 @@ export default function DayDetail() {
           <Card>
             <div className="type-caption font-semibold text-[var(--app-ink)]">Training detail</div>
             <p className="mt-1 type-caption leading-relaxed text-[var(--app-muted)]">
-              Set-by-set lifting still lives in Training for now. Day Detail keeps the daily facts, run log, measurements, and notes editable.
+              {isToday
+                ? 'Set-by-set lifting still lives in Training for now. Day Detail keeps the daily facts, run log, measurements, and notes editable.'
+                : 'Set-by-set lifting for past sessions is not editable here yet. Use the daily log above for this day; the Gym toggle records whether the session happened.'}
             </p>
-            <Link
-              to="/workout"
-              className="mt-3 inline-flex radius-control bg-[var(--app-inset)] px-3 py-2 type-caption font-semibold text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)]"
-            >
-              Open Training
-            </Link>
+            {isToday ? (
+              <Link
+                to="/workout"
+                className="mt-3 inline-flex radius-control bg-[var(--app-inset)] px-3 py-2 type-caption font-semibold text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)]"
+              >
+                Open Training
+              </Link>
+            ) : null}
           </Card>
         </aside>
       </div>

@@ -15,6 +15,11 @@
 
 :root {
   --chrome-row-height: 3.25rem;
+  /* Distance from the bottom edge to the compact chrome row, respecting the
+     home-indicator safe area. Referenced by the undo toast to sit clear of the
+     dock; it was previously used but never defined, which made the toast's
+     `bottom` calc invalid so it rendered off-screen. */
+  --chrome-row-bottom: max(0.75rem, env(safe-area-inset-bottom));
   /* Long, soft-landing curve. Perceived plushness comes from the shape of
      the deceleration far more than from the duration — a fast ease-out still
      reads as snappy even stretched out to most of a second. */
