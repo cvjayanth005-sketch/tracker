@@ -104,6 +104,7 @@ export default function WorkoutScreen() {
       <PageHeader
         eyebrow={`${weekdayName(today)} · ${formatShort(today)}`}
         title="Training"
+        backFallback="/activity"
         action={
           scheduled?.gym ? (
             <Pill tone="info">{scheduled.sessionType} scheduled</Pill>

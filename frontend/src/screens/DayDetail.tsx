@@ -60,6 +60,7 @@ export default function DayDetail() {
       <PageHeader
         eyebrow={planDayLabel(settings.planStartDate, date)}
         title={formatShort(date, true)}
+        backFallback="/calendar"
         action={
           <Link
             to="/calendar"

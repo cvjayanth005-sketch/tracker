@@ -285,6 +285,28 @@
   padding-top: 1rem;
 }
 
+/*
+ * Back arrow in a page header. A quiet inset control that reads as a tap
+ * target on both themes without competing with the page title beside it.
+ */
+.app-back-button {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  place-items: center;
+  border: 1px solid var(--app-line);
+  border-radius: var(--radius-control);
+  background: var(--app-inset);
+  color: var(--app-ink);
+  cursor: pointer;
+}
+
+.app-back-button:hover {
+  color: var(--app-ink);
+  border-color: var(--app-line-strong);
+}
+
 .app-account-button {
   display: grid;
   width: 2.75rem;

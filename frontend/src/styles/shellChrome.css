@@ -182,14 +182,19 @@
 }
 
 /*
- * Undo toast — one slot, above the dock, quiet by default.
- * Uses the panel material so it feels of a piece with everything else,
- * rather than a bright popup that reads as an alert.
+ * Undo toast — top-centre, close to where the content lives.
+ *
+ * It used to sit pinned to the very bottom above the dock, which put it far
+ * from the meal list the delete happened in — the eye had to travel the whole
+ * screen to notice it. Dropping in from the top lands it near the header and
+ * the list itself, so it reads as "that row you just removed" rather than an
+ * unrelated system message down in the corner. On mobile it clears the mobile
+ * header; on desktop (sidebar layout, no top header) it sits near the top.
  */
 .undo-toast {
   position: fixed;
   z-index: 55;
-  bottom: calc(var(--chrome-row-bottom) + var(--chrome-row-height) + 0.75rem);
+  top: calc(env(safe-area-inset-top, 0px) + 4.5rem);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -224,7 +229,7 @@
 @keyframes undo-toast-in {
   from {
     opacity: 0;
-    transform: translate(-50%, 0.5rem);
+    transform: translate(-50%, -0.5rem);
   }
   to {
     opacity: 1;
@@ -234,8 +239,7 @@
 
 @media (min-width: 1024px) {
   .undo-toast {
-    bottom: 1.25rem;
-    left: 50%;
+    top: 1.5rem;
   }
 }
 

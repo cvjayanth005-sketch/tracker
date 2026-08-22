@@ -9,6 +9,7 @@ export type IconName =
   | 'plus'
   | 'water'
   | 'scale'
+  | 'back'
 
 /** Stroke icons on a 24-grid. Kept as paths so weight can shift with state. */
 const PATHS: Record<IconName, string[]> = {
@@ -28,6 +29,7 @@ const PATHS: Record<IconName, string[]> = {
     'M12 13.2 15 10',
     'M12 13.2a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2Z',
   ],
+  back: ['M15 5l-7 7 7 7'],
 }
 
 export function Icon({

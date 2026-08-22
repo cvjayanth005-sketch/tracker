@@ -1,5 +1,33 @@
 import type { ReactNode } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { Icon } from '@/components/Icon'
 import { useLiquidGlass } from '@/hooks/useLiquidGlass'
+
+/**
+ * Back arrow for navigating to the previous screen.
+ *
+ * Renders on both mobile and desktop, so the same header gives a way back on
+ * either. When there is real in-app history it steps back through it;
+ * `location.key === 'default'` means this is the first entry the app rendered
+ * (a fresh load or deep link) with nothing to pop, so it routes to a sensible
+ * fallback — home by default — instead of doing nothing or leaving the app.
+ */
+export function BackButton({ fallback = '/' }: { fallback?: string }) {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const hasHistory = location.key !== 'default'
+
+  return (
+    <button
+      type="button"
+      onClick={() => (hasHistory ? navigate(-1) : navigate(fallback))}
+      aria-label="Go back"
+      className="app-back-button motion-press"
+    >
+      <Icon name="back" className="h-5 w-5" />
+    </button>
+  )
+}
 
 /**
  * Card surface.
@@ -253,20 +281,33 @@ export function PageHeader({
   eyebrow,
   title,
   action,
+  back = true,
+  backFallback = '/',
 }: {
   eyebrow?: string
   title: string
   action?: ReactNode
+  /** Show the back arrow. On by default; the home tab omits it by not using
+   *  PageHeader at all, so every screen that has a header gets a way back. */
+  back?: boolean
+  backFallback?: string
 }) {
   return (
     <header className="flex items-end justify-between gap-3 pt-4 sm:pt-6">
-      <div className="min-w-0">
-        {eyebrow ? (
-          <div className="type-micro font-medium text-[var(--app-muted)]">
-            {eyebrow}
+      <div className="flex min-w-0 items-end gap-2.5">
+        {back ? (
+          <div className="pb-1">
+            <BackButton fallback={backFallback} />
           </div>
         ) : null}
-        <h1 className="mt-1 type-display text-[var(--app-ink)]">{title}</h1>
+        <div className="min-w-0">
+          {eyebrow ? (
+            <div className="type-micro font-medium text-[var(--app-muted)]">
+              {eyebrow}
+            </div>
+          ) : null}
+          <h1 className="mt-1 type-display text-[var(--app-ink)]">{title}</h1>
+        </div>
       </div>
       {action}
     </header>
