@@ -5,9 +5,20 @@ import {
   defaultExerciseParams,
   isCatalogExerciseUsable,
 } from '@/domain/exercisePicker'
+import { classifyBodyPart, BODY_PART_LABEL, SUBREGION_LABEL } from '@/domain/muscleTaxonomy'
 import { EXERCISES, type CatalogExercise } from '@/domain/onboarding/catalog/exercises'
 import type { Exercise } from '@/domain/types'
 import { Button } from '@/components/ui'
+
+const SESSION_OPTIONS: Array<Exercise['sessionType']> = ['upper', 'lower', 'full']
+
+function bodyPartTag(name: string): string | null {
+  const classification = classifyBodyPart(name)
+  if (!classification) return null
+  const group = BODY_PART_LABEL[classification.group]
+  if (!classification.subregion) return group
+  return `${group} · ${SUBREGION_LABEL[classification.subregion] ?? classification.subregion}`
+}
 
 /**
  * Browses the exercise catalogue — the same one onboarding uses for
@@ -35,6 +46,10 @@ export function AddExerciseSheet({
   const [search, setSearch] = useState('')
   const [customName, setCustomName] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
+  // Which day a newly added exercise lands on. Starts at whatever the caller
+  // opened the sheet with (the session being viewed) but stays overridable —
+  // someone might browse Chest and decide it actually belongs on a Full day.
+  const [targetSession, setTargetSession] = useState<Exercise['sessionType']>(sessionType)
 
   const matches = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -52,7 +67,7 @@ export function AddExerciseSheet({
     try {
       const created = await createExercise(
         catalogExercise.name,
-        sessionType,
+        targetSession,
         defaultExerciseParams(catalogExercise),
       )
       onAdded(created)
@@ -66,7 +81,7 @@ export function AddExerciseSheet({
     if (!name) return
     setBusyId('custom')
     try {
-      const created = await createExercise(name, sessionType, defaultCustomExerciseParams())
+      const created = await createExercise(name, targetSession, defaultCustomExerciseParams())
       setCustomName('')
       onAdded(created)
     } finally {
@@ -103,10 +118,31 @@ export function AddExerciseSheet({
           className="mt-3 w-full radius-control bg-[var(--app-inset)] px-3 py-2.5 type-caption text-[var(--app-ink)] outline-none ring-1 ring-inset ring-[var(--app-line)] placeholder:text-[var(--app-muted)] focus:ring-accent/60"
         />
 
+        <div className="mt-2.5 flex items-center gap-2">
+          <span className="type-micro text-[var(--app-muted)]">Add to</span>
+          <div className="flex gap-1 rounded-full border border-[var(--app-line)] p-0.5">
+            {SESSION_OPTIONS.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setTargetSession(option)}
+                className={`radius-pill px-2.5 py-1 type-micro font-semibold capitalize ${
+                  targetSession === option
+                    ? 'bg-[var(--app-selected-fill)] text-[var(--app-selected-ink)]'
+                    : 'text-[var(--app-muted)]'
+                }`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <ul className="mt-3 max-h-72 space-y-1.5 overflow-y-auto">
           {matches.slice(0, 60).map((catalogExercise) => {
             const usable = isCatalogExerciseUsable(catalogExercise, equipmentIds)
             const missing = catalogExercise.requiredEquipment.join(' or ')
+            const tag = bodyPartTag(catalogExercise.name)
             return (
               <li key={catalogExercise.id}>
                 <button
@@ -119,8 +155,11 @@ export function AddExerciseSheet({
                       : 'bg-transparent text-[var(--app-muted)] ring-[var(--app-line)] opacity-60'
                   }`}
                 >
-                  <span className="min-w-0 truncate type-caption font-medium text-[var(--app-ink)]">
-                    {catalogExercise.name}
+                  <span className="min-w-0">
+                    <span className="block truncate type-caption font-medium text-[var(--app-ink)]">
+                      {catalogExercise.name}
+                    </span>
+                    {tag ? <span className="type-micro text-[var(--app-muted)]">{tag}</span> : null}
                   </span>
                   <span className="shrink-0 type-micro text-[var(--app-muted)]">
                     {usable ? 'Add' : `needs ${missing}`}
