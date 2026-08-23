@@ -7,6 +7,7 @@ import type { TrendPoint } from '@/domain/trend'
 import type { LocalDate } from '@/domain/types'
 import type { LogIndex } from '@/domain/trend'
 import type { WeighInCadence } from '@/domain/weighInCadence'
+import { detectWeightAnomaly } from '@/domain/weightAnomaly'
 
 /**
  * The morning weigh-in, given its own oversized field only when the three-day
@@ -78,6 +79,7 @@ export function HeroWeight({
   const delta = value !== null && previous ? value - previous.kg : null
   const vsTrend = value !== null && trendKg !== null ? value - trendKg : null
   const showWeightInput = value !== null || cadence.due || manuallyOpened
+  const anomaly = value !== null ? detectWeightAnomaly(today, index) : null
 
   return (
     <div className="glass radius-inset p-4 sm:p-5">
@@ -168,6 +170,21 @@ export function HeroWeight({
           </span>
         ) : null}
       </div>
+
+      {/*
+        A sharp jump gets a plausible explanation right where it would
+        otherwise sit unexplained and alarming. Rule-based, not a coach call —
+        see weightAnomaly.ts for why: instant, offline, and it never invents a
+        cause the logs don't actually support.
+      */}
+      {anomaly ? (
+        <div className="mt-2 radius-control bg-[var(--app-inset)] px-3 py-2">
+          <p className="type-caption font-semibold text-[var(--app-ink)]">{anomaly.headline}</p>
+          <p className="mt-0.5 type-caption leading-relaxed text-[var(--app-ink-soft)]">
+            {anomaly.detail}
+          </p>
+        </div>
+      ) : null}
 
       {/*
         The projection lives here rather than beside the chart because this is

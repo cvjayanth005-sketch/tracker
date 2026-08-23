@@ -2,13 +2,14 @@ import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { resolvePhaseForDate, upsertLog } from '@/db/repo'
 import { outcomeFor, type MetricKey } from '@/domain/compliance'
-import { asLocalDate, dateRange, dayOfWeek, formatShort, weekdayName } from '@/domain/date'
+import { addDays, asLocalDate, dateRange, dayOfWeek, formatShort, weekdayName } from '@/domain/date'
 import { planWeek } from '@/domain/plan'
 import { paceMinPerKm } from '@/domain/running'
 import './today.css'
 import { useDashboard } from '@/hooks/useDashboard'
 import { NumberField, RatingField, TextArea, TriToggle } from '@/components/fields'
 import { HeroWeight } from '@/components/HeroWeight'
+import { WeeklyNarrativeCard } from '@/components/WeeklyNarrativeCard'
 import { SleepCheckIn } from '@/components/SleepCheckIn'
 import { RecommendationCard } from '@/components/RecommendationCard'
 import { TrendChart } from '@/components/TrendChart'
@@ -147,6 +148,18 @@ export default function Today() {
     [phase, today],
   )
 
+  // How many of the last 7 days have anything logged at all — the gate for
+  // whether a weekly summary has enough to say. Computed above the early
+  // return below so the hook always runs, loading state or not.
+  const weekLoggedDays = useMemo(() => {
+    let count = 0
+    for (let i = 0; i < 7; i++) {
+      const log = index.get(addDays(today, -i))
+      if (log && (log.calories != null || log.weightKg != null || log.steps != null)) count += 1
+    }
+    return count
+  }, [index, today])
+
   if (!phase || !settings) {
     /*
      * Shape-matched skeletons rather than a "Setting up" message. On a fast
@@ -273,6 +286,19 @@ export default function Today() {
             insight={insight}
             onFocusMetric={focusLogField}
           />
+
+          {dash.compliance ? (
+            <WeeklyNarrativeCard
+              today={today}
+              compliance={dash.compliance}
+              loggedDays={weekLoggedDays}
+              trendWeightChangeKg={
+                change?.current.averageKg != null && change?.previous.averageKg != null
+                  ? change.current.averageKg - change.previous.averageKg
+                  : null
+              }
+            />
+          ) : null}
 
           <div className="grid items-start gap-4 xl:grid-cols-[1fr_1.05fr]">
             <details className="group">

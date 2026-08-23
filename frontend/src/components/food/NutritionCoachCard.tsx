@@ -23,6 +23,24 @@ function leadInsight(food: FoodContext): { text: string; tone: 'good' | 'warn' }
   return { text: 'Nicely balanced so far today. Keep the same shape for the rest of your meals.', tone: 'good' }
 }
 
+/**
+ * Puts the actual remaining numbers directly into the question text, rather
+ * than leaving the model to find them in context. The coach can see the full
+ * food context either way, but naming the exact target here means the
+ * question is unambiguous about what "dinner" needs to fit.
+ */
+function dinnerPrompt(food: FoodContext): string {
+  const cal = food.today.caloriesRemaining
+  const protein = food.today.proteinRemaining
+  if (cal === null && protein === null) {
+    return 'What can I eat for dinner that fits my goals?'
+  }
+  const parts: string[] = []
+  if (cal !== null) parts.push(`${cal} kcal`)
+  if (protein !== null) parts.push(`${protein}g protein`)
+  return `I have about ${parts.join(' and ')} left for the day — what should I eat for dinner?`
+}
+
 export function NutritionCoachCard({ food }: { food: FoodContext }) {
   const insight = leadInsight(food)
   const goalWord =
@@ -33,26 +51,37 @@ export function NutritionCoachCard({ food }: { food: FoodContext }) {
         : 'your physique'
 
   return (
-    <button
-      type="button"
-      onClick={() => openCoachWithPrompt('What should I eat next to hit my targets?')}
-      className="motion-press relative block w-full overflow-hidden radius-inset border border-[var(--app-line)] bg-[linear-gradient(135deg,rgba(57,255,20,0.14),rgba(0,240,255,0.10)_45%,rgba(185,139,255,0.12))] p-4 text-left sm:p-5"
-    >
+    <div className="relative overflow-hidden radius-inset border border-[var(--app-line)] bg-[linear-gradient(135deg,rgba(57,255,20,0.14),rgba(0,240,255,0.10)_45%,rgba(185,139,255,0.12))] p-4 sm:p-5">
       <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-accent/20 blur-3xl" />
-      <div className="relative flex items-start gap-3">
-        <span
-          className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center radius-control type-caption font-black ${insight.tone === 'warn' ? 'bg-warn text-ink-950' : 'bg-accent text-ink-950'}`}
-        >
-          AI
-        </span>
-        <div className="min-w-0">
-          <div className="type-micro font-semibold text-[var(--app-ink-soft)]">
-            Nutrition coach · tuned for {goalWord}
+      <button
+        type="button"
+        onClick={() => openCoachWithPrompt('What should I eat next to hit my targets?')}
+        className="motion-press relative block w-full text-left"
+      >
+        <div className="flex items-start gap-3">
+          <span
+            className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center radius-control type-caption font-black ${insight.tone === 'warn' ? 'bg-warn text-ink-950' : 'bg-accent text-ink-950'}`}
+          >
+            AI
+          </span>
+          <div className="min-w-0">
+            <div className="type-micro font-semibold text-[var(--app-ink-soft)]">
+              Nutrition coach · tuned for {goalWord}
+            </div>
+            <p className="mt-1 type-body font-medium leading-snug text-[var(--app-ink)]">{insight.text}</p>
+            <p className="mt-1.5 type-caption text-[var(--app-muted)]">Tap to ask the coach about it</p>
           </div>
-          <p className="mt-1 type-body font-medium leading-snug text-[var(--app-ink)]">{insight.text}</p>
-          <p className="mt-1.5 type-caption text-[var(--app-muted)]">Tap to ask the coach about it</p>
         </div>
+      </button>
+      <div className="relative mt-3 flex flex-wrap gap-2 pl-12">
+        <button
+          type="button"
+          onClick={() => openCoachWithPrompt(dinnerPrompt(food))}
+          className="motion-press radius-pill bg-[var(--app-canvas-pure)] px-3 py-1.5 type-caption font-semibold text-[var(--app-ink)] ring-1 ring-inset ring-[var(--app-line)]"
+        >
+          What can I eat for dinner?
+        </button>
       </div>
-    </button>
+    </div>
   )
 }
