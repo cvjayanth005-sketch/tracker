@@ -74,6 +74,8 @@ export function defaultSettings(): Settings {
     goodCompliancePct: 80,
     manualPhaseOverrideId: null,
     equipmentIds: [],
+    trainingSplitId: null,
+    customSplitDays: [],
     updatedAt: now(),
   }
 }
@@ -117,6 +119,7 @@ export function defaultExercises(): Exercise[] {
       id: `ex-${sessionType}-${i + 1}`,
       name,
       sessionType,
+      splitDayKey: null,
       repRangeMin,
       repRangeMax,
       targetSets,

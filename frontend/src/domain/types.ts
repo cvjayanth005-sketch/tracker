@@ -111,6 +111,11 @@ export interface Settings {
    * before this field existed should see every exercise, not none.
    */
   equipmentIds: string[]
+  /** Chosen training split id from trainingSplits.ts, or null before the user picks one. */
+  trainingSplitId: string | null
+  /** User-defined days, only populated when trainingSplitId === 'custom'. */
+  customSplitDays: Array<{ key: string; label: string; bucket: Exclude<SessionType, 'rest' | 'run'> }>
+
   updatedAt: Instant
 }
 
@@ -305,8 +310,24 @@ export interface WeeklyCheckIn {
 export interface Exercise {
   id: string
   name: string
-  /** Which session template it belongs to. */
+  /** Which session template it belongs to — still just upper/lower/full so the
+   * weekly schedule and workout rotation logic are untouched by splits. */
   sessionType: Exclude<SessionType, 'rest' | 'run'>
+  /**
+   * Which named day of the user's chosen training split (e.g. "push",
+   * "chest", a custom day) this exercise was planned under. Purely a display
+   * grouping on top of sessionType — optional so pre-split exercises keep
+   * working with no migration.
+   */
+  splitDayKey: string | null
+  /**
+   * Which specific implement this instance is performed with — a stable
+   * equipment id from the onboarding catalogue (e.g. 'barbell', 'dumbbells',
+   * 'cable_machine'). The same movement can be logged as separate entries per
+   * implement, since not every gym has every one. Optional so pre-variant
+   * exercises keep working with no migration; null = unspecified.
+   */
+  equipmentId?: string | null
   /** Double-progression rep range, inclusive. */
   repRangeMin: number
   repRangeMax: number

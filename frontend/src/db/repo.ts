@@ -620,6 +620,10 @@ export interface OnboardingPlanDraft {
   }>
   /** Stable ids from the equipment catalogue. Empty means unknown. */
   equipmentIds: string[]
+  /** A `trainingSplits.ts` id inferred from the onboarding interview, or null
+   * when the person's answer didn't map to one of the named splits — they
+   * pick explicitly in Plan the first time they open the exercise library. */
+  trainingSplitId: string | null
 }
 
 function weeklySchedule(gymDaysPerWeek: number, weeklyRunKmTarget: number | null): DaySchedule[] {
@@ -682,6 +686,7 @@ export async function applyOnboardingPlan(draft: OnboardingPlanDraft): Promise<v
       onboardingCompleted: true,
       calorieFloor: Math.min(existing.calorieFloor, Math.max(1200, draft.targets.calories - 350)),
       equipmentIds: draft.equipmentIds,
+      trainingSplitId: draft.trainingSplitId ?? existing.trainingSplitId,
       updatedAt: stamp,
     })
     const previous = await db.phases.toArray()
@@ -833,11 +838,15 @@ export async function createExercise(
   name: string,
   sessionType: Exercise['sessionType'],
   params: Pick<Exercise, 'repRangeMin' | 'repRangeMax' | 'targetSets' | 'targetRir' | 'loadIncrementKg'>,
+  splitDayKey: string | null = null,
+  equipmentId: string | null = null,
 ): Promise<Exercise> {
   const exercise: Exercise = {
     id: uid(),
     name,
     sessionType,
+    splitDayKey,
+    equipmentId,
     order: await nextExerciseOrder(sessionType),
     archived: false,
     ...params,

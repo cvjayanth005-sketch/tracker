@@ -7,6 +7,7 @@ const exercise = (id: string, order: number): Exercise => ({
   id,
   name: `Exercise ${id}`,
   sessionType: 'upper',
+  splitDayKey: null,
   repRangeMin: 6,
   repRangeMax: 10,
   targetSets: 4,

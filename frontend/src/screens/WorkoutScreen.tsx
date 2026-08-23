@@ -322,7 +322,7 @@ export default function WorkoutScreen() {
           // `startType` can only be 'run' when the day has no gym session
           // scheduled — the branch that reaches this button always implies
           // a gym day, so this narrows a type the runtime already guarantees.
-          sessionType={startType === 'run' ? 'upper' : startType}
+          bucket={startType === 'run' ? 'upper' : startType}
           equipmentIds={dash.settings?.equipmentIds ?? []}
           onClose={() => setAddExerciseOpen(false)}
           onAdded={() => {}}

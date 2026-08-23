@@ -1,164 +1,184 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { allExercises, upsertExercise } from '@/db/repo'
-import type { Exercise } from '@/domain/types'
-import {
-  BODY_PART_GROUPS,
-  BODY_PART_LABEL,
-  SUBREGIONS,
-  SUBREGION_LABEL,
-  classifyBodyPart,
-  type BodyPartGroup,
-} from '@/domain/muscleTaxonomy'
+import { allExercises, updateSettings, upsertExercise } from '@/db/repo'
+import type { Exercise, Settings } from '@/domain/types'
+import { BODY_PART_LABEL, muscleDisplayTag } from '@/domain/muscleTaxonomy'
+import { findSplit, type SplitDay, type TrainingSplitPlan } from '@/domain/trainingSplits'
 import { AddExerciseSheet } from '@/components/activity/AddExerciseSheet'
+import { SplitPicker } from '@/components/activity/SplitPicker'
 import { Button } from '@/components/ui'
 
-/**
- * Manage the persistent exercise template outside of a live workout, grouped
- * by the muscle a lifter actually thinks in terms of ("I need a lower-chest
- * exercise") rather than by which day it happens to be scheduled on. Upper
- * versus lower/full is still what decides which day an exercise appears on —
- * that choice now lives inside AddExerciseSheet itself — this view is purely
- * for finding and organizing what's in the library.
- *
- * Classification is by exercise name (see muscleTaxonomy.ts), so it works
- * identically for a catalogue pick and a hand-typed custom exercise; neither
- * needs a stored muscle tag. Anything the classifier can't place — a small,
- * honest minority — surfaces in its own "Other" group rather than being
- * silently dropped from the library.
- */
-export function ExerciseLibrary({ equipmentIds }: { equipmentIds: string[] }) {
-  const exercises = useLiveQuery(() => allExercises(), [], [] as Exercise[])
-  const [group, setGroup] = useState<BodyPartGroup | 'other'>('chest')
-  const [addOpen, setAddOpen] = useState(false)
-
-  const classified = useMemo(
-    () => exercises.map((exercise) => ({ exercise, classification: classifyBodyPart(exercise.name) })),
-    [exercises],
-  )
-
-  const inGroup = useMemo(() => {
-    if (group === 'other') return classified.filter((c) => c.classification === null)
-    return classified.filter((c) => c.classification?.group === group)
-  }, [classified, group])
-
-  const subregions = group === 'other' ? undefined : SUBREGIONS[group]
-
-  const grouped = useMemo(() => {
-    if (!subregions) return [{ key: null as string | null, items: inGroup }]
-    const buckets = new Map<string | null, typeof inGroup>()
-    for (const sub of subregions) buckets.set(sub, [])
-    buckets.set(null, [])
-    for (const entry of inGroup) {
-      const key = entry.classification?.subregion ?? null
-      const bucket = buckets.get(key) ?? buckets.get(null)!
-      bucket.push(entry)
-    }
-    return [...buckets.entries()]
-      .filter(([, items]) => items.length > 0)
-      .map(([key, items]) => ({ key, items }))
-  }, [inGroup, subregions])
-
-  const archive = async (exercise: Exercise) => {
-    /*
-     * Archive rather than delete — a historic workout still references this
-     * exercise, and losing that reference would silently corrupt past
-     * session data. Archiving hides it from future planning while leaving
-     * every previous log intact.
-     */
-    await upsertExercise({ ...exercise, archived: true })
-  }
-
-  const otherCount = classified.filter((c) => c.classification === null).length
-
+function ExerciseRow({ exercise, onRemove }: { exercise: Exercise; onRemove: () => void }) {
+  const tag = muscleDisplayTag(exercise.name)
   return (
-    <div className="exercise-library app-panel">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-1 rounded-full border border-[var(--app-line)] p-0.5">
-          {BODY_PART_GROUPS.map((option) => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => setGroup(option)}
-              className={`radius-pill px-3 py-1.5 type-caption font-semibold ${
-                group === option
-                  ? 'bg-[var(--app-selected-fill)] text-[var(--app-selected-ink)]'
-                  : 'text-[var(--app-muted)]'
-              }`}
-            >
-              {BODY_PART_LABEL[option]}
-            </button>
-          ))}
-          {otherCount > 0 ? (
-            <button
-              type="button"
-              onClick={() => setGroup('other')}
-              className={`radius-pill px-3 py-1.5 type-caption font-semibold ${
-                group === 'other'
-                  ? 'bg-[var(--app-selected-fill)] text-[var(--app-selected-ink)]'
-                  : 'text-[var(--app-muted)]'
-              }`}
-            >
-              Other
-            </button>
-          ) : null}
+    <div className="flex items-center gap-3 py-3 border-b border-[var(--app-line)] last:border-0">
+      <div className="min-w-0 flex-1">
+        <div className="type-caption font-semibold text-[var(--app-ink)] truncate">{exercise.name}</div>
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+          {tag ? <span className="type-micro font-medium text-accent">{tag}</span> : null}
+          <span className="type-micro text-[var(--app-muted)]">
+            {exercise.targetSets} sets · {exercise.repRangeMin}–{exercise.repRangeMax} reps @ RIR {exercise.targetRir}
+          </span>
         </div>
-        <Button variant="primary" onClick={() => setAddOpen(true)}>
-          + Add exercise
-        </Button>
+      </div>
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`Remove ${exercise.name}`}
+        className="motion-press flex h-7 w-7 shrink-0 items-center justify-center radius-control text-[var(--app-muted)] hover:bg-[var(--app-line)] hover:text-alert transition-colors"
+      >
+        ✕
+      </button>
+    </div>
+  )
+}
+
+function DayCard({
+  day,
+  exercises,
+  onRemove,
+  onOpenAdd,
+}: {
+  day: SplitDay
+  exercises: Exercise[]
+  onRemove: (exercise: Exercise) => void
+  onOpenAdd: () => void
+}) {
+  return (
+    <div className="app-panel p-4">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <div className="type-caption font-bold text-[var(--app-ink)]">{day.label}</div>
+          <div className="type-micro text-[var(--app-muted)] mt-0.5">
+            {day.muscleGroups.map((g) => BODY_PART_LABEL[g]).join(' · ') || 'Whatever you like'}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onOpenAdd}
+          className="motion-press shrink-0 flex items-center gap-1 radius-control bg-[var(--app-selected-fill)] text-[var(--app-selected-ink)] px-3 py-1.5 type-micro font-semibold"
+        >
+          <span className="text-base leading-none">+</span>
+          <span>Add</span>
+        </button>
       </div>
 
-      {inGroup.length === 0 ? (
-        <p className="type-caption text-[var(--app-muted)]">
-          {group === 'other'
-            ? 'Nothing unclassified right now.'
-            : `No ${BODY_PART_LABEL[group as BodyPartGroup].toLowerCase()} exercises yet — add one below.`}
-        </p>
+      {exercises.length === 0 ? (
+        <button
+          type="button"
+          onClick={onOpenAdd}
+          className="w-full rounded-xl border-2 border-dashed border-[var(--app-line)] py-5 text-center motion-press hover:border-[var(--app-muted)] transition-colors"
+        >
+          <div className="type-caption text-[var(--app-muted)]">No exercises planned</div>
+          <div className="type-micro text-[var(--app-muted)] mt-0.5">Tap to add your first exercise</div>
+        </button>
       ) : (
-        <div className="space-y-4">
-          {grouped.map(({ key, items }) => (
-            <div key={key ?? '_none'}>
-              {key ? (
-                <div className="mb-1.5 type-micro font-semibold text-[var(--app-muted)]">
-                  {SUBREGION_LABEL[key] ?? key}
-                </div>
-              ) : null}
-              <ul className="divide-y divide-[var(--app-line)]">
-                {items.map(({ exercise }) => (
-                  <li key={exercise.id} className="flex items-center justify-between gap-3 py-2.5">
-                    <div className="min-w-0">
-                      <div className="type-caption font-semibold text-[var(--app-ink)]">{exercise.name}</div>
-                      <div className="mt-0.5 type-micro text-[var(--app-muted)]">
-                        {exercise.targetSets} × {exercise.repRangeMin}–{exercise.repRangeMax} @ RIR{' '}
-                        {exercise.targetRir} · {exercise.sessionType} day
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => void archive(exercise)}
-                      className="motion-press type-micro font-semibold text-[var(--app-muted)] hover:text-alert"
-                      aria-label={`Remove ${exercise.name}`}
-                    >
-                      Remove
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
+        <div className="divide-y divide-[var(--app-line)]">
+          {exercises.map((ex) => (
+            <ExerciseRow key={ex.id} exercise={ex} onRemove={() => onRemove(ex)} />
           ))}
         </div>
       )}
+    </div>
+  )
+}
 
-      {addOpen ? (
-        <AddExerciseSheet
-          // Just the sheet's starting default — its own session selector
-          // lets this be changed before adding either way.
-          sessionType={group === 'legs' ? 'lower' : 'upper'}
-          equipmentIds={equipmentIds}
-          onClose={() => setAddOpen(false)}
-          onAdded={() => {}}
+export function ExerciseLibrary({
+  equipmentIds,
+  settings,
+}: {
+  equipmentIds: string[]
+  settings: Settings
+}) {
+  const exercises = useLiveQuery(() => allExercises(), [], [] as Exercise[])
+  const [addOpenForDay, setAddOpenForDay] = useState<string | null>(null)
+
+  const split: TrainingSplitPlan | undefined = useMemo(() => {
+    if (settings.trainingSplitId === 'custom') {
+      return {
+        id: 'custom',
+        name: 'Custom Split',
+        emoji: '🛠️',
+        frequency: 'You decide',
+        goodFor: '',
+        description: '',
+        isCustom: true,
+        days: settings.customSplitDays.map((d) => ({
+          key: d.key,
+          label: d.label,
+          muscleGroups: [],
+          bucket: d.bucket,
+        })),
+      }
+    }
+    return findSplit(settings.trainingSplitId)
+  }, [settings.trainingSplitId, settings.customSplitDays])
+
+  const byDay = useMemo(() => {
+    const map = new Map<string, Exercise[]>()
+    if (!split) return map
+    for (const day of split.days) map.set(day.key, [])
+    for (const ex of exercises) {
+      const key = ex.splitDayKey ?? undefined
+      if (key && map.has(key)) map.get(key)!.push(ex)
+    }
+    return map
+  }, [exercises, split])
+
+  const archive = async (exercise: Exercise) => {
+    await upsertExercise({ ...exercise, archived: true })
+  }
+
+  if (!split) {
+    return (
+      <SplitPicker
+        onPick={(splitId) => void updateSettings({ trainingSplitId: splitId })}
+        onPickCustom={(days) =>
+          void updateSettings({ trainingSplitId: 'custom', customSplitDays: days })
+        }
+      />
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-lg leading-none">{split.emoji}</span>
+          <span className="type-caption font-bold text-[var(--app-ink)]">{split.name}</span>
+        </div>
+        <Button
+          variant="ghost"
+          onClick={() => void updateSettings({ trainingSplitId: null, customSplitDays: [] })}
+        >
+          Change split
+        </Button>
+      </div>
+      {split.days.map((day) => (
+        <DayCard
+          key={day.key}
+          day={day}
+          exercises={byDay.get(day.key) ?? []}
+          onRemove={(ex) => void archive(ex)}
+          onOpenAdd={() => setAddOpenForDay(day.key)}
         />
-      ) : null}
+      ))}
+
+      {addOpenForDay
+        ? (() => {
+            const day = split.days.find((d) => d.key === addOpenForDay)
+            if (!day) return null
+            return (
+              <AddExerciseSheet
+                bucket={day.bucket}
+                day={day}
+                equipmentIds={equipmentIds}
+                onClose={() => setAddOpenForDay(null)}
+                onAdded={() => setAddOpenForDay(null)}
+              />
+            )
+          })()
+        : null}
     </div>
   )
 }

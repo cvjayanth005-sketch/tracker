@@ -12,6 +12,7 @@ import {
   YAxis,
 } from 'recharts'
 import { allExercises, recentSessions, upsertExercise, upsertLog } from '@/db/repo'
+import { requestUndo } from '@/components/undoBus'
 import { dayOfWeek, daysBetween, formatShort, weekdayName } from '@/domain/date'
 import { outcomeFor } from '@/domain/compliance'
 import { sessionVolume } from '@/domain/progression'
@@ -251,9 +252,15 @@ function SelectedDayPanel({
         {schedule?.gym && gymOutcome !== 'hit' ? (
           <button
             type="button"
-            onClick={() =>
-              void upsertLog(date, { gymDone: log?.gymDone === false ? null : false })
-            }
+            onClick={() => {
+              const previous = log?.gymDone ?? null
+              const next = log?.gymDone === false ? null : false
+              void upsertLog(date, { gymDone: next })
+              requestUndo({
+                message: next === false ? 'Marked as rest day' : 'Rest mark cleared',
+                onUndo: () => void upsertLog(date, { gymDone: previous }),
+              })
+            }}
             className="radius-control px-3 py-2 type-caption font-semibold text-[var(--app-ink-soft)] ring-1 ring-inset ring-[var(--app-line)]"
           >
             {log?.gymDone === false ? 'Clear rest mark' : 'Mark rest'}

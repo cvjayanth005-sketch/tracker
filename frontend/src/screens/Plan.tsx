@@ -158,7 +158,7 @@ export default function Plan() {
           <p className="app-eyebrow">Exercises</p>
           <h2 id="exercises-title">Your exercise library</h2>
         </div>
-        <ExerciseLibrary equipmentIds={settings.equipmentIds ?? []} />
+        <ExerciseLibrary equipmentIds={settings.equipmentIds ?? []} settings={settings} />
       </section>
 
       <section className="plan-section" aria-labelledby="manage-plan-title">

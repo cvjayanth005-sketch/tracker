@@ -9,6 +9,7 @@ function exercise(id: string, name: string, over: Partial<Exercise> = {}): Exerc
     id,
     name,
     sessionType: 'upper',
+    splitDayKey: null,
     repRangeMin: 6,
     repRangeMax: 10,
     targetSets: 3,
