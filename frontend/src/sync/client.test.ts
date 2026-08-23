@@ -220,4 +220,74 @@ describe('runSync', () => {
     const meta = await db.syncMeta.get('sync')
     expect(meta?.lastError).toBeNull()
   })
+
+  it('says what a rejected oversized push actually was, not just its status code', async () => {
+    const db = await freshDb()
+    await db.syncMeta.put({
+      id: 'sync',
+      accountUserId: 1,
+      localVersion: 5,
+      syncedVersion: 3,
+      backedUpVersion: 0,
+      lastSyncedAt: null,
+      lastBackupAt: null,
+      lastError: null,
+    })
+
+    const fetchMock = mockFetchSequence([
+      { status: 200, body: { version: 3 } },
+      { status: 413, body: { detail: 'State document is too large.' } },
+    ])
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { sync } = await import('./client')
+    const outcome = await sync()
+
+    expect(outcome.status).toBe('error')
+    const meta = await db.syncMeta.get('sync')
+    // The bare "push failed: 413" it used to record was indistinguishable
+    // from any other server error in the status chip.
+    expect(meta?.lastError).toMatch(/more data than the server accepts/i)
+  })
+
+  it('re-anchors from the server when syncedVersion has drifted above localVersion', async () => {
+    // Not reachable by any normal write — localVersion only ever leads. When
+    // meta drifts this way (interrupted reconcile, restored backup) the push
+    // branch would send a baseVersion ahead of the document's own version on
+    // every attempt, failing identically forever.
+    const db = await freshDb()
+    await db.syncMeta.put({
+      id: 'sync',
+      accountUserId: 1,
+      localVersion: 2,
+      syncedVersion: 7,
+      backedUpVersion: 0,
+      lastSyncedAt: null,
+      lastBackupAt: null,
+      lastError: null,
+    })
+
+    const fetchMock = mockFetchSequence([
+      { status: 200, body: { version: 7 } }, // GET /api/state/version
+      {
+        status: 200,
+        body: {
+          version: 7,
+          updatedAt: '2026-08-20T00:00:00.000Z',
+          tables: { dailyLogs: [{ date: '2026-08-20', weightKg: 81 }] },
+          tombstones: [],
+        },
+      }, // GET /api/state
+    ])
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { sync } = await import('./client')
+    const outcome = await sync()
+
+    expect(outcome).toEqual({ status: 'pulled', version: 7 })
+    expect(fetchMock.mock.calls[1]?.[1]?.method ?? 'GET').toBe('GET')
+    const meta = await db.syncMeta.get('sync')
+    expect(meta?.localVersion).toBe(7)
+    expect(meta?.syncedVersion).toBe(7)
+  })
 })

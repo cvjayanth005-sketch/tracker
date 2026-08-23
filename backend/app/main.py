@@ -84,7 +84,7 @@ AUTH_RATE_LIMIT = int(os.environ.get("AUTH_RATE_LIMIT", "20"))
 AUTH_RATE_WINDOW_SECONDS = int(os.environ.get("AUTH_RATE_WINDOW_SECONDS", "900"))
 AI_RATE_LIMIT = int(os.environ.get("AI_RATE_LIMIT", "40"))
 AI_RATE_WINDOW_SECONDS = int(os.environ.get("AI_RATE_WINDOW_SECONDS", "900"))
-STATE_BODY_MAX_BYTES = int(os.environ.get("STATE_BODY_MAX_BYTES", str(2_000_000)))
+STATE_BODY_MAX_BYTES = int(os.environ.get("STATE_BODY_MAX_BYTES", str(10_000_000)))
 _auth_attempts: dict[str, deque[float]] = {}
 _ai_attempts: dict[str, deque[float]] = {}
 logger = logging.getLogger(__name__)
@@ -570,7 +570,6 @@ def put_state(
 ) -> dict:
     enforce_state_body_limit(request)
     dumped = payload.model_dump()
-    dumped["rowMerge"] = "tombstones" in payload.model_fields_set
     if STATE_BODY_MAX_BYTES > 0:
         size = len(json.dumps(dumped, separators=(",", ":")).encode("utf-8"))
         if size > STATE_BODY_MAX_BYTES:

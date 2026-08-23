@@ -131,6 +131,13 @@ class StateDocument(BaseModel):
     tables: dict[str, list[Any]]
     tombstones: list[dict[str, Any]] = Field(default_factory=list)
     baseVersion: int | None = None
+    # Explicit sync-mode flag. Every current client sends true; the legacy
+    # whole-document replace path (self-hosted SQLite only) relies on a hard
+    # version gate instead and never reads this field. Previously inferred
+    # from whether `tombstones` happened to be present in the JSON body —
+    # correct but an indirect signal for something the protocol should state
+    # outright.
+    rowMerge: bool = True
 
 
 class ApiResponse(BaseModel):

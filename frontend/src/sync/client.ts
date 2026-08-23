@@ -178,6 +178,36 @@ function outcomeForError(error: unknown): SyncOutcome {
   return { status: 'error', message: error instanceof Error ? error.message : String(error) }
 }
 
+/**
+ * A push carries every local row, so a long-lived account's document can grow
+ * past the server's body limit and be rejected outright. Nothing the person
+ * does in the app shrinks it, so retrying is guaranteed to fail the same way —
+ * say that plainly rather than surfacing a bare status code they would have to
+ * look up.
+ */
+const PAYLOAD_TOO_LARGE_MESSAGE =
+  'Sync failed: this device has more data than the server accepts in one upload. Your data is safe locally — please report this so the limit can be raised.'
+
+/**
+ * A non-ok, non-409 response's status code alone ("push failed: 413") was
+ * indistinguishable from a stale conflict retry loop in `lastError`. Reads
+ * the JSON `detail` (or raw text) the backend actually sent, so the visible
+ * error names the real cause — a body-size rejection reads nothing like an
+ * auth failure or a server error, and no longer needs a network-tab hunt to
+ * tell apart.
+ */
+async function errorForResponse(res: Response, action: string): Promise<Error> {
+  let detail = ''
+  try {
+    const body: unknown = await res.clone().json()
+    const maybeDetail = (body as { detail?: unknown } | null)?.detail
+    detail = typeof maybeDetail === 'string' ? maybeDetail : JSON.stringify(maybeDetail ?? body)
+  } catch {
+    detail = await res.text().catch(() => '')
+  }
+  return new Error(`${action} failed: ${res.status}${detail ? ` — ${detail}` : ''}`)
+}
+
 export function sync(): Promise<SyncOutcome> {
   if (syncInFlight) return syncInFlight
   syncInFlight = runSync().finally(() => {
@@ -200,7 +230,7 @@ export async function pullServerState(): Promise<SyncOutcome> {
   try {
     const res = await fetch(`${API_BASE}/api/state`, { headers: authHeader() })
     if (res.status === 401) throw new UnauthorizedError()
-    if (!res.ok) throw new Error(`pull failed: ${res.status}`)
+    if (!res.ok) throw await errorForResponse(res, 'pull')
     const doc = (await res.json()) as StateDocument
     if (doc.version === 0) return { status: 'clean' }
     await importState(doc, { source: 'server' })
@@ -242,7 +272,8 @@ export async function replaceServerState(): Promise<SyncOutcome> {
       })
       return { status: 'conflict', serverVersion, localVersion: doc.version }
     }
-    if (!res.ok) throw new Error(`push failed: ${res.status}`)
+    if (res.status === 413) throw new Error(PAYLOAD_TOO_LARGE_MESSAGE)
+    if (!res.ok) throw await errorForResponse(res, 'push')
     const merged = (await res.json()) as StateDocument
     await applyPushResponse(merged)
     return { status: 'pushed', version: merged.version }
@@ -307,6 +338,20 @@ async function runSync(): Promise<SyncOutcome> {
   try {
     const serverVersion = await fetchServerVersion()
 
+    /*
+     * localVersion below syncedVersion is not a state any normal write can
+     * produce — every local change bumps localVersion, and syncedVersion only
+     * ever catches up to it. It means the meta row drifted (an interrupted
+     * reconcile, a restored backup). Left alone it falls through to the push
+     * branch below and sends `baseVersion` ahead of the document's own
+     * version on every attempt, forever. Pulling re-anchors both counters to
+     * the server's document; the server has already merged this device's rows
+     * up to syncedVersion, so there is nothing pending to lose.
+     */
+    if (meta.localVersion < meta.syncedVersion) {
+      return pullServerState()
+    }
+
     // Server ahead and nothing pending locally: a pull is all that is needed,
     // there is nothing of this device's to merge in.
     if (serverVersion > meta.syncedVersion && meta.localVersion === meta.syncedVersion) {
@@ -343,7 +388,8 @@ async function runSync(): Promise<SyncOutcome> {
       })
       return { status: 'conflict', serverVersion, localVersion: meta.localVersion }
     }
-    if (!res.ok) throw new Error(`push failed: ${res.status}`)
+    if (res.status === 413) throw new Error(PAYLOAD_TOO_LARGE_MESSAGE)
+    if (!res.ok) throw await errorForResponse(res, 'push')
 
     const merged = (await res.json()) as StateDocument
     await applyPushResponse(merged)
