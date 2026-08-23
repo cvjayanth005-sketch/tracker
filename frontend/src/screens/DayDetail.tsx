@@ -20,6 +20,7 @@ import type { LocalDate, Rating, RunType } from '@/domain/types'
 import { NumberField, RatingField, TextArea, TriToggle } from '@/components/fields'
 import { Card, EmptyState, PageHeader, Pill, SectionTitle } from '@/components/ui'
 import { DayFoodSection } from '@/components/food/DayFoodSection'
+import { requestUndo } from '@/components/undoBus'
 
 const RUN_TYPES: RunType[] = ['recovery', 'easy', 'long', 'tempo', 'intervals']
 
@@ -54,6 +55,21 @@ export default function DayDetail() {
   const isToday = date === todayIn(settings.timezone)
   const save = (patch: Parameters<typeof upsertLog>[1]) => void upsertLog(date, patch)
   const targetProp = (target: string | undefined) => (target ? { target } : {})
+
+  const saveWeight = (weightKg: number | null) => {
+    const previous = log?.weightKg ?? null
+    save({ weightKg })
+    if (previous !== weightKg) {
+      requestUndo({ message: 'Weight updated', onUndo: () => save({ weightKg: previous }) })
+    }
+  }
+  const saveGymDone = (gymDone: boolean | null) => {
+    const previous = log?.gymDone ?? null
+    save({ gymDone })
+    if (previous !== gymDone) {
+      requestUndo({ message: 'Gym status updated', onUndo: () => save({ gymDone: previous }) })
+    }
+  }
 
   return (
     <div className="pb-4">
@@ -92,10 +108,10 @@ export default function DayDetail() {
 
           <SectionTitle>Daily log</SectionTitle>
           <div className="space-y-3">
-            <NumberField label="Weight" value={log?.weightKg ?? null} unit="kg" onCommit={(weightKg) => save({ weightKg })} />
+            <NumberField label="Weight" value={log?.weightKg ?? null} unit="kg" onCommit={saveWeight} />
             <NumberField label="Steps" value={log?.steps ?? null} {...targetProp(phase ? `Target ${phase.steps.toLocaleString()}` : undefined)} inputMode="numeric" onCommit={(steps) => save({ steps })} />
             <NumberField label="Sleep" value={log?.sleepHours ?? null} unit="h" {...targetProp(phase ? `Target ${phase.sleepHours}` : undefined)} onCommit={(sleepHours) => save({ sleepHours })} />
-            <TriToggle label="Gym" value={log?.gymDone ?? null} onChange={(gymDone) => save({ gymDone })} />
+            <TriToggle label="Gym" value={log?.gymDone ?? null} onChange={saveGymDone} />
             <div className="grid gap-3 sm:grid-cols-3">
               <RatingField label="Energy" value={log?.energy ?? null} onChange={(energy) => save({ energy: energy as Rating | null })} lowLabel="low" highLabel="high" />
               <RatingField label="Hunger" value={log?.hunger ?? null} onChange={(hunger) => save({ hunger: hunger as Rating | null })} lowLabel="easy" highLabel="hard" />

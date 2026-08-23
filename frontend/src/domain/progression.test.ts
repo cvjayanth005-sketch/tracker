@@ -12,6 +12,7 @@ const bench: Exercise = {
   id: 'ex-1',
   name: 'Barbell Bench Press',
   sessionType: 'upper',
+  splitDayKey: null,
   repRangeMin: 6,
   repRangeMax: 10,
   targetSets: 3,

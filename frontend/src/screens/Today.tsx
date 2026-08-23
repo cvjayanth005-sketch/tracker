@@ -13,6 +13,7 @@ import { WeeklyNarrativeCard } from '@/components/WeeklyNarrativeCard'
 import { SleepCheckIn } from '@/components/SleepCheckIn'
 import { RecommendationCard } from '@/components/RecommendationCard'
 import { TrendChart } from '@/components/TrendChart'
+import { requestUndo } from '@/components/undoBus'
 import { TodayActionList } from '@/components/today/TodayActionList'
 import { TodayProgress } from '@/components/today/TodayProgress'
 import { targetSegmentsForDay } from '@/components/today/dayTargetRingModel'
@@ -187,6 +188,13 @@ export default function Today() {
   }
 
   const save = (patch: Partial<DailyLog>) => void upsertLog(today, patch)
+  const saveGymDone = (gymDone: boolean | null) => {
+    const previous = todayLog?.gymDone ?? null
+    save({ gymDone })
+    if (previous !== gymDone) {
+      requestUndo({ message: 'Gym status updated', onUndo: () => save({ gymDone: previous }) })
+    }
+  }
   const focusLogField = (metric: MetricKey) => {
     const logPanel = document.getElementById('today-log-panel') as HTMLDetailsElement | null
     if (logPanel && !logPanel.open) logPanel.open = true
@@ -437,7 +445,7 @@ export default function Today() {
                       : 'Not scheduled — logging it is optional'
                   }
                   value={todayLog?.gymDone ?? null}
-                  onChange={(gymDone) => save({ gymDone })}
+                  onChange={saveGymDone}
                 />
               </div>
               <NumberField

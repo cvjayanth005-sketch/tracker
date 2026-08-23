@@ -31,6 +31,29 @@ function midpoint(range: { min: number; max: number }): number {
   return Math.round((range.min + range.max) / 2)
 }
 
+/**
+ * Maps the onboarding interview's rough "what do you currently do" answer to
+ * one of the named splits in `trainingSplits.ts`, so a person who already
+ * told the app they run PPL isn't asked to pick their split again from
+ * scratch the first time they open the exercise library. Answers that don't
+ * name a specific split ('other', 'none') stay null — a genuine "ask them"
+ * case, not a guess.
+ */
+function splitIdFromCurrentSplit(currentSplit: OnboardingDraft['training']['currentSplit']): string | null {
+  switch (currentSplit) {
+    case 'full_body':
+      return 'full-body'
+    case 'upper_lower':
+      return 'upper-lower'
+    case 'push_pull_legs':
+      return 'ppl'
+    case 'bro_split':
+      return 'bro-split'
+    default:
+      return null
+  }
+}
+
 export function proposalToPlanDraft(
   proposal: GeneratedProposal,
   draft: OnboardingDraft,
@@ -115,6 +138,7 @@ export function proposalToPlanDraft(
             },
           ],
       equipmentIds: draft.training.equipmentIds,
+      trainingSplitId: splitIdFromCurrentSplit(draft.training.currentSplit),
     },
   }
 }

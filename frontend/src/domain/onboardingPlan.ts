@@ -140,8 +140,9 @@ export function buildStarterPlan(answers: Record<string, string>, timezone = 'UT
     },
     phases,
     // This rules-based fallback runs without the full interview, so there is
-    // no equipment answer to carry through.
+    // no equipment answer, and no split question, to carry through.
     equipmentIds: [],
+    trainingSplitId: null,
   }
 }
 

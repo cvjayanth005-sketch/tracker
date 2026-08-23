@@ -61,6 +61,7 @@ export const EXERCISES: readonly CatalogExercise[] = [
   { id: 'incline_barbell_press', name: 'Incline barbell press', pattern: 'horizontal_push', primaryMuscles: ['chest', 'front_delts'], requiredEquipment: ['barbell'], alsoRequires: ['adjustable_bench'], compound: true, technicalDemand: 2 },
   { id: 'dumbbell_bench_press', name: 'Dumbbell bench press', pattern: 'horizontal_push', primaryMuscles: ['chest', 'triceps'], requiredEquipment: ['dumbbells'], alsoRequires: ['flat_bench'], compound: true, technicalDemand: 1 },
   { id: 'incline_dumbbell_press', name: 'Incline dumbbell press', pattern: 'horizontal_push', primaryMuscles: ['chest', 'front_delts'], requiredEquipment: ['dumbbells'], alsoRequires: ['adjustable_bench'], compound: true, technicalDemand: 1 },
+  { id: 'decline_dumbbell_press', name: 'Decline dumbbell press', pattern: 'horizontal_push', primaryMuscles: ['chest', 'triceps'], requiredEquipment: ['dumbbells'], alsoRequires: ['adjustable_bench'], compound: true, technicalDemand: 1 },
   { id: 'machine_chest_press', name: 'Machine chest press', pattern: 'horizontal_push', primaryMuscles: ['chest', 'triceps'], requiredEquipment: ['chest_press_machine'], compound: true, technicalDemand: 1 },
   { id: 'push_up', name: 'Push-up', pattern: 'horizontal_push', primaryMuscles: ['chest', 'triceps'], requiredEquipment: [BODYWEIGHT_ID], compound: true, technicalDemand: 1 },
   { id: 'dip', name: 'Dip', pattern: 'horizontal_push', primaryMuscles: ['chest', 'triceps'], requiredEquipment: ['dip_station', 'assisted_pull_up_machine'], compound: true, technicalDemand: 2 },
@@ -72,6 +73,7 @@ export const EXERCISES: readonly CatalogExercise[] = [
   { id: 'dumbbell_shoulder_press', name: 'Dumbbell shoulder press', pattern: 'vertical_push', primaryMuscles: ['front_delts', 'triceps'], requiredEquipment: ['dumbbells'], compound: true, technicalDemand: 1 },
   { id: 'machine_shoulder_press', name: 'Machine shoulder press', pattern: 'vertical_push', primaryMuscles: ['front_delts', 'triceps'], requiredEquipment: ['shoulder_press_machine'], compound: true, technicalDemand: 1 },
   { id: 'lateral_raise', name: 'Lateral raise', pattern: 'vertical_push', primaryMuscles: ['side_delts'], requiredEquipment: ['dumbbells', 'cable_machine', 'lateral_raise_machine', 'resistance_bands'], compound: false, technicalDemand: 1 },
+  { id: 'front_raise', name: 'Front dumbbell raise', pattern: 'vertical_push', primaryMuscles: ['front_delts'], requiredEquipment: ['dumbbells', 'cable_machine', 'resistance_bands'], compound: false, technicalDemand: 1 },
   { id: 'pike_push_up', name: 'Pike push-up', pattern: 'vertical_push', primaryMuscles: ['front_delts', 'triceps'], requiredEquipment: [BODYWEIGHT_ID], compound: true, technicalDemand: 2 },
 
   // --- Horizontal pull ------------------------------------------------------
@@ -83,6 +85,7 @@ export const EXERCISES: readonly CatalogExercise[] = [
   { id: 'band_row', name: 'Band row', pattern: 'horizontal_pull', primaryMuscles: ['upper_back'], requiredEquipment: ['resistance_bands'], compound: false, technicalDemand: 1 },
   { id: 'face_pull', name: 'Face pull', pattern: 'horizontal_pull', primaryMuscles: ['rear_delts', 'upper_back'], requiredEquipment: ['cable_machine', 'resistance_bands'], compound: false, technicalDemand: 1 },
   { id: 'reverse_fly', name: 'Reverse fly', pattern: 'horizontal_pull', primaryMuscles: ['rear_delts'], requiredEquipment: ['dumbbells', 'rear_delt_machine', 'cable_machine'], compound: false, technicalDemand: 1 },
+  { id: 'barbell_shrug', name: 'Barbell shrug', pattern: 'horizontal_pull', primaryMuscles: ['traps'], requiredEquipment: ['barbell', 'dumbbells'], compound: false, technicalDemand: 1 },
 
   // --- Vertical pull --------------------------------------------------------
   { id: 'pull_up', name: 'Pull-up', pattern: 'vertical_pull', primaryMuscles: ['lats', 'biceps'], requiredEquipment: ['pull_up_bar'], compound: true, technicalDemand: 2 },
@@ -95,6 +98,8 @@ export const EXERCISES: readonly CatalogExercise[] = [
   { id: 'dumbbell_curl', name: 'Dumbbell curl', pattern: 'elbow_flexion', primaryMuscles: ['biceps', 'forearms'], requiredEquipment: ['dumbbells'], compound: false, technicalDemand: 1 },
   { id: 'cable_curl', name: 'Cable curl', pattern: 'elbow_flexion', primaryMuscles: ['biceps'], requiredEquipment: ['cable_machine', 'resistance_bands'], compound: false, technicalDemand: 1 },
   { id: 'preacher_curl', name: 'Preacher curl', pattern: 'elbow_flexion', primaryMuscles: ['biceps'], requiredEquipment: ['ez_bar', 'dumbbells'], alsoRequires: ['preacher_bench'], compound: false, technicalDemand: 1 },
+  { id: 'incline_dumbbell_curl', name: 'Incline dumbbell curl', pattern: 'elbow_flexion', primaryMuscles: ['biceps'], requiredEquipment: ['dumbbells'], alsoRequires: ['adjustable_bench'], compound: false, technicalDemand: 1 },
+  { id: 'concentration_curl', name: 'Concentration curl', pattern: 'elbow_flexion', primaryMuscles: ['biceps'], requiredEquipment: ['dumbbells'], compound: false, technicalDemand: 1 },
   { id: 'triceps_pushdown', name: 'Triceps pushdown', pattern: 'elbow_extension', primaryMuscles: ['triceps'], requiredEquipment: ['cable_machine', 'resistance_bands'], compound: false, technicalDemand: 1 },
   { id: 'overhead_triceps_extension', name: 'Overhead triceps extension', pattern: 'elbow_extension', primaryMuscles: ['triceps'], requiredEquipment: ['dumbbells', 'ez_bar', 'cable_machine'], compound: false, technicalDemand: 1 },
   { id: 'skullcrusher', name: 'Skullcrusher', pattern: 'elbow_extension', primaryMuscles: ['triceps'], requiredEquipment: ['ez_bar', 'dumbbells'], alsoRequires: ['flat_bench'], compound: false, technicalDemand: 2 },

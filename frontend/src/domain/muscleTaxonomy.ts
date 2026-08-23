@@ -98,6 +98,82 @@ function classifyLegs(n: string): BodyPartClassification {
  * six-bucket classifier's convention so the two systems do not disagree on
  * the exercises they share.
  */
+export interface PreciseMuscleTarget {
+  group: BodyPartGroup
+  targetArea: string
+}
+
+/**
+ * Exact-name overrides sourced from a hand-curated exercise/muscle-target
+ * list (not derived from regex) — more precise than the classifier below,
+ * and authoritative where the two disagree (e.g. Face Pulls: the regex
+ * classifier reads it as shoulders, this table says back/rhomboids).
+ */
+const PRECISE_MUSCLE_TARGETS: Record<string, PreciseMuscleTarget> = {
+  // Keyed by the lower-cased catalogue name (see onboarding/catalog/exercises.ts).
+  // CSV-name variants are aliased alongside so a hand-typed exercise matching
+  // the sheet the user gave still resolves.
+  // Shoulders
+  'front dumbbell raise': { group: 'shoulders', targetArea: 'Anterior Deltoid' },
+  'overhead press': { group: 'shoulders', targetArea: 'Anterior Deltoid' },
+  'barbell overhead press': { group: 'shoulders', targetArea: 'Anterior Deltoid' },
+  'dumbbell shoulder press': { group: 'shoulders', targetArea: 'Anterior Deltoid' },
+  'lateral raise': { group: 'shoulders', targetArea: 'Lateral Deltoid' },
+  'dumbbell lateral raise': { group: 'shoulders', targetArea: 'Lateral Deltoid' },
+  'reverse fly': { group: 'shoulders', targetArea: 'Posterior Deltoid' },
+  'reverse pec deck fly': { group: 'shoulders', targetArea: 'Posterior Deltoid' },
+  'face pull': { group: 'back', targetArea: 'Rhomboids' },
+  'face pulls': { group: 'back', targetArea: 'Rhomboids' },
+  // Chest
+  'incline barbell press': { group: 'chest', targetArea: 'Upper Pecs' },
+  'incline dumbbell press': { group: 'chest', targetArea: 'Upper Pecs' },
+  'barbell bench press': { group: 'chest', targetArea: 'Middle Pecs' },
+  'flat bench press': { group: 'chest', targetArea: 'Middle Pecs' },
+  'dumbbell bench press': { group: 'chest', targetArea: 'Middle Pecs' },
+  'decline dumbbell press': { group: 'chest', targetArea: 'Lower Pecs' },
+  // Back
+  'pull-up': { group: 'back', targetArea: 'Lats' },
+  'barbell shrug': { group: 'back', targetArea: 'Traps' },
+  // Arms — biceps
+  'incline dumbbell curl': { group: 'biceps', targetArea: 'Biceps (Long Head)' },
+  'concentration curl': { group: 'biceps', targetArea: 'Biceps (Short Head)' },
+  // Arms — triceps
+  'triceps pushdown': { group: 'triceps', targetArea: 'Triceps (Lateral Head)' },
+  'overhead triceps extension': { group: 'triceps', targetArea: 'Triceps (Long Head)' },
+  // Legs
+  'back squat': { group: 'legs', targetArea: 'Quads' },
+  'barbell back squat': { group: 'legs', targetArea: 'Quads' },
+  'romanian deadlift': { group: 'legs', targetArea: 'Hamstrings' },
+  'hip thrust': { group: 'legs', targetArea: 'Glutes' },
+  'standing calf raise': { group: 'legs', targetArea: 'Calves' },
+  // Core
+  'cable crunch': { group: 'core', targetArea: 'Rectus Abdominis' },
+  crunches: { group: 'core', targetArea: 'Rectus Abdominis' },
+  'russian twist': { group: 'core', targetArea: 'Obliques' },
+  'russian twists': { group: 'core', targetArea: 'Obliques' },
+  'dead bug': { group: 'core', targetArea: 'Transverse Abdominis' },
+}
+
+export function preciseMuscleTarget(name: string): PreciseMuscleTarget | null {
+  return PRECISE_MUSCLE_TARGETS[name.trim().toLowerCase()] ?? null
+}
+
+/** The broad group an exercise belongs to, preferring the precise table over the regex classifier. */
+export function muscleGroupFor(name: string): BodyPartGroup | null {
+  return preciseMuscleTarget(name)?.group ?? classifyBodyPart(name)?.group ?? null
+}
+
+/** Display-ready "Group · Target area" tag, preferring the precise table over the regex classifier. */
+export function muscleDisplayTag(name: string): string | null {
+  const precise = preciseMuscleTarget(name)
+  if (precise) return `${BODY_PART_LABEL[precise.group]} · ${precise.targetArea}`
+  const c = classifyBodyPart(name)
+  if (!c) return null
+  const group = BODY_PART_LABEL[c.group]
+  if (!c.subregion) return group
+  return `${group} · ${SUBREGION_LABEL[c.subregion] ?? c.subregion}`
+}
+
 export function classifyBodyPart(name: string): BodyPartClassification | null {
   const n = name.toLowerCase()
 

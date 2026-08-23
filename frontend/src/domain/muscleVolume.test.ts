@@ -10,6 +10,7 @@ function exercise(id: string, name: string): Exercise {
     id,
     name,
     sessionType: 'upper',
+    splitDayKey: null,
     repRangeMin: 6,
     repRangeMax: 10,
     targetSets: 3,
