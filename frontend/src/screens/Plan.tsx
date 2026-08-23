@@ -15,6 +15,7 @@ import { fmt } from '@/components/format'
 import { formatShort } from '@/domain/date'
 import type { Phase } from '@/domain/types'
 import { SPLIT_LABEL, describeSchedule } from './plan/training'
+import { ExerciseLibrary } from '@/components/activity/ExerciseLibrary'
 import type { PhaseReview, Recommendation } from '@/domain/rules'
 import { useDashboard } from '@/hooks/useDashboard'
 import {
@@ -150,6 +151,14 @@ export default function Plan() {
           <h2 id="training-plan-title">How your week is built</h2>
         </div>
         <TrainingPlan phase={phase} />
+      </section>
+
+      <section className="plan-section" aria-labelledby="exercises-title">
+        <div className="plan-section-heading">
+          <p className="app-eyebrow">Exercises</p>
+          <h2 id="exercises-title">Your exercise library</h2>
+        </div>
+        <ExerciseLibrary equipmentIds={settings.equipmentIds ?? []} />
       </section>
 
       <section className="plan-section" aria-labelledby="manage-plan-title">

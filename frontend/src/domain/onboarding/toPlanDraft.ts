@@ -114,6 +114,7 @@ export function proposalToPlanDraft(
               notes: null,
             },
           ],
+      equipmentIds: draft.training.equipmentIds,
     },
   }
 }

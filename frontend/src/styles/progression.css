@@ -71,3 +71,14 @@
   align-items: baseline;
   gap: 0.2rem;
 }
+
+/* Exercise library — the list under Plan → Your exercise library */
+.exercise-library {
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .exercise-library {
+    padding: 1.25rem;
+  }
+}

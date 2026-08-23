@@ -73,6 +73,7 @@ export function defaultSettings(): Settings {
     minReadingsPerWindow: 4,
     goodCompliancePct: 80,
     manualPhaseOverrideId: null,
+    equipmentIds: [],
     updatedAt: now(),
   }
 }

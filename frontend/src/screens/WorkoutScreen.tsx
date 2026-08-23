@@ -29,6 +29,7 @@ import {
   Stat,
 } from '@/components/ui'
 import { fmtInt, statVal } from '@/components/format'
+import { AddExerciseSheet } from '@/components/activity/AddExerciseSheet'
 import { paceMinPerKm } from '@/domain/running'
 import type {
   Exercise,
@@ -63,6 +64,7 @@ export default function WorkoutScreen() {
   const history = useLiveQuery(() => recentSessions(), [], [])
 
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [addExerciseOpen, setAddExerciseOpen] = useState(false)
 
   if (!phase) return <EmptyState title="Setting up" body="Preparing your local database." />
 
@@ -181,16 +183,21 @@ export default function WorkoutScreen() {
                 first is the difference between choosing a session and
                 discovering it.
               */}
-              {previewExercises.length > 0 ? (
-                <div className="mt-3 radius-inset border border-[var(--app-line)] bg-[var(--app-inset)] p-3">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="type-micro text-[var(--app-muted)]">
-                      {startType} session
-                    </span>
-                    <span className="type-dense text-[var(--app-muted)]">
-                      {previewExercises.length} exercises · {previewSets} sets
-                    </span>
-                  </div>
+              <div className="mt-3 radius-inset border border-[var(--app-line)] bg-[var(--app-inset)] p-3">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="type-micro text-[var(--app-muted)]">{startType} session</span>
+                  <button
+                    type="button"
+                    onClick={() => setAddExerciseOpen(true)}
+                    className="type-dense font-semibold text-[var(--app-blue)]"
+                  >
+                    + Add exercise
+                  </button>
+                </div>
+                <div className="mt-0.5 type-dense text-[var(--app-muted)]">
+                  {previewExercises.length} exercises · {previewSets} sets
+                </div>
+                {previewExercises.length > 0 ? (
                   <ul className="mt-2 space-y-1.5">
                     {previewExercises.map((exercise) => (
                       <li key={exercise.id} className="flex items-baseline justify-between gap-3">
@@ -205,11 +212,19 @@ export default function WorkoutScreen() {
                       </li>
                     ))}
                   </ul>
-                </div>
-              ) : null}
+                ) : (
+                  <p className="mt-2 type-caption text-[var(--app-muted)]">
+                    Nothing in this session yet — add an exercise to get started.
+                  </p>
+                )}
+              </div>
 
               <div className="mt-3 flex gap-2">
-                <Button variant="primary" onClick={() => void begin(startType)}>
+                <Button
+                  variant="primary"
+                  onClick={() => void begin(startType)}
+                  disabled={previewExercises.length === 0}
+                >
                   Start {scheduled?.gym ? scheduled.sessionType : 'session'}
                 </Button>
                 <Button onClick={() => setPickerOpen(true)}>Pick another</Button>
@@ -245,6 +260,20 @@ export default function WorkoutScreen() {
                 />
               ))}
             </div>
+            {/*
+              Also reachable mid-workout: someone often decides to add an
+              extra accessory once they're already at the rack, and the only
+              alternative before was leaving the session, editing the
+              template, and coming back. A new exercise added here appears
+              in `plannedExercises` immediately via `useLiveQuery`.
+            */}
+            <button
+              type="button"
+              onClick={() => setAddExerciseOpen(true)}
+              className="motion-press mt-3 w-full radius-inset border border-dashed border-[var(--app-line-strong)] py-3 type-caption font-semibold text-[var(--app-blue)]"
+            >
+              + Add exercise to this session
+            </button>
           </div>
           )}
         </div>
@@ -287,6 +316,18 @@ export default function WorkoutScreen() {
           ) : null}
         </div>
       </div>
+
+      {addExerciseOpen ? (
+        <AddExerciseSheet
+          // `startType` can only be 'run' when the day has no gym session
+          // scheduled — the branch that reaches this button always implies
+          // a gym day, so this narrows a type the runtime already guarantees.
+          sessionType={startType === 'run' ? 'upper' : startType}
+          equipmentIds={dash.settings?.equipmentIds ?? []}
+          onClose={() => setAddExerciseOpen(false)}
+          onAdded={() => {}}
+        />
+      ) : null}
     </div>
   )
 }

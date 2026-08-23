@@ -190,4 +190,34 @@ describe('runSync', () => {
     expect(meta?.syncedVersion).toBe(4)
     expect(meta?.localVersion).toBe(9)
   })
+
+  it('clears a stale lastError once nothing is actually pending', async () => {
+    // Reproduces the "Sync failing — 0 changes unsent" bug: a past failure
+    // left lastError set, then the device caught up (localVersion ===
+    // syncedVersion) without anything new to push — the sync-attempt path
+    // that would normally clear the error on success never runs again once
+    // there is nothing left to send, so the stale message would otherwise
+    // persist forever even though sync is genuinely fine.
+    const db = await freshDb()
+    await db.syncMeta.put({
+      id: 'sync',
+      accountUserId: 1,
+      localVersion: 3,
+      syncedVersion: 3,
+      backedUpVersion: 0,
+      lastSyncedAt: null,
+      lastBackupAt: null,
+      lastError: 'push failed: 500',
+    })
+
+    const fetchMock = mockFetchSequence([{ status: 200, body: { version: 3 } }])
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { sync } = await import('./client')
+    const outcome = await sync()
+
+    expect(outcome).toEqual({ status: 'clean' })
+    const meta = await db.syncMeta.get('sync')
+    expect(meta?.lastError).toBeNull()
+  })
 })

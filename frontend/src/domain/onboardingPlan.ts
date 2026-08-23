@@ -139,6 +139,9 @@ export function buildStarterPlan(answers: Record<string, string>, timezone = 'UT
       weeklyRunKmTarget: null,
     },
     phases,
+    // This rules-based fallback runs without the full interview, so there is
+    // no equipment answer to carry through.
+    equipmentIds: [],
   }
 }
 

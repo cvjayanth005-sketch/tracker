@@ -618,6 +618,8 @@ export interface OnboardingPlanDraft {
     weeklyRunKmTarget: number | null
     notes: string | null
   }>
+  /** Stable ids from the equipment catalogue. Empty means unknown. */
+  equipmentIds: string[]
 }
 
 function weeklySchedule(gymDaysPerWeek: number, weeklyRunKmTarget: number | null): DaySchedule[] {
@@ -679,6 +681,7 @@ export async function applyOnboardingPlan(draft: OnboardingPlanDraft): Promise<v
       planStartDate: draft.planStartDate,
       onboardingCompleted: true,
       calorieFloor: Math.min(existing.calorieFloor, Math.max(1200, draft.targets.calories - 350)),
+      equipmentIds: draft.equipmentIds,
       updatedAt: stamp,
     })
     const previous = await db.phases.toArray()
@@ -811,6 +814,37 @@ export async function allExercises(): Promise<Exercise[]> {
 export async function upsertExercise(exercise: Exercise): Promise<void> {
   await db.exercises.put(exercise)
   await markDirty()
+}
+
+/** New order value that sorts after every exercise already in that session. */
+async function nextExerciseOrder(sessionType: Exercise['sessionType']): Promise<number> {
+  const existing = await db.exercises.where('sessionType').equals(sessionType).toArray()
+  return existing.reduce((max, e) => Math.max(max, e.order), -1) + 1
+}
+
+/**
+ * Adds a new exercise to the live, trackable list — whether picked from the
+ * catalogue or typed as a custom entry, the write is the same either way.
+ * `params` is the starting rep range/sets/RIR/increment (see
+ * exercisePicker.ts for how the picker derives sensible ones); the caller
+ * owns that decision, this just writes the row.
+ */
+export async function createExercise(
+  name: string,
+  sessionType: Exercise['sessionType'],
+  params: Pick<Exercise, 'repRangeMin' | 'repRangeMax' | 'targetSets' | 'targetRir' | 'loadIncrementKg'>,
+): Promise<Exercise> {
+  const exercise: Exercise = {
+    id: uid(),
+    name,
+    sessionType,
+    order: await nextExerciseOrder(sessionType),
+    archived: false,
+    ...params,
+  }
+  await db.exercises.put(exercise)
+  await markDirty()
+  return exercise
 }
 
 export async function getWorkoutForDate(date: LocalDate): Promise<Workout | undefined> {

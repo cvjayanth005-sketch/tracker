@@ -267,8 +267,16 @@ export async function bootstrapAccountState(userId: number): Promise<SyncOutcome
     if (!meta) return { status: 'error', message: 'sync metadata missing' }
     const serverVersion = await fetchServerVersion()
 
+    // Truly caught up and nothing to do — clear any error a past failed
+    // attempt left behind, so a stale "Sync failing" chip does not survive
+    // into a session where everything is actually fine.
+    const clean = async (): Promise<SyncOutcome> => {
+      if (meta.lastError) await db.syncMeta.update('sync', { lastError: null })
+      return { status: 'clean' }
+    }
+
     if (serverVersion === 0) {
-      return meta.localVersion > meta.syncedVersion ? sync() : { status: 'clean' }
+      return meta.localVersion > meta.syncedVersion ? sync() : clean()
     }
 
     // Both sides having moved used to be refused outright here. The server
@@ -279,7 +287,7 @@ export async function bootstrapAccountState(userId: number): Promise<SyncOutcome
     if (serverVersion !== meta.syncedVersion && meta.localVersion === meta.syncedVersion) {
       return pullServerState()
     }
-    return meta.localVersion > meta.syncedVersion ? sync() : { status: 'clean' }
+    return meta.localVersion > meta.syncedVersion ? sync() : clean()
   } catch (error) {
     const outcome = outcomeForError(error)
     const message =
@@ -309,7 +317,18 @@ async function runSync(): Promise<SyncOutcome> {
     // row-level changes regardless of version drift (see cloud_store.py), so
     // this device just pushes its pending changes and reconciles against
     // whatever comes back, same as the plain "local pending" case below.
-    if (meta.localVersion === meta.syncedVersion) return { status: 'clean' }
+    if (meta.localVersion === meta.syncedVersion) {
+      /*
+       * Nothing pending, but a PAST failure can still be sitting in
+       * lastError — this branch is reached without ever attempting a
+       * network call again once there is nothing new to push, so a stale
+       * error from an earlier offline blip or transient failure would
+       * otherwise persist and show "Sync failing" forever even though
+       * everything is actually caught up.
+       */
+      if (meta.lastError) await db.syncMeta.update('sync', { lastError: null })
+      return { status: 'clean' }
+    }
 
     const doc = await exportState()
     const res = await fetch(`${API_BASE}/api/state`, {

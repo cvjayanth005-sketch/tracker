@@ -102,6 +102,15 @@ export interface Settings {
   /** Compliance at or above this counts as "good adherence". */
   goodCompliancePct: number
   manualPhaseOverrideId: string | null
+  /**
+   * Stable ids from the onboarding equipment catalogue. Captured during
+   * onboarding but previously discarded once the plan was created — the
+   * exercise picker needs it to keep filtering by what's actually available
+   * as gyms and home setups change, not just at signup. Empty means
+   * "unknown, don't filter" rather than "owns nothing" — an account created
+   * before this field existed should see every exercise, not none.
+   */
+  equipmentIds: string[]
   updatedAt: Instant
 }
 
