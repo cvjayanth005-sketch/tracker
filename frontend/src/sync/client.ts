@@ -53,6 +53,7 @@ const TABLES = [
   'runs',
   'weeklyCheckIns',
   'onboardingDrafts',
+  'scheduleOverrides',
 ] as const
 
 export async function exportState(): Promise<StateDocument> {
@@ -139,10 +140,22 @@ function isFactTable(name: string): name is (typeof TABLES)[number] {
  * markers to the server's newly computed version — the device's own writes
  * are now part of that merged state, not still "pending" against it.
  */
-async function applyPushResponse(doc: StateDocument): Promise<void> {
+async function applyPushResponse(doc: StateDocument, sent: StateDocument): Promise<void> {
   const tables = [...TABLES.map((t) => db.table(t)), db.tombstones, db.syncMeta]
   const tombstones = Array.isArray(doc.tombstones) ? doc.tombstones : []
   await db.transaction('rw', tables, async () => {
+    const current = await db.syncMeta.get('sync')
+    // A response only acknowledges the snapshot we sent. Never replace edits
+    // made during the request, even when the server version jumped ahead.
+    if (current && current.localVersion !== sent.version) {
+      await db.syncMeta.update('sync', {
+        localVersion: Math.max(doc.version + 1, current.localVersion),
+        syncedVersion: doc.version,
+        lastSyncedAt: new Date().toISOString(),
+        lastError: null,
+      })
+      return
+    }
     for (const name of TABLES) {
       const rows = doc.tables[name]
       if (!Array.isArray(rows)) continue
@@ -155,7 +168,6 @@ async function applyPushResponse(doc: StateDocument): Promise<void> {
     }
     // A local write can land while the push was in flight — never roll
     // localVersion backward below whatever it has already reached.
-    const current = await db.syncMeta.get('sync')
     await db.syncMeta.update('sync', {
       localVersion: Math.max(doc.version, current?.localVersion ?? 0),
       syncedVersion: doc.version,
@@ -275,7 +287,7 @@ export async function replaceServerState(): Promise<SyncOutcome> {
     if (res.status === 413) throw new Error(PAYLOAD_TOO_LARGE_MESSAGE)
     if (!res.ok) throw await errorForResponse(res, 'push')
     const merged = (await res.json()) as StateDocument
-    await applyPushResponse(merged)
+    await applyPushResponse(merged, doc)
     return { status: 'pushed', version: merged.version }
   } catch (error) {
     const outcome = outcomeForError(error)
@@ -392,7 +404,7 @@ async function runSync(): Promise<SyncOutcome> {
     if (!res.ok) throw await errorForResponse(res, 'push')
 
     const merged = (await res.json()) as StateDocument
-    await applyPushResponse(merged)
+    await applyPushResponse(merged, doc)
     return { status: 'pushed', version: merged.version }
   } catch (error) {
     const outcome = outcomeForError(error)

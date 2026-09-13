@@ -11,13 +11,17 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { allExercises, recentSessions, upsertExercise, upsertLog } from '@/db/repo'
+import { allExercises, allLogs, recentSessions, upsertExercise, upsertLog } from '@/db/repo'
 import { requestUndo } from '@/components/undoBus'
 import { dayOfWeek, daysBetween, formatShort, weekdayName } from '@/domain/date'
+import { scheduleForDate } from '@/domain/schedule'
 import { outcomeFor } from '@/domain/compliance'
 import { sessionVolume } from '@/domain/progression'
 import { computeMuscleMetrics } from '@/domain/muscleVolume'
 import { MuscleVolumeWheel } from '@/components/activity/MuscleVolumeWheel'
+import { ActivityHeatmap } from '@/components/analytics/ActivityHeatmap'
+import { BodyMap } from '@/components/analytics/BodyMap'
+import { OneRepMaxSheet } from '@/components/analytics/OneRepMaxSheet'
 import { ProgressionCard } from '@/components/activity/ProgressionCard'
 import { buildGainsSuggestion, groupProgression } from '@/domain/gainsSuggestion'
 import '@/styles/progression.css'
@@ -634,15 +638,16 @@ function MoveRing({
 export default function Activity() {
   const dash = useDashboard(30)
   const { today, phase, settings, index, todayLog } = dash
-  const sessions = useLiveQuery(() => recentSessions(60), [], [])
+  const sessions = useLiveQuery(() => recentSessions(400), [], [])
+  const allLogsForHeatmap = useLiveQuery(() => allLogs(), [], [])
   const exercises = useLiveQuery(() => allExercises(), [], [] as Exercise[])
   const [selectedDate, setSelectedDate] = useState<LocalDate>(today)
   const adaptive = useAdaptiveSession()
 
   const dates = useMemo(() => lastSevenDates(today), [today])
   const scheduled = useMemo(
-    () => phase?.schedule.find((item) => item.dow === dayOfWeek(today)),
-    [phase, today],
+    () => phase ? scheduleForDate(phase, today, dash.scheduleOverrides) : undefined,
+    [phase, today, dash.scheduleOverrides],
   )
 
   const training = useMemo(() => {
@@ -954,6 +959,14 @@ export default function Activity() {
         </Card>
 
         <Card>
+          <BodyMap metrics={muscleMetrics} />
+        </Card>
+
+        <Card>
+          <OneRepMaxSheet exercises={exercises ?? []} sessions={sessions ?? []} />
+        </Card>
+
+        <Card>
           <div className="type-caption font-semibold text-[var(--app-ink)]">Strength progress</div>
           <div className="mt-3 space-y-3">
             {training.map((week) => (
@@ -974,6 +987,15 @@ export default function Activity() {
           </div>
         </Card>
       </div>
+
+      <SectionTitle>Year in motion</SectionTitle>
+      <Card>
+        <ActivityHeatmap
+          today={today}
+          logs={new Map((allLogsForHeatmap ?? []).map((log) => [log.date, log]))}
+          workouts={(sessions ?? []).map((session) => session.workout)}
+        />
+      </Card>
     </div>
   )
 }

@@ -109,7 +109,7 @@ def static_dir() -> Path:
 
 def redact_secrets(text: str) -> str:
     redacted = text
-    for secret_name in ("SUPABASE_DATABASE_URL", "DATABASE_URL", "GROQ_API_KEY"):
+    for secret_name in ("SUPABASE_DATABASE_URL", "DATABASE_URL", "GROQ_API_KEY", "GEMINI_API_KEY"):
         secret = os.environ.get(secret_name)
         if secret:
             redacted = redacted.replace(secret, f"[{secret_name}]")

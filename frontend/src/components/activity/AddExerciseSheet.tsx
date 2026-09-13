@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { createExercise } from '@/db/repo'
+import { createExercise, upsertExercise } from '@/db/repo'
 import { defaultCustomExerciseParams, defaultExerciseParams } from '@/domain/exercisePicker'
 import { muscleDisplayTag, muscleGroupFor } from '@/domain/muscleTaxonomy'
 import type { SplitDay } from '@/domain/trainingSplits'
@@ -60,6 +60,7 @@ export function AddExerciseSheet({
   const [search, setSearch] = useState('')
   const [customName, setCustomName] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [timed, setTimed] = useState(false)
 
   const matches = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -94,7 +95,8 @@ export function AddExerciseSheet({
         day?.key ?? null,
         equipmentId,
       )
-      onAdded(created)
+      onAdded(timed ? { ...created, isTimed: true } : created)
+      if (timed) await upsertExercise({ ...created, isTimed: true })
     } finally {
       setBusyId(null)
     }
@@ -107,7 +109,8 @@ export function AddExerciseSheet({
     try {
       const created = await createExercise(name, bucket, defaultCustomExerciseParams(), day?.key ?? null)
       setCustomName('')
-      onAdded(created)
+      onAdded(timed ? { ...created, isTimed: true } : created)
+      if (timed) await upsertExercise({ ...created, isTimed: true })
     } finally {
       setBusyId(null)
     }
@@ -199,6 +202,10 @@ export function AddExerciseSheet({
         </ul>
 
         <div className="mt-4 border-t border-[var(--app-line)] pt-3">
+          <label className="mt-3 flex items-center gap-2 type-caption text-[var(--app-ink-soft)]">
+            <input type="checkbox" checked={timed} onChange={(e) => setTimed(e.target.checked)} />
+            Track this exercise by time (seconds)
+          </label>
           <p className="type-micro font-semibold text-[var(--app-muted)]">
             Can&apos;t find it? Add it as a custom exercise.
           </p>

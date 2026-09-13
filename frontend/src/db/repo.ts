@@ -21,6 +21,7 @@ import type {
   Workout,
   WorkoutPrescription,
   WorkoutSet,
+  ScheduleOverride,
 } from '@/domain/types'
 
 /**
@@ -31,6 +32,37 @@ import type {
 
 const now = () => new Date().toISOString()
 const uid = () => crypto.randomUUID()
+
+export async function scheduleOverridesForDate(date: LocalDate): Promise<ScheduleOverride[]> {
+  const [source, target] = await Promise.all([
+    db.scheduleOverrides.where('sourceDate').equals(date).toArray(),
+    db.scheduleOverrides.where('targetDate').equals(date).toArray(),
+  ])
+  return [...source, ...target.filter((item) => !source.some((s) => s.id === item.id))]
+}
+
+export async function addScheduleOverride(sourceDate: LocalDate, action: ScheduleOverride['action'], targetDate: LocalDate | null = null, reason: string | null = null): Promise<ScheduleOverride> {
+  const override: ScheduleOverride = { id: uid(), sourceDate, targetDate, action, reason, createdAt: now() }
+  await db.scheduleOverrides.put(override)
+  await markDirty()
+  return override
+}
+
+export async function deleteScheduleOverride(id: string): Promise<void> {
+  await db.scheduleOverrides.delete(id)
+  await markDirty()
+}
+
+export async function swapScheduledDays(firstDate: LocalDate, secondDate: LocalDate): Promise<void> {
+  const stamp = now()
+  await db.transaction('rw', db.scheduleOverrides, async () => {
+    await db.scheduleOverrides.bulkPut([
+      { id: uid(), sourceDate: firstDate, targetDate: secondDate, action: 'move', reason: 'Swapped', createdAt: stamp },
+      { id: uid(), sourceDate: secondDate, targetDate: firstDate, action: 'move', reason: 'Swapped', createdAt: stamp },
+    ])
+  })
+  await markDirty()
+}
 
 // ---------------------------------------------------------------------------
 // Daily logs
@@ -920,6 +952,8 @@ export async function addSet(
     weightKg: null,
     reps: null,
     rir: null,
+    rpe: null,
+    durationSec: null,
     isWarmup: false,
     createdAt: now(),
     ...partial,

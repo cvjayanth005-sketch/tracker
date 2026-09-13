@@ -14,7 +14,8 @@ import {
   updateSet,
   updateWorkout,
 } from '@/db/repo'
-import { dayOfWeek, formatShort, weekdayName } from '@/domain/date'
+import { formatShort, weekdayName } from '@/domain/date'
+import { scheduleForDate } from '@/domain/schedule'
 import { bestEstimated1rm, evaluateProgression, sessionVolume } from '@/domain/progression'
 import { upsertLog } from '@/db/repo'
 import { useDashboard } from '@/hooks/useDashboard'
@@ -31,6 +32,11 @@ import {
 import { fmtInt, statVal } from '@/components/format'
 import { AddExerciseSheet } from '@/components/activity/AddExerciseSheet'
 import { paceMinPerKm } from '@/domain/running'
+import { useWakeLock } from '@/hooks/useWakeLock'
+import { PlateCalculator } from '@/components/workout/PlateCalculator'
+import { effortLabel, rirToRpe, rpeToRir, type EffortScale } from '@/domain/effort'
+import { restTimerController } from '@/hooks/useRestTimer'
+import { updateSettings } from '@/db/repo'
 import type {
   Exercise,
   ExercisePrescription,
@@ -50,8 +56,8 @@ export default function WorkoutScreen() {
   const { today, phase } = dash
 
   const scheduled = useMemo(
-    () => phase?.schedule.find((s) => s.dow === dayOfWeek(today)),
-    [phase, today],
+    () => phase ? scheduleForDate(phase, today, dash.scheduleOverrides) : undefined,
+    [phase, today, dash.scheduleOverrides],
   )
 
   const workout = useLiveQuery(() => getWorkoutForDate(today), [today])
@@ -65,6 +71,28 @@ export default function WorkoutScreen() {
 
   const [pickerOpen, setPickerOpen] = useState(false)
   const [addExerciseOpen, setAddExerciseOpen] = useState(false)
+  const [plateCalcOpen, setPlateCalcOpen] = useState(false)
+  const [plateCalcWeight, setPlateCalcWeight] = useState<number | null>(null)
+  const [plateApplyCallback, setPlateApplyCallback] = useState<((w: number) => void) | null>(null)
+
+  // Keeps the screen awake during an active workout session
+  useWakeLock({ enabled: !!workout && !workout.finishedAt })
+
+  const effortScale: EffortScale = dash.settings?.effortScale ?? 'rir'
+
+  const openPlateCalculator = (initialWeight: number | null, onApply?: (w: number) => void) => {
+    setPlateCalcWeight(initialWeight)
+    setPlateApplyCallback(() => (w: number) => {
+      onApply?.(w)
+      setPlateCalcOpen(false)
+    })
+    setPlateCalcOpen(true)
+  }
+
+  const toggleEffortScale = () => {
+    const next: EffortScale = effortScale === 'rir' ? 'rpe' : 'rir'
+    void updateSettings({ effortScale: next })
+  }
 
   if (!phase) return <EmptyState title="Setting up" body="Preparing your local database." />
 
@@ -249,15 +277,24 @@ export default function WorkoutScreen() {
               scrolls in one column and roughly one screen in two.
             */}
             <div className="grid gap-3 xl:grid-cols-2">
-              {plannedExercises.map((exercise) => (
-                <ExerciseBlock
-                  key={exercise.id}
-                  exercise={exercise}
-                  workoutId={workout.id}
-                  sets={(sets ?? []).filter((s) => s.exerciseId === exercise.id)}
-                  advice={evaluateProgression(exercise, priorHistory)}
-                  prescription={prescriptionByExercise.get(exercise.id)}
-                />
+              {plannedExercises.map((exercise, index) => (
+                <div key={exercise.id} className={exercise.supersetGroupId ? 'rounded-2xl border border-info/30 bg-info/[0.03] p-2' : undefined}>
+                  {exercise.supersetGroupId && plannedExercises[index - 1]?.supersetGroupId !== exercise.supersetGroupId ? (
+                    <div className="mb-2 px-1 type-micro font-semibold uppercase tracking-wide text-info">Superset · rest after the pair</div>
+                  ) : null}
+                  <ExerciseBlock
+                    exercise={exercise}
+                    workoutId={workout.id}
+                    sets={(sets ?? []).filter((s) => s.exerciseId === exercise.id)}
+                    advice={evaluateProgression(exercise, priorHistory)}
+                    prescription={prescriptionByExercise.get(exercise.id)}
+                    effortScale={effortScale}
+                    toggleEffortScale={toggleEffortScale}
+                    openPlateCalculator={openPlateCalculator}
+                    defaultRestSec={dash.settings?.defaultRestSec ?? 90}
+                    shouldAutoRest={!exercise.supersetGroupId || plannedExercises[index + 1]?.supersetGroupId !== exercise.supersetGroupId}
+                  />
+                </div>
               ))}
             </div>
             {/*
@@ -319,13 +356,18 @@ export default function WorkoutScreen() {
 
       {addExerciseOpen ? (
         <AddExerciseSheet
-          // `startType` can only be 'run' when the day has no gym session
-          // scheduled — the branch that reaches this button always implies
-          // a gym day, so this narrows a type the runtime already guarantees.
           bucket={startType === 'run' ? 'upper' : startType}
           equipmentIds={dash.settings?.equipmentIds ?? []}
           onClose={() => setAddExerciseOpen(false)}
           onAdded={() => {}}
+        />
+      ) : null}
+
+      {plateCalcOpen ? (
+        <PlateCalculator
+          initialWeight={plateCalcWeight}
+          onClose={() => setPlateCalcOpen(false)}
+          {...(plateApplyCallback ? { onApply: plateApplyCallback } : {})}
         />
       ) : null}
     </div>
@@ -530,20 +572,100 @@ function RunningProgress({ dash }: { dash: ReturnType<typeof useDashboard> }) {
   )
 }
 
+function StopwatchCell({
+  value,
+  onCommit,
+}: {
+  value: number | null
+  onCommit: (seconds: number | null) => void
+}) {
+  const [isRunning, setIsRunning] = useState(false)
+  const [elapsed, setElapsed] = useState(value ?? 0)
+  const timerRef = useRef<number | undefined>(undefined)
+  const startTimeRef = useRef<number>(0)
+
+  useEffect(() => {
+    if (!isRunning) {
+      setElapsed(value ?? 0)
+    }
+  }, [value, isRunning])
+
+  const toggle = () => {
+    if (isRunning) {
+      if (timerRef.current !== undefined) {
+        window.clearInterval(timerRef.current)
+        timerRef.current = undefined
+      }
+      setIsRunning(false)
+      onCommit(elapsed > 0 ? elapsed : null)
+    } else {
+      startTimeRef.current = Date.now() - (elapsed > 0 ? elapsed * 1000 : 0)
+      setIsRunning(true)
+      timerRef.current = window.setInterval(() => {
+        const secs = Math.floor((Date.now() - startTimeRef.current) / 1000)
+        setElapsed(secs)
+      }, 200)
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current !== undefined) {
+        window.clearInterval(timerRef.current)
+      }
+    }
+  }, [])
+
+  return (
+    <div className="flex items-center gap-1">
+      <SetCell
+        value={isRunning ? elapsed : value}
+        step="1"
+        inputMode="numeric"
+        onCommit={onCommit}
+      />
+      <button
+        type="button"
+        onClick={toggle}
+        title={isRunning ? 'Stop stopwatch' : 'Start live stopwatch'}
+        aria-label={isRunning ? 'Stop stopwatch' : 'Start live stopwatch'}
+        className={`h-9 w-8 shrink-0 rounded-lg flex items-center justify-center text-xs font-bold transition shadow-sm ${
+          isRunning
+            ? 'bg-rose-500 text-white animate-pulse'
+            : 'bg-[var(--app-inset)] text-[var(--app-muted)] hover:text-[var(--app-ink)] hover:bg-[var(--app-line)]'
+        }`}
+      >
+        {isRunning ? '⏹' : '⏱'}
+      </button>
+    </div>
+  )
+}
+
 function ExerciseBlock({
   exercise,
   workoutId,
   sets,
   advice,
   prescription,
+  effortScale,
+  toggleEffortScale,
+  openPlateCalculator,
+  defaultRestSec,
+  shouldAutoRest,
 }: {
   exercise: Exercise
   workoutId: string
   sets: WorkoutSet[]
   advice: ReturnType<typeof evaluateProgression>
   prescription: ExercisePrescription | undefined
+  effortScale: EffortScale
+  toggleEffortScale: () => void
+  openPlateCalculator: (initialWeight: number | null, onApply?: (w: number) => void) => void
+  defaultRestSec: number
+  shouldAutoRest: boolean
 }) {
   const ordered = [...sets].sort((a, b) => a.setNumber - b.setNumber)
+  const isTimed = exercise.isTimed ?? false
 
   const adviceTone =
     advice.code === 'ready_to_increase'
@@ -561,21 +683,45 @@ function ExerciseBlock({
         ordered.at(-1)?.weightKg ?? prescription?.suggestedWeightKg ?? advice.suggestedWeightKg,
       reps: null,
       rir: null,
+      rpe: null,
+      durationSec: null,
     })
+
+  const restSeconds = exercise.restSec ?? defaultRestSec
 
   return (
     <Card>
       <div className="flex items-start justify-between gap-2">
         <div>
-          <h3 className="type-body font-semibold leading-tight">{exercise.name}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="type-body font-semibold leading-tight">{exercise.name}</h3>
+            {isTimed ? (
+              <span className="rounded bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-bold text-sky-500">
+                TIMED
+              </span>
+            ) : null}
+          </div>
           <p className="mt-0.5 type-caption text-[var(--app-muted)]">
             {prescription?.targetSets ?? exercise.targetSets} ×{' '}
             {prescription?.repRangeMin ?? exercise.repRangeMin}-
-            {prescription?.repRangeMax ?? exercise.repRangeMax} @ RIR{' '}
-            {prescription?.targetRir ?? exercise.targetRir}
+            {prescription?.repRangeMax ?? exercise.repRangeMax}{' '}
+            {effortScale === 'rpe'
+              ? `@ RPE ${rirToRpe(prescription?.targetRir ?? exercise.targetRir)}`
+              : `@ RIR ${prescription?.targetRir ?? exercise.targetRir}`}
           </p>
         </div>
-        <Pill tone={adviceTone}>{advice.headline}</Pill>
+
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => restTimerController.start(restSeconds, exercise.name)}
+            title={`Start ${restSeconds}s rest timer`}
+            className="flex items-center gap-1 rounded-lg bg-[var(--app-inset)] px-2 py-1 type-micro font-medium text-[var(--app-muted)] transition hover:text-[var(--app-ink)]"
+          >
+            ⏱ {restSeconds}s
+          </button>
+          <Pill tone={adviceTone}>{advice.headline}</Pill>
+        </div>
       </div>
 
       <p className="mt-1.5 type-caption leading-relaxed text-[var(--app-muted)]">
@@ -584,16 +730,31 @@ function ExerciseBlock({
 
       {ordered.length > 0 ? (
         <div className="mt-3">
-          <div className="mb-1 grid grid-cols-[1.6rem_1fr_1fr_1fr_1.8rem] gap-1.5 px-1 type-micro text-[var(--app-muted)]">
+          <div className="mb-1 grid grid-cols-[1.6rem_1.2fr_1.2fr_1fr_1.8rem] gap-1.5 px-1 type-micro text-[var(--app-muted)]">
             <span>Set</span>
             <span className="text-center">kg</span>
-            <span className="text-center">reps</span>
-            <span className="text-center">RIR</span>
+            <span className="text-center">{isTimed ? 'sec' : 'reps'}</span>
+            <button
+              type="button"
+              onClick={toggleEffortScale}
+              title="Toggle RIR / RPE display scale"
+              className="flex items-center justify-center gap-0.5 font-bold text-[var(--app-blue)] hover:underline"
+            >
+              {effortLabel(effortScale)} ▾
+            </button>
             <span />
           </div>
           <div className="space-y-1.5">
             {ordered.map((set) => (
-              <SetRow key={set.id} set={set} />
+              <SetRow
+                key={set.id}
+                set={set}
+                exercise={exercise}
+                effortScale={effortScale}
+                openPlateCalculator={openPlateCalculator}
+                defaultRestSec={defaultRestSec}
+                shouldAutoRest={shouldAutoRest}
+              />
             ))}
           </div>
         </div>
@@ -683,29 +844,110 @@ function SetCell({
   )
 }
 
-function SetRow({ set }: { set: WorkoutSet }) {
+function SetRow({
+  set,
+  exercise,
+  effortScale,
+  openPlateCalculator,
+  defaultRestSec,
+  shouldAutoRest,
+}: {
+  set: WorkoutSet
+  exercise: Exercise
+  effortScale: EffortScale
+  openPlateCalculator: (initialWeight: number | null, onApply?: (w: number) => void) => void
+  defaultRestSec: number
+  shouldAutoRest: boolean
+}) {
   const commit = (patch: Partial<WorkoutSet>) => void updateSet(set.id, patch)
 
+  const isTimed = exercise.isTimed || (set.durationSec !== null && set.durationSec !== undefined && set.durationSec > 0)
+
+  // Effort value to display in input cell
+  const currentEffort = effortScale === 'rpe'
+    ? (set.rpe ?? (set.rir !== null ? rirToRpe(set.rir) : null))
+    : set.rir
+
+  const handleEffortCommit = (raw: number | null) => {
+    if (raw === null) {
+      commit({ rir: null, rpe: null })
+      return
+    }
+    if (effortScale === 'rpe') {
+      const rpe = Math.max(1, Math.min(10, raw))
+      const rir = rpeToRir(rpe)
+      commit({ rpe, rir })
+    } else {
+      const rir = Math.max(0, raw)
+      const rpe = rirToRpe(rir)
+      commit({ rir, rpe })
+    }
+  }
+
+  const handleRepsCommit = (reps: number | null) => {
+    commit({ reps })
+    if (reps && reps > 0 && !set.isWarmup && shouldAutoRest) {
+      restTimerController.start(exercise.restSec ?? defaultRestSec, exercise.name)
+    }
+  }
+
+  const handleDurationCommit = (durationSec: number | null) => {
+    commit({ durationSec })
+    if (durationSec && durationSec > 0 && !set.isWarmup && shouldAutoRest) {
+      restTimerController.start(exercise.restSec ?? defaultRestSec, exercise.name)
+    }
+  }
+
   return (
-    <div className="grid grid-cols-[1.6rem_1fr_1fr_1fr_1.8rem] items-center gap-1.5">
+    <div className="grid grid-cols-[1.6rem_1.2fr_1.2fr_1fr_1.8rem] items-center gap-1.5">
       <span
-        className={`tabular text-center type-caption font-medium ${ set.isWarmup ? 'text-[var(--app-muted)]' : 'text-[var(--app-muted)]' }`}
+        className={`tabular text-center type-caption font-medium text-[var(--app-muted)]`}
       >
         {set.isWarmup ? 'W' : set.setNumber}
       </span>
+
+      {/* Weight + Plate Calculator trigger */}
+      <div className="relative flex items-center">
+        <SetCell
+          value={set.weightKg}
+          step="0.5"
+          inputMode="decimal"
+          onCommit={(weightKg) => commit({ weightKg })}
+        />
+        <button
+          type="button"
+          onClick={() => openPlateCalculator(set.weightKg, (weightKg) => commit({ weightKg }))}
+          title="Open Plate Calculator"
+          aria-label="Open Plate Calculator"
+          className="absolute right-1 h-6 w-6 rounded flex items-center justify-center text-[11px] text-[var(--app-muted)] opacity-70 hover:opacity-100 hover:text-[var(--app-ink)]"
+        >
+          🏋️
+        </button>
+      </div>
+
+      {/* Reps or Timed Duration */}
+      {isTimed ? (
+        <StopwatchCell
+          value={set.durationSec ?? null}
+          onCommit={handleDurationCommit}
+        />
+      ) : (
+        <SetCell value={set.reps} onCommit={handleRepsCommit} />
+      )}
+
+      {/* Effort (RIR or RPE) */}
       <SetCell
-        value={set.weightKg}
-        step="0.5"
+        value={currentEffort}
+        step={effortScale === 'rpe' ? '0.5' : '1'}
         inputMode="decimal"
-        onCommit={(weightKg) => commit({ weightKg })}
+        onCommit={handleEffortCommit}
       />
-      <SetCell value={set.reps} onCommit={(reps) => commit({ reps })} />
-      <SetCell value={set.rir} onCommit={(rir) => commit({ rir })} />
+
       <button
         type="button"
         onClick={() => void deleteSet(set.id)}
         aria-label={`Delete set ${set.setNumber}`}
-        className="text-center type-body leading-none text-[var(--app-muted)] active:text-alert"
+        className="text-center type-body leading-none text-[var(--app-muted)] hover:text-alert active:text-alert"
       >
         ×
       </button>

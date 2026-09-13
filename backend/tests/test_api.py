@@ -778,6 +778,7 @@ def test_coach_note_rejects_oversized_summary(tmp_path, monkeypatch) -> None:
 
 def test_food_parse_endpoint_returns_groq_estimate(tmp_path, monkeypatch) -> None:
     client = make_client(tmp_path, monkeypatch)
+    monkeypatch.delenv("FOOD_PARSE_MODEL", raising=False)
     monkeypatch.setenv("GROQ_API_KEY", "test-key")
     monkeypatch.setenv("GROQ_MODEL", "openai/gpt-oss-20b")
     monkeypatch.setattr(

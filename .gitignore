@@ -9,3 +9,6 @@ backend/__pycache__/
 backend/app/__pycache__/
 backend/tests/__pycache__/
 backend/*.sqlite3
+*.sqlite3
+qa_summary.json
+invariants_report.json

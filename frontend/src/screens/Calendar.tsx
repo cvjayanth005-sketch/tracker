@@ -10,11 +10,12 @@ import {
   todayIn,
 } from '@/domain/date'
 import { planWeek } from '@/domain/plan'
+import { scheduleChangeForDate } from '@/domain/schedule'
 import { indexLogs } from '@/domain/trend'
 import { resolvePhaseForDate } from '@/db/repo'
 import { useDashboard } from '@/hooks/useDashboard'
 import { Card, EmptyState, PageHeader, Pill, SectionTitle } from '@/components/ui'
-import type { LocalDate, Phase } from '@/domain/types'
+import type { LocalDate, Phase, ScheduleOverride } from '@/domain/types'
 
 const METRICS: MetricKey[] = ['calories', 'protein', 'steps', 'run', 'gym', 'sleep', 'meals']
 
@@ -61,6 +62,7 @@ function statusFor(
   index: ReturnType<typeof indexLogs>,
   today: LocalDate,
   signal: Signal,
+  overrides: ScheduleOverride[],
 ) {
   const log = index.get(date)
   if (compareDates(date, today) > 0) return 'open'
@@ -74,8 +76,8 @@ function statusFor(
     return log?.weightKg != null ? 'hit' : 'open'
   }
   const active = signal === 'adherence' ? METRICS : SIGNAL_META[signal].metrics ?? METRICS
-  const applicable = active.filter((metric) => outcomeFor(metric, log, phase, date) !== 'notScheduled')
-  const outcomes = applicable.map((metric) => outcomeFor(metric, log, phase, date))
+  const applicable = active.filter((metric) => outcomeFor(metric, log, phase, date, overrides) !== 'notScheduled')
+  const outcomes = applicable.map((metric) => outcomeFor(metric, log, phase, date, overrides))
   if (outcomes.some((outcome) => outcome === 'missed')) return 'miss'
   if (outcomes.length > 0 && outcomes.every((outcome) => outcome === 'hit')) return 'hit'
   return 'open'
@@ -100,7 +102,7 @@ export default function Calendar() {
   }
 
   const monthCompliance = dash.phase
-    ? complianceFor(index, days.at(-1) ?? today, dash.phase)
+    ? complianceFor(index, days.at(-1) ?? today, dash.phase, 7, dash.scheduleOverrides)
     : undefined
 
   return (
@@ -187,7 +189,8 @@ export default function Calendar() {
           {days.map((date) => {
             const phase = resolvePhaseForDate(phases, date)
             if (!phase) return null
-            const status = statusFor(date, phase, index, today, signal)
+            const status = statusFor(date, phase, index, today, signal, dash.scheduleOverrides)
+            const change = scheduleChangeForDate(date, dash.scheduleOverrides)
             const week = planWeek(settings.planStartDate, date)
             const isToday = date === today
             const classes = {
@@ -208,6 +211,11 @@ export default function Calendar() {
                 ) : null}
                 {isToday ? (
                   <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-info" />
+                ) : null}
+                {change ? (
+                  <span className="absolute bottom-1 right-1 rounded-full bg-info/20 px-1.5 py-0.5 text-[9px] font-bold uppercase text-info">
+                    {change.action === 'move' && change.targetDate === date ? 'in' : change.action}
+                  </span>
                 ) : null}
               </Link>
             )

@@ -4,6 +4,7 @@ import { resolvePhaseForDate, upsertLog } from '@/db/repo'
 import { outcomeFor, type MetricKey } from '@/domain/compliance'
 import { addDays, asLocalDate, dateRange, dayOfWeek, formatShort, weekdayName } from '@/domain/date'
 import { planWeek } from '@/domain/plan'
+import { scheduleForDate } from '@/domain/schedule'
 import { paceMinPerKm } from '@/domain/running'
 import './today.css'
 import { useDashboard } from '@/hooks/useDashboard'
@@ -145,8 +146,8 @@ export default function Today() {
   const { today, phase, settings, phases, todayLog, index, change, review } = dash
 
   const todaySchedule = useMemo(
-    () => phase?.schedule.find((s) => s.dow === dayOfWeek(today)),
-    [phase, today],
+    () => phase ? scheduleForDate(phase, today, dash.scheduleOverrides) : undefined,
+    [phase, today, dash.scheduleOverrides],
   )
 
   // How many of the last 7 days have anything logged at all — the gate for

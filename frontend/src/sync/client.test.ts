@@ -60,6 +60,27 @@ afterEach(() => {
 })
 
 describe('runSync', () => {
+  it('keeps a workout edit made during upload pending even when the server version jumps', async () => {
+    const db = await freshDb()
+    await db.syncMeta.put({ id: 'sync', accountUserId: 1, localVersion: 5,
+      syncedVersion: 3, backedUpVersion: 0, lastSyncedAt: null,
+      lastBackupAt: null, lastError: null })
+    await db.workoutSets.put({ id: 'set-1', workoutId: 'workout-1', reps: 8 } as never)
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+      if (init?.method !== 'PUT') return new Response(JSON.stringify({ version: 9 }))
+      await db.workoutSets.update('set-1', { reps: 10 })
+      await db.syncMeta.update('sync', { localVersion: 6 })
+      return new Response(JSON.stringify({ version: 10, updatedAt: '',
+        tables: { workoutSets: [{ id: 'set-1', workoutId: 'workout-1', reps: 8 }] } }))
+    }))
+    const { sync } = await import('./client')
+    expect((await sync()).status).toBe('pushed')
+    expect((await db.workoutSets.get('set-1'))?.reps).toBe(10)
+    const meta = await db.syncMeta.get('sync')
+    expect(meta!.localVersion).toBeGreaterThan(meta!.syncedVersion)
+    db.close()
+  })
+
   it('pushes even when both the server and this device have moved past the last synced version', async () => {
     const db = await freshDb()
     await db.syncMeta.put({

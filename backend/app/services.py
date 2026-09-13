@@ -9,8 +9,26 @@ import logging
 import os
 import re
 import sqlite3
+import time
+from collections import deque
 from datetime import date, datetime, timedelta
 from typing import Any, Mapping
+
+_gemini_timestamps: deque[float] = deque()
+
+
+def check_gemini_rate_limit() -> bool:
+    """Enforces a sliding-window rate limit for Gemini API calls."""
+    limit = int(os.environ.get("GEMINI_RATE_LIMIT", "30"))
+    window = int(os.environ.get("GEMINI_RATE_WINDOW_SECONDS", "60"))
+    now_ts = time.monotonic()
+    while _gemini_timestamps and _gemini_timestamps[0] <= now_ts - window:
+        _gemini_timestamps.popleft()
+    if len(_gemini_timestamps) >= limit:
+        return False
+    _gemini_timestamps.append(now_ts)
+    return True
+
 
 import httpx
 from pypdf import PdfReader
@@ -499,34 +517,68 @@ def cached_coach_note_for_summary(
 ) -> dict[str, Any]:
     if user_id is None:
         raise ValueError("user_id is required for coach notes.")
+    gemini_key = os.environ.get("GEMINI_API_KEY")
+    if gemini_key and not gemini_key.startswith("AIzaSy"):
+        gemini_key = None
+    gemini_model = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
     groq_key = os.environ.get("GROQ_API_KEY")
     groq_model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
-    narrator = "groq" if groq_key else "rules"
+    if groq_model == "openai/gpt-oss-20b" and os.environ.get("COACH_NOTE_MODEL"):
+        groq_model = os.environ["COACH_NOTE_MODEL"]
+    narrator = "gemini" if gemini_key else ("groq" if groq_key else "rules")
+    active_model = gemini_model if gemini_key else (groq_model if groq_key else None)
     state = {
         "summary": summary,
         "promptVersion": prompt_version,
         "rulesVersion": rules_version,
         "narrator": narrator,
-        "model": groq_model if groq_key else None,
+        "model": active_model,
     }
     payload = json.dumps(state, sort_keys=True)
     state_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
     cached = _read_cached_note(state_hash, user_id, conn)
     if cached is not None and not force:
-        return {**cached, "provider": narrator, "model": groq_model if groq_key else None}
+        return {**cached, "provider": narrator, "model": active_model}
 
     fallback = make_frontend_summary_note(summary)
     provider = "rules"
     model: str | None = None
-    if groq_key:
+    if gemini_key:
+        try:
+            note = request_gemini_note(summary, gemini_key, gemini_model)
+            provider = "gemini"
+            model = gemini_model
+        except (httpx.HTTPError, RuntimeError, ValueError, KeyError, IndexError) as exc:
+            logger.warning("Gemini coach note failed, trying Groq fallback: %s", exc)
+            if groq_key:
+                try:
+                    note = request_groq_note(summary, groq_key, groq_model)
+                    provider = "groq"
+                    model = groq_model
+                except Exception:
+                    return {
+                        "state_hash": state_hash,
+                        "note": fallback,
+                        "state_summary_json": payload,
+                        "provider": "rules",
+                        "model": None,
+                        "fallback": True,
+                    }
+            else:
+                return {
+                    "state_hash": state_hash,
+                    "note": fallback,
+                    "state_summary_json": payload,
+                    "provider": "rules",
+                    "model": None,
+                    "fallback": True,
+                }
+    elif groq_key:
         try:
             note = request_groq_note(summary, groq_key, groq_model)
             provider = "groq"
             model = groq_model
         except (httpx.HTTPError, RuntimeError, ValueError, KeyError, IndexError):
-            # A narrator outage must never make the dashboard unavailable. Do
-            # not cache the transient fallback under the Groq key: the next
-            # request should get another chance to use the configured model.
             return {
                 "state_hash": state_hash,
                 "note": fallback,
@@ -539,6 +591,38 @@ def cached_coach_note_for_summary(
         note = fallback
     stored = _write_cached_note(state_hash, note, payload, user_id, conn)
     return {**stored, "provider": provider, "model": model}
+
+
+def request_gemini_note(summary: dict[str, Any], api_key: str, model: str = "gemini-2.0-flash") -> str:
+    if not check_gemini_rate_limit():
+        raise RuntimeError("Gemini API rate limit exceeded.")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+    system_instruction = (
+        "You narrate a personal fat-loss and hybrid-training tracker. "
+        "The deterministic rules in the supplied JSON have already made the decision. "
+        "Never change the recommendation, calorie target, thresholds, or phase status. "
+        "Ground your response strictly in the supplied data: reference 7-day trend weight instead of single daily scale readings, "
+        "explain temporary water-weight anomalies (sodium/alcohol spikes) when present, "
+        "support protein targets (1.6-2.2 g/kg), and suggest load progression (+2.5 kg upper, +5 kg lower) or deloads "
+        "strictly as indicated by the gains and progression data. "
+        "Write 2-4 concise, encouraging sentences grounded only in the supplied data. "
+        "Be direct and warm, avoid shame, diagnosis, medical claims, and invented facts."
+    )
+    prompt_text = f"{system_instruction}\n\nTracker Summary JSON:\n{json.dumps(summary, sort_keys=True)}"
+    response = httpx.post(
+        url,
+        headers={"Content-Type": "application/json"},
+        json={
+            "contents": [{"parts": [{"text": prompt_text}]}]
+        },
+        timeout=12.0,
+    )
+    response.raise_for_status()
+    data = response.json()
+    note = data["candidates"][0]["content"]["parts"][0]["text"]
+    if not isinstance(note, str) or not note.strip():
+        raise ValueError("Gemini returned an empty coaching note.")
+    return note.strip()[:900]
 
 
 def request_groq_note(summary: dict[str, Any], api_key: str, model: str) -> str:
@@ -556,6 +640,10 @@ def request_groq_note(summary: dict[str, Any], api_key: str, model: str) -> str:
                         "You narrate a personal fat-loss and hybrid-training tracker. "
                         "The deterministic rules in the supplied JSON have already made the decision. "
                         "Never change the recommendation, calorie target, thresholds, or phase status. "
+                        "Ground your response strictly in the supplied data: reference 7-day trend weight instead of single daily scale readings, "
+                        "explain temporary water-weight anomalies (sodium/alcohol spikes) when present, "
+                        "support protein targets (1.6-2.2 g/kg), and suggest load progression (+2.5 kg upper, +5 kg lower) or deloads "
+                        "strictly as indicated by the gains and progression data. "
                         "Write 2-4 concise, encouraging sentences grounded only in the supplied data. "
                         "Be direct and warm, avoid shame, diagnosis, medical claims, and invented facts."
                     ),
@@ -570,7 +658,8 @@ def request_groq_note(summary: dict[str, Any], api_key: str, model: str) -> str:
     )
     response.raise_for_status()
     data = response.json()
-    note = data["choices"][0]["message"]["content"]
+    msg = data["choices"][0]["message"]
+    note = msg.get("content") or msg.get("reasoning_content") or ""
     if not isinstance(note, str) or not note.strip():
         raise ValueError("Groq returned an empty coaching note.")
     return note.strip()[:900]
@@ -585,7 +674,11 @@ def fallback_coach_chat(question: str, context: dict[str, Any]) -> str:
     parts = []
     training_question = any(
         term in question.lower()
-        for term in ("workout", "training", "exercise", "strength", "muscle", "recovery", "run")
+        for term in ("workout", "training", "exercise", "strength", "muscle", "recovery", "run", "lift", "overload")
+    )
+    nutrition_question = any(
+        term in question.lower()
+        for term in ("nutrition", "diet", "macro", "protein", "calories", "food", "intake", "tdee", "deficit")
     )
     if training_question and isinstance(activity, dict):
         today = activity.get("today")
@@ -626,6 +719,17 @@ def fallback_coach_chat(question: str, context: dict[str, Any]) -> str:
                 rep_max = first.get("repRangeMax")
                 if isinstance(name, str) and isinstance(sets, int):
                     parts.append(f"Start with {name}: {sets} sets of {rep_min}-{rep_max} reps.")
+
+    if nutrition_question and isinstance(week, dict):
+        calories = week.get("calories")
+        protein = week.get("protein")
+        if calories or protein:
+            nutrition_summary = []
+            if isinstance(calories, (int, float)):
+                nutrition_summary.append(f"Avg calories: {round(calories)} kcal/day")
+            if isinstance(protein, (int, float)):
+                nutrition_summary.append(f"Avg protein: {round(protein)} g/day (target: 1.6-2.2 g/kg)")
+            parts.append("Nutrition summary: " + ", ".join(nutrition_summary) + ".")
     if isinstance(headline, str) and headline:
         parts.append(f"Current priority: {headline}.")
     if isinstance(week, dict):
@@ -745,9 +849,53 @@ def request_groq_chat(
     )
     response.raise_for_status()
     data = response.json()
-    answer = data["choices"][0]["message"]["content"]
+    msg = data["choices"][0]["message"]
+    answer = msg.get("content") or msg.get("reasoning_content") or ""
     if not isinstance(answer, str) or not answer.strip():
         raise ValueError("Groq returned an empty chat response.")
+    return answer.strip()[:2200]
+
+
+def request_gemini_chat(
+    question: str,
+    context: dict[str, Any],
+    messages: list[dict[str, Any]],
+    api_key: str,
+    model: str = "gemini-2.0-flash",
+) -> str:
+    if not check_gemini_rate_limit():
+        raise RuntimeError("Gemini API rate limit exceeded.")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+    system_instruction = (
+        "You are an expert hybrid training and precision nutrition assistant for Fat Loss Ledger. "
+        "Ground your answers in the supplied context JSON: reference 7-day trend weight, "
+        "support protein ranges (1.6-2.2 g/kg of body weight), and explain TDEE energy expenditure. "
+        "Be concise, direct, warm, and human."
+    )
+    history_str = ""
+    for item in messages[-6:]:
+        if isinstance(item, dict) and item.get("role") in ("user", "assistant") and isinstance(item.get("content"), str):
+            history_str += f"\n{item['role']}: {item['content'][:1000]}"
+
+    prompt_text = (
+        f"{system_instruction}\n\n"
+        f"Tracker context JSON:\n{json.dumps(context, sort_keys=True)[:20000]}\n"
+        f"Conversation history:{history_str}\n\n"
+        f"User question: {question}"
+    )
+    response = httpx.post(
+        url,
+        headers={"Content-Type": "application/json"},
+        json={
+            "contents": [{"parts": [{"text": prompt_text}]}]
+        },
+        timeout=18.0,
+    )
+    response.raise_for_status()
+    data = response.json()
+    answer = data["candidates"][0]["content"]["parts"][0]["text"]
+    if not isinstance(answer, str) or not answer.strip():
+        raise ValueError("Gemini returned an empty chat response.")
     return answer.strip()[:2200]
 
 
@@ -755,8 +903,25 @@ def coach_chat(payload: dict[str, Any]) -> dict[str, Any]:
     question = str(payload.get("question", "")).strip()
     context = payload.get("context") if isinstance(payload.get("context"), dict) else {}
     messages = payload.get("messages") if isinstance(payload.get("messages"), list) else []
+    gemini_key = os.environ.get("GEMINI_API_KEY")
+    if gemini_key and not gemini_key.startswith("AIzaSy"):
+        gemini_key = None
+    gemini_model = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
     groq_key = os.environ.get("GROQ_API_KEY")
     groq_model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
+    if groq_model == "openai/gpt-oss-20b" and os.environ.get("COACH_CHAT_MODEL"):
+        groq_model = os.environ["COACH_CHAT_MODEL"]
+
+    if gemini_key:
+        try:
+            return {
+                "answer": request_gemini_chat(question, context, messages, gemini_key, gemini_model),
+                "provider": "gemini",
+                "model": gemini_model,
+            }
+        except (httpx.HTTPError, RuntimeError, ValueError, KeyError, IndexError) as exc:
+            logger.warning("Gemini coach chat failed, falling back to Groq: %s", exc)
+
     if groq_key:
         try:
             return {
@@ -965,6 +1130,8 @@ def onboarding_draft(payload: dict[str, Any]) -> dict[str, Any]:
     source_text = onboarding_source_text(payload)
     groq_key = os.environ.get("GROQ_API_KEY")
     groq_model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
+    if groq_model == "openai/gpt-oss-20b" and os.environ.get("ONBOARDING_MODEL"):
+        groq_model = os.environ["ONBOARDING_MODEL"]
     if groq_key:
         try:
             raw = request_groq_onboarding_draft(answers, source_text, groq_key, groq_model)
@@ -1323,6 +1490,8 @@ def food_parse(payload: dict[str, Any]) -> dict[str, Any]:
     validate_food_text(text)
     groq_key = os.environ.get("GROQ_API_KEY")
     groq_model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
+    if groq_model == "openai/gpt-oss-20b" and os.environ.get("FOOD_PARSE_MODEL"):
+        groq_model = os.environ["FOOD_PARSE_MODEL"]
     if not groq_key:
         return {**fallback_food_parse(text, default_slot), "model": None}
 

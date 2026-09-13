@@ -15,6 +15,7 @@ import type {
   WeeklyCheckIn,
   Workout,
   WorkoutSet,
+  ScheduleOverride,
 } from '@/domain/types'
 
 /**
@@ -61,6 +62,7 @@ export class TrackerDb extends Dexie {
   onboardingDrafts!: EntityTable<OnboardingDraft, 'id'>
   tombstones!: Table<Tombstone, [string, string]>
   syncMeta!: EntityTable<SyncMeta, 'id'>
+  scheduleOverrides!: EntityTable<ScheduleOverride, 'id'>
 
   constructor() {
     super('fat-loss-ledger')
@@ -267,6 +269,28 @@ export class TrackerDb extends Dexie {
         food.alcoholUnits ??= null
       })
     })
+    // Workout ergonomics defaults and the now-required custom split collection.
+    this.version(20).upgrade(async (tx) => {
+      await tx.table<Settings, 'id'>('settings').toCollection().modify((settings) => {
+        settings.customSplitDays ??= []
+        settings.effortScale ??= 'rir'
+        settings.defaultRestSec ??= 90
+      })
+      await tx.table<Exercise, 'id'>('exercises').toCollection().modify((exercise) => {
+        exercise.isTimed ??= false
+        exercise.restSec ??= null
+      })
+      await tx.table<WorkoutSet, 'id'>('workoutSets').toCollection().modify((set) => {
+        set.rpe ??= null
+        set.durationSec ??= null
+      })
+    })
+    this.version(21).upgrade(async (tx) => {
+      await tx.table<Exercise, 'id'>('exercises').toCollection().modify((exercise) => {
+        exercise.supersetGroupId ??= null
+      })
+    })
+    this.version(22).stores({ scheduleOverrides: 'id, sourceDate, targetDate, action' })
   }
 }
 
@@ -287,6 +311,7 @@ const SEEDED_TABLES = [
   db.weeklyCheckIns,
   db.aiNotes,
   db.onboardingDrafts,
+  db.scheduleOverrides,
   db.tombstones,
   db.syncMeta,
 ] as const

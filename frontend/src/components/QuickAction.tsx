@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Icon } from '@/components/Icon'
-import { dayOfWeek } from '@/domain/date'
+import { scheduleForDate } from '@/domain/schedule'
 import type { LocalDate } from '@/domain/types'
 import { getWeighInCadence } from '@/domain/weighInCadence'
 import { useDashboard } from '@/hooks/useDashboard'
@@ -71,7 +71,7 @@ function useQuickActions(): {
   return useMemo(() => {
     if (!phase) return { items: [], today, weightKg: null, steps: null, waterMl: null }
 
-    const schedule = phase.schedule.find((s) => s.dow === dayOfWeek(today))
+    const schedule = scheduleForDate(phase, today, dash.scheduleOverrides)
     const cadence = getWeighInCadence(today, logs)
     const todayActions = buildTodayActions(phase, schedule, todayLog, today)
     const training = todayActions.find((action) => action.lane === 'training')
@@ -130,7 +130,7 @@ function useQuickActions(): {
       waterMl: todayLog?.waterMl ?? null,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, today, logs, index, todayLog, hour])
+  }, [phase, today, logs, index, todayLog, hour, dash.scheduleOverrides])
 }
 
 function InlineNumberField({

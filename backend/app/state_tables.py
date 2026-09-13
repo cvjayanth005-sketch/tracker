@@ -25,6 +25,7 @@ DEXIE_TABLES = (
     "workoutSets",
     "runs",
     "weeklyCheckIns",
+    "scheduleOverrides",
 )
 
 # Parents before children. `order` is a SQL reserved word, so it is sort_order.
@@ -38,6 +39,7 @@ SQL_INSERT_ORDER = (
     "saved_foods",
     "measurements",
     "weekly_check_ins",
+    "schedule_overrides",
     "exercises",
     "workouts",
     "workout_sets",
@@ -59,6 +61,7 @@ DEXIE_TO_SQL = {
     "workoutSets": "workout_sets",
     "runs": "runs",
     "weeklyCheckIns": "weekly_check_ins",
+    "scheduleOverrides": "schedule_overrides",
 }
 
 SQL_TO_DEXIE = {sql: dexie for dexie, sql in DEXIE_TO_SQL.items()}
@@ -67,7 +70,7 @@ SINGLETON_SQL = {"profiles": "me", "settings": "settings"}
 
 JSON_COLUMNS = frozenset({"schedule", "micros", "prescription"})
 DATE_COLUMNS = frozenset(
-    {"local_date", "started_on", "ended_on", "plan_start_date", "week_start", "effective_date"}
+    {"local_date", "started_on", "ended_on", "plan_start_date", "week_start", "effective_date", "source_date", "target_date"}
 )
 INSTANT_COLUMNS = frozenset(
     {"created_at", "updated_at", "started_at", "finished_at", "last_used_at", "deleted_at"}
@@ -208,6 +211,11 @@ DEXIE_FIELDS: dict[str, tuple[str, ...]] = {
     "exercises": (
         "id",
         "name",
+        "splitDayKey",
+        "equipmentId",
+        "isTimed",
+        "restSec",
+        "supersetGroupId",
         "sessionType",
         "repRangeMin",
         "repRangeMax",
@@ -226,6 +234,8 @@ DEXIE_FIELDS: dict[str, tuple[str, ...]] = {
         "weightKg",
         "reps",
         "rir",
+        "rpe",
+        "durationSec",
         "isWarmup",
         "createdAt",
     ),
@@ -242,6 +252,7 @@ DEXIE_FIELDS: dict[str, tuple[str, ...]] = {
         "updatedAt",
     ),
     "weeklyCheckIns": ("id", "weekStart", "win", "friction", "intent", "updatedAt"),
+    "scheduleOverrides": ("id", "sourceDate", "targetDate", "action", "reason", "createdAt"),
 }
 
 

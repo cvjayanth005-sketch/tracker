@@ -14,6 +14,7 @@ import { getSettings } from '@/db/repo'
 import { useLiquidGlass } from '@/hooks/useLiquidGlass'
 import { useOnline, useSyncMeta } from '@/hooks/useDashboard'
 import { useAutoSync } from '@/hooks/useDashboard'
+import { RestTimer } from '@/components/workout/RestTimer'
 import { Onboarding } from '@/screens/Onboarding'
 import {
   API_BASE,
@@ -510,6 +511,7 @@ function TrackerShell() {
       <QuickAction open={quickActionOpen} onOpenChange={setQuickActionOpen} />
       <Coach collapsed={collapsed} />
       <UndoToast />
+      <RestTimer />
     </div>
   )
 }

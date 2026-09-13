@@ -8,7 +8,7 @@ import { AddExerciseSheet } from '@/components/activity/AddExerciseSheet'
 import { SplitPicker } from '@/components/activity/SplitPicker'
 import { Button } from '@/components/ui'
 
-function ExerciseRow({ exercise, onRemove }: { exercise: Exercise; onRemove: () => void }) {
+function ExerciseRow({ exercise, onRemove, onToggleSuperset }: { exercise: Exercise; onRemove: () => void; onToggleSuperset: () => void }) {
   const tag = muscleDisplayTag(exercise.name)
   return (
     <div className="flex items-center gap-3 py-3 border-b border-[var(--app-line)] last:border-0">
@@ -19,8 +19,12 @@ function ExerciseRow({ exercise, onRemove }: { exercise: Exercise; onRemove: () 
           <span className="type-micro text-[var(--app-muted)]">
             {exercise.targetSets} sets · {exercise.repRangeMin}–{exercise.repRangeMax} reps @ RIR {exercise.targetRir}
           </span>
+          {exercise.supersetGroupId ? <span className="type-micro font-semibold text-info">Superset</span> : null}
         </div>
       </div>
+      <button type="button" onClick={onToggleSuperset} className="motion-press radius-control px-2 py-1 type-micro font-semibold text-info hover:bg-info/10">
+        {exercise.supersetGroupId ? 'Unpair' : 'Pair'}
+      </button>
       <button
         type="button"
         onClick={onRemove}
@@ -37,11 +41,13 @@ function DayCard({
   day,
   exercises,
   onRemove,
+  onToggleSuperset,
   onOpenAdd,
 }: {
   day: SplitDay
   exercises: Exercise[]
   onRemove: (exercise: Exercise) => void
+  onToggleSuperset: (exercise: Exercise) => void
   onOpenAdd: () => void
 }) {
   return (
@@ -75,7 +81,7 @@ function DayCard({
       ) : (
         <div className="divide-y divide-[var(--app-line)]">
           {exercises.map((ex) => (
-            <ExerciseRow key={ex.id} exercise={ex} onRemove={() => onRemove(ex)} />
+            <ExerciseRow key={ex.id} exercise={ex} onRemove={() => onRemove(ex)} onToggleSuperset={() => onToggleSuperset(ex)} />
           ))}
         </div>
       )}
@@ -128,6 +134,18 @@ export function ExerciseLibrary({
   const archive = async (exercise: Exercise) => {
     await upsertExercise({ ...exercise, archived: true })
   }
+  const toggleSuperset = async (exercise: Exercise) => {
+    const sameDay = exercises
+      .filter((candidate) => candidate.splitDayKey === exercise.splitDayKey)
+      .sort((a, b) => a.order - b.order)
+    const partner = sameDay[sameDay.findIndex((candidate) => candidate.id === exercise.id) ^ 1]
+    if (!partner) return
+    const groupId = exercise.supersetGroupId ? null : `ss-${exercise.splitDayKey ?? exercise.sessionType}-${Math.min(exercise.order, partner.order)}`
+    await Promise.all([
+      upsertExercise({ ...exercise, supersetGroupId: groupId }),
+      upsertExercise({ ...partner, supersetGroupId: groupId }),
+    ])
+  }
 
   if (!split) {
     return (
@@ -160,6 +178,7 @@ export function ExerciseLibrary({
           day={day}
           exercises={byDay.get(day.key) ?? []}
           onRemove={(ex) => void archive(ex)}
+          onToggleSuperset={(ex) => void toggleSuperset(ex)}
           onOpenAdd={() => setAddOpenForDay(day.key)}
         />
       ))}

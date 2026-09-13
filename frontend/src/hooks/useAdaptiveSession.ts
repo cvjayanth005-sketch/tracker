@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { startWorkout, upsertLog } from '@/db/repo'
 import { buildAdaptiveSession } from '@/domain/adaptiveTraining'
-import { dayOfWeek } from '@/domain/date'
+import { scheduleForDate } from '@/domain/schedule'
 import { useDashboard, type Dashboard } from '@/hooks/useDashboard'
 
 /**
@@ -55,7 +55,9 @@ export function useAdaptiveSession() {
       })),
     [recentSets, recentWorkouts],
   )
-  const todaySchedule = dash.phase?.schedule.find((day) => day.dow === dayOfWeek(dash.today))
+  const todaySchedule = dash.phase
+    ? scheduleForDate(dash.phase, dash.today, dash.scheduleOverrides)
+    : undefined
 
   const adaptiveSession = useMemo(() => {
     if (

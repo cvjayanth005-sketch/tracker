@@ -1,6 +1,7 @@
-import { dayOfWeek, windowEndingOn } from './date'
+import { windowEndingOn } from './date'
 import type { LogIndex } from './trend'
-import type { DailyLog, DaySchedule, LocalDate, Phase } from './types'
+import type { DailyLog, LocalDate, Phase, ScheduleOverride } from './types'
+import { scheduleForDate } from './schedule'
 
 /**
  * Compliance, with the denominator stated out loud.
@@ -71,19 +72,15 @@ export interface ComplianceReport {
 
 type Outcome = 'hit' | 'missed' | 'unknown' | 'notScheduled'
 
-function scheduleFor(phase: Phase, date: LocalDate): DaySchedule | undefined {
-  const dow = dayOfWeek(date)
-  return phase.schedule.find((s) => s.dow === dow)
-}
-
 /** Classify one metric on one day. The only place target logic lives. */
 export function outcomeFor(
   metric: MetricKey,
   log: DailyLog | undefined,
   phase: Phase,
   date: LocalDate,
+  overrides: ScheduleOverride[] = [],
 ): Outcome {
-  const schedule = scheduleFor(phase, date)
+  const schedule = scheduleForDate(phase, date, overrides)
 
   switch (metric) {
     case 'calories': {
@@ -145,6 +142,7 @@ export function complianceFor(
   endDate: LocalDate,
   phase: Phase,
   windowDays = 7,
+  overrides: ScheduleOverride[] = [],
 ): ComplianceReport {
   const dates = windowEndingOn(endDate, windowDays)
   const metrics = {} as Record<MetricKey, MetricCompliance>
@@ -156,7 +154,7 @@ export function complianceFor(
     let notScheduled = 0
 
     for (const date of dates) {
-      switch (outcomeFor(metric, index.get(date), phase, date)) {
+      switch (outcomeFor(metric, index.get(date), phase, date, overrides)) {
         case 'hit':
           hit++
           break

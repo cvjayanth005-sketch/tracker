@@ -64,6 +64,18 @@ create table if not exists public.sync_meta (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.schedule_overrides (
+  user_id bigint not null references public.app_users(id) on delete cascade,
+  id text not null,
+  source_date date not null,
+  target_date date,
+  action text not null,
+  reason text,
+  created_at timestamptz not null default now(),
+  deleted_at timestamptz,
+  primary key (user_id, id)
+);
+
 create table if not exists public.profiles (
   user_id bigint primary key references public.app_users(id) on delete cascade,
   name text,
@@ -379,6 +391,16 @@ alter table public.weekly_check_ins enable row level security;
 alter table public.exercises enable row level security;
 alter table public.workouts enable row level security;
 alter table public.workout_sets enable row level security;
+alter table public.schedule_overrides enable row level security;
+
+-- Workout ergonomics fields: run before deploying the updated state mapper.
+alter table public.exercises add column if not exists split_day_key text;
+alter table public.exercises add column if not exists equipment_id text;
+alter table public.exercises add column if not exists is_timed boolean;
+alter table public.exercises add column if not exists rest_sec double precision;
+alter table public.exercises add column if not exists superset_group_id text;
+alter table public.workout_sets add column if not exists rpe double precision;
+alter table public.workout_sets add column if not exists duration_sec double precision;
 alter table public.runs enable row level security;
 
 revoke all on table public.app_users from anon, authenticated;
@@ -399,6 +421,7 @@ revoke all on table public.weekly_check_ins from anon, authenticated;
 revoke all on table public.exercises from anon, authenticated;
 revoke all on table public.workouts from anon, authenticated;
 revoke all on table public.workout_sets from anon, authenticated;
+revoke all on table public.schedule_overrides from anon, authenticated;
 revoke all on table public.runs from anon, authenticated;
 
 -- Phase 2: deletes sync as tombstones. Fact rows are upserted; omitted rows stay.

@@ -13,6 +13,10 @@ import {
   updateRun,
   upsertLog,
   upsertMeasurement,
+  addScheduleOverride,
+  deleteScheduleOverride,
+  scheduleOverridesForDate,
+  swapScheduledDays,
 } from '@/db/repo'
 import { asLocalDate, formatShort, isLocalDate, todayIn } from '@/domain/date'
 import { planDayLabel } from '@/domain/plan'
@@ -40,6 +44,7 @@ export default function DayDetail() {
   )
   const runs = useLiveQuery(() => (date ? runsForDate(date) : Promise.resolve([])), [date], [])
   const meals = useLiveQuery(() => (date ? mealsForDate(date) : Promise.resolve([])), [date], [])
+  const overrides = useLiveQuery(() => (date ? scheduleOverridesForDate(date) : Promise.resolve([])), [date], [])
 
   if (!date) {
     return <EmptyState title="Invalid day" body="That calendar day could not be opened." />
@@ -100,6 +105,24 @@ export default function DayDetail() {
           </div>
         </Card>
       ) : null}
+
+      <Card className="mt-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="type-caption font-semibold text-[var(--app-ink)]">Schedule</div>
+            <div className="mt-1 type-caption text-[var(--app-muted)]">
+              {overrides.length ? overrides.map((item) => `${item.action}${item.targetDate ? ` → ${formatShort(item.targetDate, true)}` : ''}`).join(' · ') : 'As planned'}
+            </div>
+          </div>
+          <div className="flex flex-wrap justify-end gap-2">
+            <button type="button" onClick={() => void addScheduleOverride(date, 'skip', null, 'Skipped')} className="radius-control bg-[var(--app-inset)] px-3 py-2 type-caption font-semibold text-[var(--app-ink)]">Skip</button>
+            <button type="button" onClick={() => { const target = window.prompt('Move this workout to (YYYY-MM-DD)'); if (target && isLocalDate(target)) void addScheduleOverride(date, 'move', asLocalDate(target), 'Moved') }} className="radius-control bg-info/15 px-3 py-2 type-caption font-semibold text-info">Move</button>
+            <button type="button" onClick={() => { const source = window.prompt('Which missed workout date? (YYYY-MM-DD)'); if (source && isLocalDate(source)) void addScheduleOverride(asLocalDate(source), 'makeup', date, 'Make-up session') }} className="radius-control bg-accent/15 px-3 py-2 type-caption font-semibold text-accent">Make up</button>
+            <button type="button" onClick={() => { const other = window.prompt('Swap with date (YYYY-MM-DD)'); if (other && isLocalDate(other) && other !== date) void swapScheduledDays(date, asLocalDate(other)) }} className="radius-control bg-[var(--app-inset)] px-3 py-2 type-caption font-semibold text-[var(--app-ink)]">Swap</button>
+          </div>
+        </div>
+        {overrides.length ? <button type="button" onClick={() => Promise.all(overrides.map((item) => deleteScheduleOverride(item.id)))} className="mt-3 type-micro text-[var(--app-muted)] underline">Clear changes</button> : null}
+      </Card>
 
       <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
         <section>

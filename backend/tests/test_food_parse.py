@@ -32,6 +32,7 @@ def test_food_parse_offline_without_key(monkeypatch) -> None:
 
 
 def test_food_parse_uses_groq(monkeypatch) -> None:
+    monkeypatch.delenv("FOOD_PARSE_MODEL", raising=False)
     monkeypatch.setenv("GROQ_API_KEY", "test-key")
     monkeypatch.setenv("GROQ_MODEL", "openai/gpt-oss-20b")
 
@@ -102,6 +103,7 @@ def test_food_parse_rejects_non_edible_input_before_calling_ai(monkeypatch, text
 
 
 def test_food_parse_retries_then_succeeds(monkeypatch) -> None:
+    monkeypatch.delenv("FOOD_PARSE_MODEL", raising=False)
     monkeypatch.setenv("GROQ_API_KEY", "test-key")
     monkeypatch.setenv("GROQ_MODEL", "openai/gpt-oss-20b")
     calls: list[str] = []

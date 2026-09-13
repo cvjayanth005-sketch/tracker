@@ -22,6 +22,19 @@ def test_sql_column_maps_reserved_and_date_fields() -> None:
     assert sql_column("satFatG") == "sat_fat_g"
 
 
+def test_workout_ergonomics_survive_cloud_round_trip() -> None:
+    tables = {
+        "exercises": [{"id": "exercise-1", "isTimed": True, "restSec": 90,
+                       "splitDayKey": "push", "equipmentId": "barbell",
+                       "supersetGroupId": "pair-1"}],
+        "workoutSets": [{"id": "set-1", "rpe": 0, "durationSec": 45}],
+    }
+    restored = assemble(explode(42, tables))
+    for table, records in tables.items():
+        for key, value in records[0].items():
+            assert restored[table][0][key] == value
+
+
 def test_explode_assemble_round_trip_preserves_null_versus_zero() -> None:
     tables = {
         "profile": [
@@ -276,4 +289,3 @@ def test_apply_tombstones_ignores_unknown_tables() -> None:
         [{"table": "notATable", "id": "x", "deletedAt": "2026-08-15T12:00:00.000Z"}],
     )
     assert recorded == []
-

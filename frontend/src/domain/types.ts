@@ -115,6 +115,10 @@ export interface Settings {
   trainingSplitId: string | null
   /** User-defined days, only populated when trainingSplitId === 'custom'. */
   customSplitDays: Array<{ key: string; label: string; bucket: Exclude<SessionType, 'rest' | 'run'> }>
+  /** Preferred effort rating scale ('rir' or 'rpe'). Defaults to 'rir'. */
+  effortScale?: 'rir' | 'rpe'
+  /** Default rest timer in seconds between working sets. Defaults to 90. */
+  defaultRestSec?: number
 
   updatedAt: Instant
 }
@@ -338,6 +342,12 @@ export interface Exercise {
   loadIncrementKg: number
   order: number
   archived: boolean
+  /** Whether this exercise is tracked by time/duration (e.g. planks) rather than reps. */
+  isTimed?: boolean
+  /** Recommended rest time in seconds between sets for this specific exercise. */
+  restSec?: number | null
+  /** Exercises sharing a value are performed back-to-back before resting. */
+  supersetGroupId?: string | null
 }
 
 export interface Workout {
@@ -348,6 +358,15 @@ export interface Workout {
   finishedAt: Instant | null
   notes: string | null
   prescription: WorkoutPrescription | null
+}
+
+export interface ScheduleOverride {
+  id: string
+  sourceDate: LocalDate
+  targetDate: LocalDate | null
+  action: 'move' | 'skip' | 'makeup'
+  reason: string | null
+  createdAt: Instant
 }
 
 export type ReadinessBand = 'ready' | 'steady' | 'reduce' | 'insufficient'
@@ -387,6 +406,10 @@ export interface WorkoutSet {
   weightKg: number | null
   reps: number | null
   rir: number | null
+  /** Optional RPE rating (1-10) directly captured or mapped from RIR. */
+  rpe?: number | null
+  /** Duration in seconds for timed/isometric holds (e.g. planks, hangs). */
+  durationSec?: number | null
   /** Warm-ups are excluded from progression maths. */
   isWarmup: boolean
   createdAt: Instant

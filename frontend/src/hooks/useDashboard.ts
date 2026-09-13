@@ -30,7 +30,9 @@ import {
   type WeeklyChange,
 } from '@/domain/trend'
 import { calculateSleepScore, scoreSleepNights, type SleepScore, type ScoredSleepNight } from '@/domain/sleep'
-import type { DailyLog, LocalDate, Phase, Run, Settings } from '@/domain/types'
+import { estimateTdee, type TdeeResult } from '@/domain/metabolism'
+import { detectWeightAnomaly, type WeightAnomaly } from '@/domain/weightAnomaly'
+import type { DailyLog, LocalDate, Phase, Run, ScheduleOverride, Settings } from '@/domain/types'
 import { API_BASE, scheduleSync } from '@/sync/client'
 
 /**
@@ -93,6 +95,9 @@ export interface Dashboard {
   volumeRamp: VolumeRamp
   longRunProgression: LongRunProgression
   derivedTargetPaces: DerivedTargetPaces | null
+  tdeeEstimate: TdeeResult
+  weightAnomaly: WeightAnomaly | null
+  scheduleOverrides: ScheduleOverride[]
 }
 
 export function useDashboard(rangeDays = 90): Dashboard {
@@ -108,6 +113,7 @@ export function useDashboard(rangeDays = 90): Dashboard {
     [] as DailyLog[],
   )
   const runs = useLiveQuery(() => recentRuns(240), [], [] as Run[])
+  const scheduleOverrides = useLiveQuery(() => db.scheduleOverrides.toArray(), [], [] as ScheduleOverride[])
 
   const phase = useMemo(
     () => resolveActivePhase(phases ?? [], settings),
@@ -143,10 +149,13 @@ export function useDashboard(rangeDays = 90): Dashboard {
         volumeRamp: volumeRamp(runs ?? [], today),
         longRunProgression: longRunProgression(runs ?? [], today),
         derivedTargetPaces: null,
+        tdeeEstimate: estimateTdee(today, logs ?? []),
+        weightAnomaly: detectWeightAnomaly(today, index),
+        scheduleOverrides,
       }
     }
 
-    const compliance = complianceFor(index, today, phase)
+    const compliance = complianceFor(index, today, phase, 7, scheduleOverrides)
     const recommendation = recommend(index, today, phase, compliance, settings)
     const review = reviewPhase(index, today, phase, settings)
     const change = weeklyChange(index, today, settings.minReadingsPerWindow)
@@ -194,8 +203,11 @@ export function useDashboard(rangeDays = 90): Dashboard {
       volumeRamp: volumeRamp(runs ?? [], today),
       longRunProgression: longRunProgression(runs ?? [], today),
       derivedTargetPaces: derivedTargetPaces(easyPace),
+      tdeeEstimate: estimateTdee(today, logs ?? []),
+      weightAnomaly: detectWeightAnomaly(today, index),
+      scheduleOverrides,
     }
-  }, [logs, runs, settings, phase, phases, today, rangeDays])
+  }, [logs, runs, settings, phase, phases, today, rangeDays, scheduleOverrides])
 }
 
 /** Live sync/backup state for the header banner. */
