@@ -1,4 +1,6 @@
 import { useMemo } from 'react'
+import { bestNextAction } from '@/domain/bestNextAction'
+import { BestNextActionCard } from '@/components/today/BestNextActionCard'
 import { Link, useNavigate } from 'react-router-dom'
 import { resolvePhaseForDate, upsertLog } from '@/db/repo'
 import { outcomeFor, type MetricKey } from '@/domain/compliance'
@@ -271,6 +273,7 @@ export default function Today() {
       </header>
 
       {/* Phone: weigh-in first, so the 6am job is a zero-scroll action. */}
+      <BestNextActionCard date={today} action={bestNextAction(phase, todaySchedule, todayLog, today)} />
       <div className="mt-4 lg:hidden">{heroWeight}</div>
 
       <SleepCheckIn

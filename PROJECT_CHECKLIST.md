@@ -17,6 +17,11 @@ Use this file to track shipped work and the remaining roadmap.
 - [x] Exercise equipment and split-day metadata
 - [x] One-rep max estimates and exercise history analytics
 - [x] Activity heatmap and muscle body map
+- [x] Anatomical SVG front/back map with 12 selectable muscle regions
+- [x] Female front/back illustration with a Male/Female selector remembered on this device
+- [x] Muscle details show logged sets, contributing exercises, and last-trained dates
+- [x] Responsive muscle-map layout, keyboard controls, and light/dark theme styling
+- [x] Muscle mapping excludes warm-ups and blank sets, supports timed sets, and discloses unmapped exercises
 
 ### Planning and scheduling
 
@@ -50,7 +55,7 @@ Use this file to track shipped work and the remaining roadmap.
 ### Quality
 
 - [x] Frontend build passes
-- [x] Frontend test suite passes (406 tests)
+- [x] Frontend test suite passes (408 tests)
 - [x] Backend test suite passes (80 tests)
 - [x] Lint passes with existing Fast Refresh warnings only
 - [x] Full tracker QA verification passes
@@ -58,6 +63,15 @@ Use this file to track shipped work and the remaining roadmap.
 - [ ] Add dedicated tests for `frontend/src/domain/trainingSplits.ts`
 
 ## To do next
+
+### Daily feature rollout
+
+- [x] Day 1: Best next action card on Today, with rule-based reasons, action links, and reversible daily dismissal (remembered in this browser tab)
+- [ ] Day 2: Workout completion celebration
+- [ ] Day 3: Enhance the existing weekly progress story
+- [ ] Day 4: Milestone timeline
+- [ ] Day 5: Opt-in reminders
+- [ ] Day 6: Personalized empty states
 
 ### Phase 3: scheduling and portability
 

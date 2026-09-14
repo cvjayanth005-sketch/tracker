@@ -18,6 +18,7 @@ import { scheduleForDate } from '@/domain/schedule'
 import { outcomeFor } from '@/domain/compliance'
 import { sessionVolume } from '@/domain/progression'
 import { computeMuscleMetrics } from '@/domain/muscleVolume'
+import { computeBodyCoverage } from '@/domain/bodyCoverage'
 import { MuscleVolumeWheel } from '@/components/activity/MuscleVolumeWheel'
 import { ActivityHeatmap } from '@/components/analytics/ActivityHeatmap'
 import { BodyMap } from '@/components/analytics/BodyMap'
@@ -959,7 +960,7 @@ export default function Activity() {
         </Card>
 
         <Card>
-          <BodyMap metrics={muscleMetrics} />
+          <BodyMap coverage={computeBodyCoverage(sessions ?? [], exercises ?? [], today)} />
         </Card>
 
         <Card>
